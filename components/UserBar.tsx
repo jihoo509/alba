@@ -1,23 +1,21 @@
-// components/UserBar.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 
-export default function UserBar({ email }: { email: string }) {
+export default function UserBar({ email }: { email?: string | null }) {
   const router = useRouter();
-  const supabase = createSupabaseBrowserClient();
+
+  const onLogout = async () => {
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.replace('/');
+  };
 
   return (
     <div>
-      <span>{email}</span>
-      <button
-        onClick={async () => {
-          await supabase.auth.signOut();
-          router.replace('/');
-        }}
-        style={{ marginLeft: 12, padding: '8px 12px' }}
-      >
+      <span>{email ?? ''}</span>
+      <button onClick={onLogout} style={{ marginLeft: 12, padding: '8px 12px' }}>
         로그아웃
       </button>
     </div>
