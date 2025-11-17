@@ -2,23 +2,28 @@
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-export async function createSupabaseServerClient() {
-  // Next 16 변경점: cookies()가 Promise -> await 필요
-  const cookieStore = await cookies();
-
+export function createSupabaseServerClient() {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
+        // ✅ 쿠키 "읽기"만 사용 – 매번 cookies()를 바로 호출
         get(name: string) {
-          return cookieStore.get(name)?.value;
+          try {
+            return cookies().get(name)?.value;
+          } catch {
+            // 서버 액션/라우트 핸들러가 아닌 환경 등에서 문제가 나면
+            // 그냥 undefined 리턴
+            return undefined;
+          }
         },
-        set(name: string, value: string, options?: CookieOptions) {
-          cookieStore.set(name, value, options);
+        // ✅ 서버 컴포넌트에서는 쿠키 "쓰기" 금지 – 아무 것도 안 함
+        set(_name: string, _value: string, _options?: CookieOptions) {
+          // intentionally empty
         },
-        remove(name: string, options?: CookieOptions) {
-          cookieStore.set(name, '', { ...options, maxAge: 0 });
+        remove(_name: string, _options?: CookieOptions) {
+          // intentionally empty
         },
       },
     }
