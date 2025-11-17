@@ -5,6 +5,9 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 
+// 우리가 화면에서 쓸 소셜 로그인 문자열 타입
+type OAuthProvider = 'google' | 'kakao' | 'naver';
+
 export default function AuthPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
@@ -73,12 +76,13 @@ export default function AuthPage() {
   }
 
   // Google / Kakao / Naver OAuth 로그인
-  async function handleOAuthLogin(provider: 'google' | 'kakao' | 'naver') {
+  async function handleOAuthLogin(provider: OAuthProvider) {
     try {
       setMsg(null);
 
       const { error } = await supabase.auth.signInWithOAuth({
-        provider,
+        // Supabase 타입은 Provider인데, 우리가 kakao/naver를 쓰기 위해 any 캐스팅
+        provider: provider as any,
         options: {
           // 로그인 이후 돌아올 주소 (대시보드로 바로 보내기)
           redirectTo: `${window.location.origin}/dashboard`,
