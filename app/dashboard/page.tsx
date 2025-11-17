@@ -20,8 +20,10 @@ type Employee = {
   id: string;
   name: string;
   hourly_wage: number | null;
-  employment_type: string; // 'worker' | 'manager'
+  employment_type: 'freelancer' | 'insured' | null;
   is_active: boolean | null;
+  hire_date: string | null; // 'YYYY-MM-DD'
+  end_date: string | null;
 };
 
 export default function DashboardPage() {
@@ -46,14 +48,20 @@ export default function DashboardPage() {
   // 새 직원 추가 폼
   const [newEmpName, setNewEmpName] = useState('');
   const [newEmpWage, setNewEmpWage] = useState('');
-  const [newEmpType, setNewEmpType] = useState<'worker' | 'manager'>('worker');
+  const [newEmpType, setNewEmpType] =
+    useState<'freelancer' | 'insured'>('freelancer');
+  const [newEmpHireDate, setNewEmpHireDate] = useState('');
+  const [newEmpEndDate, setNewEmpEndDate] = useState('');
 
   // 직원 수정 상태
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [editName, setEditName] = useState('');
   const [editWage, setEditWage] = useState('');
-  const [editType, setEditType] = useState<'worker' | 'manager'>('worker');
+  const [editType, setEditType] =
+    useState<'freelancer' | 'insured'>('freelancer');
   const [editActive, setEditActive] = useState(true);
+  const [editHireDate, setEditHireDate] = useState('');
+  const [editEndDate, setEditEndDate] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -202,6 +210,10 @@ export default function DashboardPage() {
       setErrorMsg('시급을 입력해주세요.');
       return;
     }
+    if (!newEmpHireDate.trim()) {
+      setErrorMsg('입사일을 선택해주세요.');
+      return;
+    }
 
     const wage = Number(newEmpWage.replace(/,/g, ''));
     if (Number.isNaN(wage) || wage <= 0) {
@@ -217,7 +229,9 @@ export default function DashboardPage() {
           storeId: currentStoreId,
           name: newEmpName.trim(),
           hourlyWage: wage,
-          employmentType: newEmpType,
+          employmentType: newEmpType, // 'freelancer' | 'insured'
+          hireDate: newEmpHireDate,
+          endDate: newEmpEndDate || null,
         }),
       });
 
@@ -231,7 +245,9 @@ export default function DashboardPage() {
 
       setNewEmpName('');
       setNewEmpWage('');
-      setNewEmpType('worker');
+      setNewEmpType('freelancer');
+      setNewEmpHireDate('');
+      setNewEmpEndDate('');
 
       await loadEmployees(currentStoreId);
     } catch (err: any) {
@@ -247,8 +263,12 @@ export default function DashboardPage() {
     setEditWage(
       emp.hourly_wage != null ? String(emp.hourly_wage) : '',
     );
-    setEditType(emp.employment_type as 'worker' | 'manager');
-    setEditActive(emp.is_active !== false); // null이면 true로 취급
+    setEditType(
+      (emp.employment_type as 'freelancer' | 'insured') ?? 'freelancer',
+    );
+    setEditActive(emp.is_active !== false);
+    setEditHireDate(emp.hire_date ?? '');
+    setEditEndDate(emp.end_date ?? '');
   }
 
   // -------- 직원 수정 저장 (PUT /api/employees/[id]) --------
@@ -265,6 +285,10 @@ export default function DashboardPage() {
     }
     if (!editWage.trim()) {
       setErrorMsg('시급을 입력해주세요.');
+      return;
+    }
+    if (!editHireDate.trim()) {
+      setErrorMsg('입사일을 선택해주세요.');
       return;
     }
 
@@ -285,6 +309,8 @@ export default function DashboardPage() {
           hourly_wage: wage,
           employment_type: editType,
           is_active: editActive,
+          hire_date: editHireDate,
+          end_date: editEndDate || null,
         }),
       });
 
@@ -317,24 +343,22 @@ export default function DashboardPage() {
       setErrorMsg(null);
       setDeletingId(id);
 
-const res = await fetch(`/api/employees/${id}`, {
-  method: 'DELETE',
-});
+      const res = await fetch(`/api/employees/${id}`, {
+        method: 'DELETE',
+      });
 
-let data: any = null;
-try {
-  data = await res.json();
-} catch (e) {
-  // 응답이 비어 있거나 JSON이 아니면 여기로 옴
-  console.error('delete employee parse error:', e);
-}
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch (e) {
+        console.error('delete employee parse error:', e);
+      }
 
-if (!res.ok) {
-  console.error('delete employee error:', data);
-  setErrorMsg(data?.error || '직원 삭제에 실패했습니다.');
-  return;
-}
-
+      if (!res.ok) {
+        console.error('delete employee error:', data);
+        setErrorMsg(data?.error || '직원 삭제에 실패했습니다.');
+        return;
+      }
 
       await loadEmployees(currentStoreId);
     } catch (err: any) {
@@ -354,6 +378,21 @@ if (!res.ok) {
     );
   }
 
+  // 오늘 날짜 기준 퇴사 여부 계산 도우미
+  function isTerminated(emp: Employee) {
+    if (!emp.end_date) return false;
+    try {
+      const end = new Date(emp.end_date);
+      const today = new Date();
+      // 날짜만 비교 (시간 무시)
+      end.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      return end < today;
+    } catch {
+      return false;
+    }
+  }
+
   // -------- 화면 렌더링 --------
   return (
     <main style={{ padding: 40, color: '#fff' }}>
@@ -365,7 +404,7 @@ if (!res.ok) {
           marginBottom: 24,
         }}
       >
-        <h1>사장님 대시보드999</h1>
+        <h1>사장님 대시보드</h1>
         <UserBar email={userEmail} />
       </header>
 
@@ -412,7 +451,7 @@ if (!res.ok) {
         </section>
       ) : (
         // ---- 매장이 있을 때: 선택 + 직원 관리 ----
-        <section style={{ maxWidth: 640 }}>
+        <section style={{ maxWidth: 720 }}>
           <h2 style={{ fontSize: 20, marginBottom: 8 }}>내 매장 선택</h2>
 
           <select
@@ -447,32 +486,71 @@ if (!res.ok) {
             <h3 style={{ fontSize: 18, marginBottom: 8 }}>직원 추가</h3>
             <form
               onSubmit={handleCreateEmployee}
-              style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
+              style={{
+                display: 'flex',
+                gap: 8,
+                flexWrap: 'wrap',
+                alignItems: 'flex-end',
+              }}
             >
-              <input
-                type="text"
-                placeholder="직원 이름"
-                value={newEmpName}
-                onChange={(e) => setNewEmpName(e.target.value)}
-                style={{ padding: 8, color: '#000', minWidth: 140 }}
-              />
-              <input
-                type="number"
-                placeholder="시급 (원)"
-                value={newEmpWage}
-                onChange={(e) => setNewEmpWage(e.target.value)}
-                style={{ padding: 8, color: '#000', minWidth: 120 }}
-              />
-              <select
-                value={newEmpType}
-                onChange={(e) =>
-                  setNewEmpType(e.target.value as 'worker' | 'manager')
-                }
-                style={{ padding: 8, color: '#000', minWidth: 120 }}
-              >
-                <option value="worker">알바 / 스태프</option>
-                <option value="manager">매니저</option>
-              </select>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label style={{ fontSize: 12 }}>이름</label>
+                <input
+                  type="text"
+                  placeholder="직원 이름"
+                  value={newEmpName}
+                  onChange={(e) => setNewEmpName(e.target.value)}
+                  style={{ padding: 8, color: '#000', minWidth: 120 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label style={{ fontSize: 12 }}>시급(원)</label>
+                <input
+                  type="number"
+                  placeholder="시급 (원)"
+                  value={newEmpWage}
+                  onChange={(e) => setNewEmpWage(e.target.value)}
+                  style={{ padding: 8, color: '#000', minWidth: 100 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label style={{ fontSize: 12 }}>형태</label>
+                <select
+                  value={newEmpType}
+                  onChange={(e) =>
+                    setNewEmpType(
+                      e.target.value as 'freelancer' | 'insured',
+                    )
+                  }
+                  style={{ padding: 8, color: '#000', minWidth: 140 }}
+                >
+                  <option value="freelancer">3.3% 프리랜서</option>
+                  <option value="insured">4대 보험 직원</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label style={{ fontSize: 12 }}>입사일</label>
+                <input
+                  type="date"
+                  value={newEmpHireDate}
+                  onChange={(e) => setNewEmpHireDate(e.target.value)}
+                  style={{ padding: 8, color: '#000' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label style={{ fontSize: 12 }}>퇴사일(선택)</label>
+                <input
+                  type="date"
+                  value={newEmpEndDate}
+                  onChange={(e) => setNewEmpEndDate(e.target.value)}
+                  style={{ padding: 8, color: '#000' }}
+                />
+              </div>
+
               <button
                 type="submit"
                 style={{
@@ -481,6 +559,7 @@ if (!res.ok) {
                   color: '#fff',
                   border: 0,
                   cursor: 'pointer',
+                  height: 38,
                 }}
               >
                 직원 추가
@@ -499,62 +578,80 @@ if (!res.ok) {
               </p>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0 }}>
-                {employees.map((emp) => (
-                  <li
-                    key={emp.id}
-                    style={{
-                      padding: '6px 0',
-                      borderBottom: '1px solid #333',
-                      fontSize: 14,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 8,
-                    }}
-                  >
-                    <div>
-                      <strong>{emp.name}</strong>{' '}
-                      <span style={{ marginLeft: 8 }}>
-                        {emp.hourly_wage != null
-                          ? `${emp.hourly_wage.toLocaleString()}원`
-                          : '-'}
-                      </span>
-                      <span style={{ marginLeft: 8 }}>
-                        {emp.employment_type === 'manager'
-                          ? '매니저'
-                          : '직원'}
-                      </span>
-                      {!emp.is_active && (
-                        <span style={{ marginLeft: 8, color: 'orange' }}>
-                          (퇴사/비활성)
+                {employees.map((emp) => {
+                  const terminated = isTerminated(emp);
+                  const typeLabel =
+                    emp.employment_type === 'freelancer'
+                      ? '3.3% 프리랜서'
+                      : emp.employment_type === 'insured'
+                      ? '4대 보험 직원'
+                      : '-';
+
+                  return (
+                    <li
+                      key={emp.id}
+                      style={{
+                        padding: '6px 0',
+                        borderBottom: '1px solid #333',
+                        fontSize: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                      }}
+                    >
+                      <div>
+                        <strong>{emp.name}</strong>{' '}
+                        <span style={{ marginLeft: 8 }}>
+                          {emp.hourly_wage != null
+                            ? `${emp.hourly_wage.toLocaleString()}원`
+                            : '-'}
                         </span>
-                      )}
-                    </div>
-                    <div>
-                      <button
-                        style={{
-                          marginRight: 8,
-                          padding: '4px 8px',
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => handleStartEdit(emp)}
-                      >
-                        수정
-                      </button>
-                      <button
-                        style={{
-                          padding: '4px 8px',
-                          cursor: 'pointer',
-                          opacity: deletingId === emp.id ? 0.6 : 1,
-                        }}
-                        onClick={() => handleDeleteEmployee(emp.id)}
-                        disabled={deletingId === emp.id}
-                      >
-                        {deletingId === emp.id ? '삭제 중...' : '삭제'}
-                      </button>
-                    </div>
-                  </li>
-                ))}
+                        <span style={{ marginLeft: 8 }}>
+                          {typeLabel}
+                        </span>
+                        {emp.hire_date && (
+                          <span style={{ marginLeft: 8, fontSize: 12 }}>
+                            입사: {emp.hire_date}
+                          </span>
+                        )}
+                        {emp.end_date && (
+                          <span style={{ marginLeft: 8, fontSize: 12 }}>
+                            퇴사 예정: {emp.end_date}
+                          </span>
+                        )}
+                        {(terminated || emp.is_active === false) && (
+                          <span style={{ marginLeft: 8, color: 'orange' }}>
+                            (퇴사)
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <button
+                          style={{
+                            marginRight: 8,
+                            padding: '4px 8px',
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => handleStartEdit(emp)}
+                        >
+                          수정
+                        </button>
+                        <button
+                          style={{
+                            padding: '4px 8px',
+                            cursor: 'pointer',
+                            opacity: deletingId === emp.id ? 0.6 : 1,
+                          }}
+                          onClick={() => handleDeleteEmployee(emp.id)}
+                          disabled={deletingId === emp.id}
+                        >
+                          {deletingId === emp.id ? '삭제 중...' : '삭제'}
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -580,7 +677,7 @@ if (!res.ok) {
               color: '#000',
               padding: 20,
               borderRadius: 8,
-              minWidth: 320,
+              minWidth: 340,
             }}
           >
             <h3 style={{ marginBottom: 12 }}>
@@ -594,31 +691,63 @@ if (!res.ok) {
                 gap: 8,
               }}
             >
-              <input
-                type="text"
-                placeholder="직원 이름"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                style={{ padding: 8 }}
-              />
-              <input
-                type="number"
-                placeholder="시급 (원)"
-                value={editWage}
-                onChange={(e) => setEditWage(e.target.value)}
-                style={{ padding: 8 }}
-              />
-              <select
-                value={editType}
-                onChange={(e) =>
-                  setEditType(e.target.value as 'worker' | 'manager')
-                }
-                style={{ padding: 8 }}
-              >
-                <option value="worker">알바 / 스태프</option>
-                <option value="manager">매니저</option>
-              </select>
-              <label style={{ fontSize: 14 }}>
+              <label style={{ fontSize: 12 }}>
+                이름
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  style={{ padding: 8, marginTop: 2, width: '100%' }}
+                />
+              </label>
+
+              <label style={{ fontSize: 12 }}>
+                시급(원)
+                <input
+                  type="number"
+                  value={editWage}
+                  onChange={(e) => setEditWage(e.target.value)}
+                  style={{ padding: 8, marginTop: 2, width: '100%' }}
+                />
+              </label>
+
+              <label style={{ fontSize: 12 }}>
+                형태
+                <select
+                  value={editType}
+                  onChange={(e) =>
+                    setEditType(
+                      e.target.value as 'freelancer' | 'insured',
+                    )
+                  }
+                  style={{ padding: 8, marginTop: 2, width: '100%' }}
+                >
+                  <option value="freelancer">3.3% 프리랜서</option>
+                  <option value="insured">4대 보험 직원</option>
+                </select>
+              </label>
+
+              <label style={{ fontSize: 12 }}>
+                입사일
+                <input
+                  type="date"
+                  value={editHireDate}
+                  onChange={(e) => setEditHireDate(e.target.value)}
+                  style={{ padding: 8, marginTop: 2, width: '100%' }}
+                />
+              </label>
+
+              <label style={{ fontSize: 12 }}>
+                퇴사일(선택)
+                <input
+                  type="date"
+                  value={editEndDate}
+                  onChange={(e) => setEditEndDate(e.target.value)}
+                  style={{ padding: 8, marginTop: 2, width: '100%' }}
+                />
+              </label>
+
+              <label style={{ fontSize: 12 }}>
                 <input
                   type="checkbox"
                   checked={editActive}

@@ -55,14 +55,18 @@ export async function POST(req: Request) {
     name,
     hourlyWage,
     employmentType,
+    hireDate,
+    endDate,
   }: {
     storeId: string;
     name: string;
     hourlyWage: number;
-    employmentType: string;
+    employmentType: string; // 'freelancer' | 'insured'
+    hireDate: string;       // 'YYYY-MM-DD'
+    endDate?: string | null;
   } = body;
 
-  if (!storeId || !name || !hourlyWage || !employmentType) {
+  if (!storeId || !name || !hourlyWage || !employmentType || !hireDate) {
     return NextResponse.json(
       { error: '필수 값이 누락되었습니다.' },
       { status: 400 }
@@ -75,8 +79,10 @@ export async function POST(req: Request) {
       store_id: storeId,
       name,
       hourly_wage: hourlyWage,
-      employment_type: employmentType,
+      employment_type: employmentType, // 'freelancer' | 'insured'
       is_active: true,
+      hire_date: hireDate,
+      end_date: endDate || null,
     })
     .select('*')
     .single();

@@ -8,7 +8,6 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Next 16에서는 params가 Promise 타입이라 await 필요
     const { id } = await params;
 
     const supabase = await createSupabaseServerClient();
@@ -19,11 +18,15 @@ export async function PUT(
       hourly_wage,
       employment_type,
       is_active,
+      hire_date,
+      end_date,
     }: {
       name?: string;
       hourly_wage?: number;
       employment_type?: string;
       is_active?: boolean;
+      hire_date?: string | null; // 'YYYY-MM-DD'
+      end_date?: string | null;
     } = body;
 
     const updateData: Record<string, any> = {};
@@ -32,6 +35,10 @@ export async function PUT(
     if (typeof employment_type === 'string')
       updateData.employment_type = employment_type;
     if (typeof is_active === 'boolean') updateData.is_active = is_active;
+    if (typeof hire_date === 'string' || hire_date === null)
+      updateData.hire_date = hire_date;
+    if (typeof end_date === 'string' || end_date === null)
+      updateData.end_date = end_date;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
@@ -67,7 +74,7 @@ export async function PUT(
 
 // 직원 삭제 (DELETE)
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
