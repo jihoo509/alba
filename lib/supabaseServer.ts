@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 export async function createSupabaseServerClient() {
-  // ✅ Next.js 15+ / 16: cookies() 는 이제 Promise
+  // Next.js 15/16: cookies() 가 Promise 를 반환
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -11,18 +11,16 @@ export async function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        // 서버에서 Supabase가 세션 쿠키들을 읽을 때 사용
         getAll() {
           return cookieStore.getAll();
         },
-        // Supabase가 세션 갱신하면서 쿠키를 다시 써줄 때 사용
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
             });
           } catch {
-            // Server Component에서 호출될 때 set이 막혀 있어도 무시
+            // 일부 환경(Server Component)에서 set 이 막혀 있어도 앱은 계속 동작하도록
           }
         },
       },
