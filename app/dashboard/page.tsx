@@ -317,17 +317,24 @@ export default function DashboardPage() {
       setErrorMsg(null);
       setDeletingId(id);
 
-      const res = await fetch(`/api/employees/${id}`, {
-        method: 'DELETE',
-      });
+const res = await fetch(`/api/employees/${id}`, {
+  method: 'DELETE',
+});
 
-      const data = await res.json();
+let data: any = null;
+try {
+  data = await res.json();
+} catch (e) {
+  // 응답이 비어 있거나 JSON이 아니면 여기로 옴
+  console.error('delete employee parse error:', e);
+}
 
-      if (!res.ok) {
-        console.error('delete employee error:', data.error);
-        setErrorMsg(data.error || '직원 삭제에 실패했습니다.');
-        return;
-      }
+if (!res.ok) {
+  console.error('delete employee error:', data);
+  setErrorMsg(data?.error || '직원 삭제에 실패했습니다.');
+  return;
+}
+
 
       await loadEmployees(currentStoreId);
     } catch (err: any) {

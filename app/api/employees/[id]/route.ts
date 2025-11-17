@@ -1,10 +1,10 @@
 // app/api/employees/[id]/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 // 직원 수정 (PUT)
 export async function PUT(
-  req: NextRequest,
+  req: Request,
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
@@ -25,7 +25,6 @@ export async function PUT(
       is_active?: boolean;
     } = body;
 
-    // 업데이트할 객체 구성 (넘어온 값만 반영)
     const updateData: Record<string, any> = {};
     if (typeof name === 'string') updateData.name = name;
     if (typeof hourly_wage === 'number') updateData.hourly_wage = hourly_wage;
@@ -36,7 +35,7 @@ export async function PUT(
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { error: '업데이트할 값이 없습니다.' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -49,7 +48,10 @@ export async function PUT(
 
     if (error) {
       console.error('PUT /api/employees/[id] error:', error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 },
+      );
     }
 
     return NextResponse.json({ employee: data }, { status: 200 });
@@ -57,14 +59,14 @@ export async function PUT(
     console.error('PUT /api/employees/[id] exception:', err);
     return NextResponse.json(
       { error: 'Internal Server Error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 // 직원 삭제 (DELETE)
 export async function DELETE(
-  _req: NextRequest,
+  _req: Request,
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
@@ -79,7 +81,10 @@ export async function DELETE(
 
     if (error) {
       console.error('DELETE /api/employees/[id] error:', error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 },
+      );
     }
 
     return NextResponse.json({ success: true }, { status: 200 });
@@ -87,7 +92,7 @@ export async function DELETE(
     console.error('DELETE /api/employees/[id] exception:', err);
     return NextResponse.json(
       { error: 'Internal Server Error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
