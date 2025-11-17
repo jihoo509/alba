@@ -1,73 +1,70 @@
 // app/api/employees/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
-export async function GET(req: NextRequest) {
-  const supabase = createSupabaseServerClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+// 직원 목록 조회 (storeId 기준)
+export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const storeId = searchParams.get('storeId');
 
   if (!storeId) {
-    return NextResponse.json({ error: 'storeId is required' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'storeId 가 필요합니다.' },
+      { status: 400 }
+    );
   }
+
+  const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
     .from('employees')
     .select('*')
     .eq('store_id', storeId)
-    .eq('is_active', true)
-    .order('name', { ascending: true });
+    .order('created_at', { ascending: true });
 
   if (error) {
-    console.error(error);
     return NextResponse.json(
-      { error: 'Failed to fetch employees' },
+      { error: error.message },
       { status: 500 }
     );
   }
 
-  return NextResponse.json({ employees: data });
+  return NextResponse.json({ employees: data ?? [] }, { status: 200 });
 }
 
-export async function POST(req: NextRequest) {
-  const supabase = createSupabaseServerClient();
+// 직원 신규 추가
+export async function POST(req: Request) {
+  const supabase = await createSupabaseServerClient();
 
+  // 로그인 체크
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json(
+      { error: '로그인이 필요합니다.' },
+      { status: 401 }
+    );
   }
 
   const body = await req.json();
   const {
-    store_id,
+    storeId,
     name,
-    birth_date,
-    phone,
-    hourly_wage,
-    employment_type,
-    join_date,
-    bank_name,
-    bank_account,
-    memo,
+    hourlyWage,
+    employmentType,
+  }: {
+    storeId: string;
+    name: string;
+    hourlyWage: number;
+    employmentType: string;
   } = body;
 
-  if (!store_id || !name || !hourly_wage) {
+  if (!storeId || !name || !hourlyWage || !employmentType) {
     return NextResponse.json(
-      { error: 'store_id, name, hourly_wage are required' },
+      { error: '필수 값이 누락되었습니다.' },
       { status: 400 }
     );
   }
@@ -75,24 +72,18 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from('employees')
     .insert({
-      store_id,
+      store_id: storeId,
       name,
-      birth_date,
-      phone,
-      hourly_wage,
-      employment_type,
-      join_date,
-      bank_name,
-      bank_account,
-      memo,
+      hourly_wage: hourlyWage,
+      employment_type: employmentType,
+      is_active: true,
     })
-    .select()
+    .select('*')
     .single();
 
   if (error) {
-    console.error(error);
     return NextResponse.json(
-      { error: 'Failed to create employee' },
+      { error: error.message },
       { status: 500 }
     );
   }

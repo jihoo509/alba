@@ -2,33 +2,33 @@
 import { createSupabaseServerClient } from './supabaseServer';
 
 export async function getCurrentUserAndStores() {
-  // 서버용 Supabase 클라이언트 생성
-  const supabase = createSupabaseServerClient();
+  // ✅ async 함수이므로 반드시 await
+  const supabase = await createSupabaseServerClient();
 
+  // 현재 로그인 유저 가져오기
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { user: null, stores: [], currentStore: null };
+    return {
+      user: null,
+      stores: [] as any[],
+      error: userError ?? new Error('로그인 정보가 없습니다.'),
+    };
   }
 
-  const { data: storeMembers, error: storeError } = await supabase
-    .from('store_members')
-    .select('store_id, stores(*)')
-    .eq('user_id', user.id);
+  // RLS 때문에, 단순 select * from stores 해도
+  // owner 이거나 store_members 에 속한 매장만 자동으로 필터링됨
+  const { data: stores, error: storesError } = await supabase
+    .from('stores')
+    .select('*')
+    .order('created_at', { ascending: true });
 
-  if (storeError) throw storeError;
-
-  // store_members 결과에서 실제 store 객체만 뽑아내기
-  const stores =
-    storeMembers?.map((m: any) => (m as any).stores).filter(Boolean) ?? [];
-
-  // TODO: currentStore는
-  // - 첫 번째 매장
-  // - 또는 사용자가 선택한 매장 ID(cookie)에서 읽어오기
-  const currentStore = stores[0] ?? null;
-
-  return { user, stores, currentStore };
+  return {
+    user,
+    stores: stores ?? [],
+    error: storesError ?? null,
+  };
 }
