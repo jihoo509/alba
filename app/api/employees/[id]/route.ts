@@ -1,15 +1,16 @@
 // app/api/employees/[id]/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 // 직원 수정 (PUT)
 export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
-
   try {
+    // Next 16에서는 params가 Promise 타입이라 await 필요
+    const { id } = await params;
+
     const supabase = await createSupabaseServerClient();
     const body = await req.json();
 
@@ -66,12 +67,11 @@ export async function PUT(
 
 // 직원 삭제 (DELETE)
 export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
-
   try {
+    const { id } = await params;
     const supabase = await createSupabaseServerClient();
 
     const { error } = await supabase

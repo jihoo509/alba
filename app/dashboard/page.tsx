@@ -365,7 +365,7 @@ if (!res.ok) {
           marginBottom: 24,
         }}
       >
-        <h1>사장님 대시보드</h1>
+        <h1>사장님 대시보드999</h1>
         <UserBar email={userEmail} />
       </header>
 
