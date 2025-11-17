@@ -48,6 +48,15 @@ export default function DashboardPage() {
   const [newEmpWage, setNewEmpWage] = useState('');
   const [newEmpType, setNewEmpType] = useState<'worker' | 'manager'>('worker');
 
+  // 직원 수정 상태
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editWage, setEditWage] = useState('');
+  const [editType, setEditType] = useState<'worker' | 'manager'>('worker');
+  const [editActive, setEditActive] = useState(true);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   // -------- 매장 목록 불러오기 --------
   const loadStores = useCallback(
     async (userId: string) => {
@@ -72,30 +81,33 @@ export default function DashboardPage() {
     [supabase],
   );
 
-  // -------- 직원 목록 불러오기 --------
+  // -------- 직원 목록 불러오기 (API 사용) --------
   const loadEmployees = useCallback(
     async (storeId: string) => {
-      setLoadingEmployees(true);
-      setErrorMsg(null);
+      try {
+        setLoadingEmployees(true);
+        setErrorMsg(null);
 
-      const { data, error } = await supabase
-        .from('employees')
-        .select('id, name, hourly_wage, employment_type, is_active')
-        .eq('store_id', storeId)
-        .order('created_at', { ascending: true });
+        const res = await fetch(`/api/employees?storeId=${storeId}`);
+        const data = await res.json();
 
-      if (error) {
-        console.error('loadEmployees error:', error);
-        setErrorMsg('직원 목록을 불러오는 데 실패했습니다.');
+        if (!res.ok) {
+          console.error('loadEmployees error:', data.error);
+          setErrorMsg(data.error || '직원 목록을 불러오는 데 실패했습니다.');
+          setEmployees([]);
+          return;
+        }
+
+        setEmployees((data.employees ?? []) as Employee[]);
+      } catch (err: any) {
+        console.error('loadEmployees fetch error:', err);
+        setErrorMsg('직원 목록을 불러오는 중 오류가 발생했습니다.');
         setEmployees([]);
+      } finally {
         setLoadingEmployees(false);
-        return;
       }
-
-      setEmployees((data ?? []) as Employee[]);
-      setLoadingEmployees(false);
     },
-    [supabase],
+    [],
   );
 
   // -------- 로그인 확인 + 첫 로딩 --------
@@ -173,7 +185,7 @@ export default function DashboardPage() {
     await loadStores(user.id);
   }
 
-  // -------- 직원 추가 --------
+  // -------- 직원 추가 (API 사용) --------
   async function handleCreateEmployee(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg(null);
@@ -197,25 +209,133 @@ export default function DashboardPage() {
       return;
     }
 
-    const { error } = await supabase.from('employees').insert({
-      store_id: currentStoreId,
-      name: newEmpName.trim(),
-      hourly_wage: wage,
-      employment_type: newEmpType,
-      is_active: true,
-    });
+    try {
+      const res = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeId: currentStoreId,
+          name: newEmpName.trim(),
+          hourlyWage: wage,
+          employmentType: newEmpType,
+        }),
+      });
 
-    if (error) {
-      console.error('create employee error:', error);
-      setErrorMsg('직원 추가에 실패했습니다.');
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error('create employee error:', data.error);
+        setErrorMsg(data.error || '직원 추가에 실패했습니다.');
+        return;
+      }
+
+      setNewEmpName('');
+      setNewEmpWage('');
+      setNewEmpType('worker');
+
+      await loadEmployees(currentStoreId);
+    } catch (err: any) {
+      console.error('create employee fetch error:', err);
+      setErrorMsg('직원 추가 중 오류가 발생했습니다.');
+    }
+  }
+
+  // -------- 직원 수정 시작 --------
+  function handleStartEdit(emp: Employee) {
+    setEditingEmployee(emp);
+    setEditName(emp.name);
+    setEditWage(
+      emp.hourly_wage != null ? String(emp.hourly_wage) : '',
+    );
+    setEditType(emp.employment_type as 'worker' | 'manager');
+    setEditActive(emp.is_active !== false); // null이면 true로 취급
+  }
+
+  // -------- 직원 수정 저장 (PUT /api/employees/[id]) --------
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingEmployee) return;
+    if (!currentStoreId) return;
+
+    setErrorMsg(null);
+
+    if (!editName.trim()) {
+      setErrorMsg('직원 이름을 입력해주세요.');
+      return;
+    }
+    if (!editWage.trim()) {
+      setErrorMsg('시급을 입력해주세요.');
       return;
     }
 
-    setNewEmpName('');
-    setNewEmpWage('');
-    setNewEmpType('worker');
+    const wage = Number(editWage.replace(/,/g, ''));
+    if (Number.isNaN(wage) || wage <= 0) {
+      setErrorMsg('시급은 0보다 큰 숫자로 입력해주세요.');
+      return;
+    }
 
-    await loadEmployees(currentStoreId);
+    try {
+      setSavingEdit(true);
+
+      const res = await fetch(`/api/employees/${editingEmployee.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editName.trim(),
+          hourly_wage: wage,
+          employment_type: editType,
+          is_active: editActive,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error('update employee error:', data.error);
+        setErrorMsg(data.error || '직원 수정에 실패했습니다.');
+        return;
+      }
+
+      setEditingEmployee(null);
+      await loadEmployees(currentStoreId);
+    } catch (err: any) {
+      console.error('update employee fetch error:', err);
+      setErrorMsg('직원 수정 중 오류가 발생했습니다.');
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  // -------- 직원 삭제 (DELETE /api/employees/[id]) --------
+  async function handleDeleteEmployee(id: string) {
+    if (!currentStoreId) return;
+
+    const ok = window.confirm('정말 이 직원을 삭제하시겠습니까?');
+    if (!ok) return;
+
+    try {
+      setErrorMsg(null);
+      setDeletingId(id);
+
+      const res = await fetch(`/api/employees/${id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error('delete employee error:', data.error);
+        setErrorMsg(data.error || '직원 삭제에 실패했습니다.');
+        return;
+      }
+
+      await loadEmployees(currentStoreId);
+    } catch (err: any) {
+      console.error('delete employee fetch error:', err);
+      setErrorMsg('직원 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   // -------- 로딩 중 UI --------
@@ -379,30 +499,161 @@ export default function DashboardPage() {
                       padding: '6px 0',
                       borderBottom: '1px solid #333',
                       fontSize: 14,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
                     }}
                   >
-                    <strong>{emp.name}</strong>{' '}
-                    <span style={{ marginLeft: 8 }}>
-                      {emp.hourly_wage
-                        ? `${emp.hourly_wage.toLocaleString()}원`
-                        : '-'}
-                    </span>
-                    <span style={{ marginLeft: 8 }}>
-                      {emp.employment_type === 'manager'
-                        ? '매니저'
-                        : '직원'}
-                    </span>
-                    {!emp.is_active && (
-                      <span style={{ marginLeft: 8, color: 'orange' }}>
-                        (퇴사/비활성)
+                    <div>
+                      <strong>{emp.name}</strong>{' '}
+                      <span style={{ marginLeft: 8 }}>
+                        {emp.hourly_wage != null
+                          ? `${emp.hourly_wage.toLocaleString()}원`
+                          : '-'}
                       </span>
-                    )}
+                      <span style={{ marginLeft: 8 }}>
+                        {emp.employment_type === 'manager'
+                          ? '매니저'
+                          : '직원'}
+                      </span>
+                      {!emp.is_active && (
+                        <span style={{ marginLeft: 8, color: 'orange' }}>
+                          (퇴사/비활성)
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <button
+                        style={{
+                          marginRight: 8,
+                          padding: '4px 8px',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => handleStartEdit(emp)}
+                      >
+                        수정
+                      </button>
+                      <button
+                        style={{
+                          padding: '4px 8px',
+                          cursor: 'pointer',
+                          opacity: deletingId === emp.id ? 0.6 : 1,
+                        }}
+                        onClick={() => handleDeleteEmployee(emp.id)}
+                        disabled={deletingId === emp.id}
+                      >
+                        {deletingId === emp.id ? '삭제 중...' : '삭제'}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
         </section>
+      )}
+
+      {/* 직원 수정 모달 */}
+      {editingEmployee && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff',
+              color: '#000',
+              padding: 20,
+              borderRadius: 8,
+              minWidth: 320,
+            }}
+          >
+            <h3 style={{ marginBottom: 12 }}>
+              직원 수정 - {editingEmployee.name}
+            </h3>
+            <form
+              onSubmit={handleSaveEdit}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              <input
+                type="text"
+                placeholder="직원 이름"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                style={{ padding: 8 }}
+              />
+              <input
+                type="number"
+                placeholder="시급 (원)"
+                value={editWage}
+                onChange={(e) => setEditWage(e.target.value)}
+                style={{ padding: 8 }}
+              />
+              <select
+                value={editType}
+                onChange={(e) =>
+                  setEditType(e.target.value as 'worker' | 'manager')
+                }
+                style={{ padding: 8 }}
+              >
+                <option value="worker">알바 / 스태프</option>
+                <option value="manager">매니저</option>
+              </select>
+              <label style={{ fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={editActive}
+                  onChange={(e) => setEditActive(e.target.checked)}
+                  style={{ marginRight: 4 }}
+                />
+                재직 중(체크 해제 시 퇴사/비활성 처리)
+              </label>
+
+              <div
+                style={{
+                  marginTop: 16,
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 8,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setEditingEmployee(null)}
+                  style={{ padding: '6px 12px', cursor: 'pointer' }}
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: 'dodgerblue',
+                    color: '#fff',
+                    border: 0,
+                    cursor: 'pointer',
+                    opacity: savingEdit ? 0.7 : 1,
+                  }}
+                >
+                  {savingEdit ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </main>
   );
