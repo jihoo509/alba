@@ -9,22 +9,25 @@ import React, {
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import UserBar from '@/components/UserBar';
+import { StoreSelector } from '@/components/StoreSelector';
+import { EmployeeSection } from '@/components/EmployeeSection';
+import { TemplateSection } from '@/components/TemplateSection';
 
 type Store = {
   id: string;
   name: string;
 };
 
-// 직원 타입
-type Employee = {
+export type Employee = {
   id: string;
   name: string;
   hourly_wage: number | null;
-  employment_type: 'freelancer' | 'insured' | null;
+  employment_type: string;
   is_active: boolean | null;
-  hire_date: string | null; // 'YYYY-MM-DD'
-  end_date: string | null;
+  hire_date?: string | null;
 };
+
+type TabKey = 'employees' | 'schedules' | 'payroll';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -38,32 +41,14 @@ export default function DashboardPage() {
   // ---- 매장 관련 상태 ----
   const [stores, setStores] = useState<Store[]>([]);
   const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
-  const [newStoreName, setNewStoreName] = useState('');
   const [creatingStore, setCreatingStore] = useState(false);
 
   // ---- 직원 관련 상태 ----
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
 
-  // 새 직원 추가 폼
-  const [newEmpName, setNewEmpName] = useState('');
-  const [newEmpWage, setNewEmpWage] = useState('');
-  const [newEmpType, setNewEmpType] =
-    useState<'freelancer' | 'insured'>('freelancer');
-  const [newEmpHireDate, setNewEmpHireDate] = useState('');
-  const [newEmpEndDate, setNewEmpEndDate] = useState('');
-
-  // 직원 수정 상태
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editWage, setEditWage] = useState('');
-  const [editType, setEditType] =
-    useState<'freelancer' | 'insured'>('freelancer');
-  const [editActive, setEditActive] = useState(true);
-  const [editHireDate, setEditHireDate] = useState('');
-  const [editEndDate, setEditEndDate] = useState('');
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  // ---- 대시보드 탭 상태 ----
+  const [currentTab, setCurrentTab] = useState<TabKey>('employees');
 
   // -------- 매장 목록 불러오기 --------
   const loadStores = useCallback(
@@ -84,38 +69,41 @@ export default function DashboardPage() {
 
       const list = (data ?? []) as Store[];
       setStores(list);
-      setCurrentStoreId(list[0]?.id ?? null);
-    },
-    [supabase],
-  );
 
-  // -------- 직원 목록 불러오기 (API 사용) --------
-  const loadEmployees = useCallback(
-    async (storeId: string) => {
-      try {
-        setLoadingEmployees(true);
-        setErrorMsg(null);
-
-        const res = await fetch(`/api/employees?storeId=${storeId}`);
-        const data = await res.json();
-
-        if (!res.ok) {
-          console.error('loadEmployees error:', data.error);
-          setErrorMsg(data.error || '직원 목록을 불러오는 데 실패했습니다.');
-          setEmployees([]);
-          return;
-        }
-
-        setEmployees((data.employees ?? []) as Employee[]);
-      } catch (err: any) {
-        console.error('loadEmployees fetch error:', err);
-        setErrorMsg('직원 목록을 불러오는 중 오류가 발생했습니다.');
-        setEmployees([]);
-      } finally {
-        setLoadingEmployees(false);
+      // 매장이 있는데 currentStoreId가 비어있으면 첫 번째 매장으로 세팅
+      if (list.length > 0 && !currentStoreId) {
+        setCurrentStoreId(list[0].id);
       }
     },
-    [],
+    [supabase, currentStoreId],
+  );
+
+  // -------- 직원 목록 불러오기 --------
+  const loadEmployees = useCallback(
+    async (storeId: string) => {
+      setLoadingEmployees(true);
+      setErrorMsg(null);
+
+      const { data, error } = await supabase
+        .from('employees')
+        .select(
+          'id, name, hourly_wage, employment_type, is_active, hire_date',
+        )
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('loadEmployees error:', error);
+        setErrorMsg('직원 목록을 불러오는 데 실패했습니다.');
+        setEmployees([]);
+        setLoadingEmployees(false);
+        return;
+      }
+
+      setEmployees((data ?? []) as Employee[]);
+      setLoadingEmployees(false);
+    },
+    [supabase],
   );
 
   // -------- 로그인 확인 + 첫 로딩 --------
@@ -143,231 +131,183 @@ export default function DashboardPage() {
   }, [currentStoreId, loadEmployees]);
 
   // -------- 매장 생성 --------
-  async function handleCreateStore(e: React.FormEvent) {
-    e.preventDefault();
-    setErrorMsg(null);
-
-    if (!newStoreName.trim()) {
-      setErrorMsg('매장 이름을 입력해주세요.');
-      return;
-    }
-
-    setCreatingStore(true);
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      setCreatingStore(false);
-      setErrorMsg('로그인이 필요합니다.');
-      return;
-    }
-
-    const { data: store, error: storeError } = await supabase
-      .from('stores')
-      .insert({
-        name: newStoreName.trim(),
-        owner_id: user.id,
-      })
-      .select()
-      .single();
-
-    if (storeError || !store) {
-      console.error('create store error:', storeError);
-      setCreatingStore(false);
-      setErrorMsg('매장 생성에 실패했습니다.');
-      return;
-    }
-
-    await supabase.from('store_members').insert({
-      store_id: store.id,
-      user_id: user.id,
-      role: 'owner',
-    });
-
-    setNewStoreName('');
-    setCreatingStore(false);
-
-    await loadStores(user.id);
-  }
-
-  // -------- 직원 추가 (API 사용) --------
-  async function handleCreateEmployee(e: React.FormEvent) {
-    e.preventDefault();
-    setErrorMsg(null);
-
-    if (!currentStoreId) {
-      setErrorMsg('먼저 매장을 선택해주세요.');
-      return;
-    }
-    if (!newEmpName.trim()) {
-      setErrorMsg('직원 이름을 입력해주세요.');
-      return;
-    }
-    if (!newEmpWage.trim()) {
-      setErrorMsg('시급을 입력해주세요.');
-      return;
-    }
-    if (!newEmpHireDate.trim()) {
-      setErrorMsg('입사일을 선택해주세요.');
-      return;
-    }
-
-    const wage = Number(newEmpWage.replace(/,/g, ''));
-    if (Number.isNaN(wage) || wage <= 0) {
-      setErrorMsg('시급은 0보다 큰 숫자로 입력해주세요.');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/employees', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          storeId: currentStoreId,
-          name: newEmpName.trim(),
-          hourlyWage: wage,
-          employmentType: newEmpType, // 'freelancer' | 'insured'
-          hireDate: newEmpHireDate,
-          endDate: newEmpEndDate || null,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        console.error('create employee error:', data.error);
-        setErrorMsg(data.error || '직원 추가에 실패했습니다.');
-        return;
-      }
-
-      setNewEmpName('');
-      setNewEmpWage('');
-      setNewEmpType('freelancer');
-      setNewEmpHireDate('');
-      setNewEmpEndDate('');
-
-      await loadEmployees(currentStoreId);
-    } catch (err: any) {
-      console.error('create employee fetch error:', err);
-      setErrorMsg('직원 추가 중 오류가 발생했습니다.');
-    }
-  }
-
-  // -------- 직원 수정 시작 --------
-  function handleStartEdit(emp: Employee) {
-    setEditingEmployee(emp);
-    setEditName(emp.name);
-    setEditWage(
-      emp.hourly_wage != null ? String(emp.hourly_wage) : '',
-    );
-    setEditType(
-      (emp.employment_type as 'freelancer' | 'insured') ?? 'freelancer',
-    );
-    setEditActive(emp.is_active !== false);
-    setEditHireDate(emp.hire_date ?? '');
-    setEditEndDate(emp.end_date ?? '');
-  }
-
-  // -------- 직원 수정 저장 (PUT /api/employees/[id]) --------
-  async function handleSaveEdit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingEmployee) return;
-    if (!currentStoreId) return;
-
-    setErrorMsg(null);
-
-    if (!editName.trim()) {
-      setErrorMsg('직원 이름을 입력해주세요.');
-      return;
-    }
-    if (!editWage.trim()) {
-      setErrorMsg('시급을 입력해주세요.');
-      return;
-    }
-    if (!editHireDate.trim()) {
-      setErrorMsg('입사일을 선택해주세요.');
-      return;
-    }
-
-    const wage = Number(editWage.replace(/,/g, ''));
-    if (Number.isNaN(wage) || wage <= 0) {
-      setErrorMsg('시급은 0보다 큰 숫자로 입력해주세요.');
-      return;
-    }
-
-    try {
-      setSavingEdit(true);
-
-      const res = await fetch(`/api/employees/${editingEmployee.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editName.trim(),
-          hourly_wage: wage,
-          employment_type: editType,
-          is_active: editActive,
-          hire_date: editHireDate,
-          end_date: editEndDate || null,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        console.error('update employee error:', data.error);
-        setErrorMsg(data.error || '직원 수정에 실패했습니다.');
-        return;
-      }
-
-      setEditingEmployee(null);
-      await loadEmployees(currentStoreId);
-    } catch (err: any) {
-      console.error('update employee fetch error:', err);
-      setErrorMsg('직원 수정 중 오류가 발생했습니다.');
-    } finally {
-      setSavingEdit(false);
-    }
-  }
-
-  // -------- 직원 삭제 (DELETE /api/employees/[id]) --------
-  async function handleDeleteEmployee(id: string) {
-    if (!currentStoreId) return;
-
-    const ok = window.confirm('정말 이 직원을 삭제하시겠습니까?');
-    if (!ok) return;
-
-    try {
+  const handleCreateStore = useCallback(
+    async (storeName: string) => {
       setErrorMsg(null);
-      setDeletingId(id);
 
-      const res = await fetch(`/api/employees/${id}`, {
-        method: 'DELETE',
-      });
-
-      let data: any = null;
-      try {
-        data = await res.json();
-      } catch (e) {
-        console.error('delete employee parse error:', e);
+      if (!storeName.trim()) {
+        setErrorMsg('매장 이름을 입력해주세요.');
+        return;
       }
 
-      if (!res.ok) {
-        console.error('delete employee error:', data);
-        setErrorMsg(data?.error || '직원 삭제에 실패했습니다.');
+      setCreatingStore(true);
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        setCreatingStore(false);
+        setErrorMsg('로그인이 필요합니다.');
+        return;
+      }
+
+      const { data: store, error: storeError } = await supabase
+        .from('stores')
+        .insert({
+          name: storeName.trim(),
+          owner_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (storeError || !store) {
+        console.error('create store error:', storeError);
+        setCreatingStore(false);
+        setErrorMsg('매장 생성에 실패했습니다.');
+        return;
+      }
+
+      // store_members에 owner 등록
+      await supabase.from('store_members').insert({
+        store_id: store.id,
+        user_id: user.id,
+        role: 'owner',
+      });
+
+      setCreatingStore(false);
+      await loadStores(user.id);
+      setCurrentStoreId(store.id);
+      setCurrentTab('employees'); // 새 매장은 직원 관리부터 시작
+    },
+    [supabase, loadStores],
+  );
+
+  // -------- 직원 추가 --------
+  const handleCreateEmployee = useCallback(
+    async (payload: {
+      name: string;
+      hourlyWage: number;
+      employmentType: 'freelancer_33' | 'four_insurance';
+      hireDate?: string;
+    }) => {
+      const { name, hourlyWage, employmentType, hireDate } = payload;
+      setErrorMsg(null);
+
+      if (!currentStoreId) {
+        setErrorMsg('먼저 매장을 선택해주세요.');
+        return;
+      }
+
+      if (!name.trim()) {
+        setErrorMsg('직원 이름을 입력해주세요.');
+        return;
+      }
+
+      if (!hourlyWage || Number.isNaN(hourlyWage) || hourlyWage <= 0) {
+        setErrorMsg('시급은 0보다 큰 숫자로 입력해주세요.');
+        return;
+      }
+
+      const { error } = await supabase.from('employees').insert({
+        store_id: currentStoreId,
+        name: name.trim(),
+        hourly_wage: hourlyWage,
+        employment_type: employmentType,
+        hire_date: hireDate || null,
+        is_active: true,
+      });
+
+      if (error) {
+        console.error('create employee error:', error);
+        setErrorMsg('직원 추가에 실패했습니다.');
         return;
       }
 
       await loadEmployees(currentStoreId);
-    } catch (err: any) {
-      console.error('delete employee fetch error:', err);
-      setErrorMsg('직원 삭제 중 오류가 발생했습니다.');
-    } finally {
-      setDeletingId(null);
+    },
+    [currentStoreId, supabase, loadEmployees],
+  );
+
+  // -------- 직원 삭제 --------
+  const handleDeleteEmployee = useCallback(
+    async (employeeId: string) => {
+      if (!currentStoreId) {
+        setErrorMsg('먼저 매장을 선택해주세요.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/employees/${employeeId}`, {
+          method: 'DELETE',
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.error('delete employee error:', data);
+          setErrorMsg(data?.error || '직원 삭제에 실패했습니다.');
+          return;
+        }
+
+        await loadEmployees(currentStoreId);
+      } catch (err: any) {
+        console.error('delete employee fetch error:', err);
+        setErrorMsg('직원 삭제 중 오류가 발생했습니다.');
+      }
+    },
+    [currentStoreId, loadEmployees],
+  );
+
+  // -------- 탭 렌더링 함수 --------
+  const renderTabContent = () => {
+    if (!currentStoreId) {
+      return (
+        <p style={{ fontSize: 14, color: '#aaa' }}>
+          먼저 매장을 생성하거나 선택해주세요.
+        </p>
+      );
     }
-  }
+
+    if (currentTab === 'employees') {
+      return (
+        <EmployeeSection
+          currentStoreId={currentStoreId}
+          employees={employees}
+          loadingEmployees={loadingEmployees}
+          onCreateEmployee={handleCreateEmployee}
+          onDeleteEmployee={handleDeleteEmployee}
+        />
+      );
+    }
+
+    if (currentTab === 'schedules') {
+      return (
+        <div>
+          <h2 style={{ fontSize: 20, marginBottom: 12 }}>스케줄 관리</h2>
+          <p style={{ fontSize: 14, color: '#ccc', marginBottom: 16 }}>
+            템플릿을 만들어 두고, 나중에 주간 캘린더에 자동 배정하는 구조로 설계 중입니다.
+          </p>
+          <TemplateSection currentStoreId={currentStoreId} />
+        </div>
+      );
+    }
+
+    // currentTab === 'payroll'
+    return (
+      <div>
+        <h2 style={{ fontSize: 20, marginBottom: 12 }}>급여 / 정산</h2>
+        <p style={{ fontSize: 14, color: '#ccc', marginBottom: 8 }}>
+          이 탭에서는 스케줄 데이터를 기반으로 월별 급여, 야간수당, 휴일수당, 주휴수당을 자동 계산할 예정입니다.
+        </p>
+        <p style={{ fontSize: 14, color: '#ccc' }}>
+          다음 단계에서 매장별 급여 설정(5인 이상/미만, 수당 적용 여부)을 먼저 구현한 뒤,
+          여기서 월 선택 + 급여표를 보여줄 수 있도록 할게요.
+        </p>
+      </div>
+    );
+  };
 
   // -------- 로딩 중 UI --------
   if (loading) {
@@ -376,21 +316,6 @@ export default function DashboardPage() {
         로그인 상태 확인 중...
       </main>
     );
-  }
-
-  // 오늘 날짜 기준 퇴사 여부 계산 도우미
-  function isTerminated(emp: Employee) {
-    if (!emp.end_date) return false;
-    try {
-      const end = new Date(emp.end_date);
-      const today = new Date();
-      // 날짜만 비교 (시간 무시)
-      end.setHours(0, 0, 0, 0);
-      today.setHours(0, 0, 0, 0);
-      return end < today;
-    } catch {
-      return false;
-    }
   }
 
   // -------- 화면 렌더링 --------
@@ -412,385 +337,69 @@ export default function DashboardPage() {
         <div style={{ marginBottom: 16, color: 'salmon' }}>{errorMsg}</div>
       )}
 
-      {stores.length === 0 ? (
-        // ---- 매장이 하나도 없을 때: 매장 생성 폼 ----
-        <section style={{ maxWidth: 480 }}>
-          <h2 style={{ fontSize: 20, marginBottom: 8 }}>첫 매장 만들기</h2>
-          <p style={{ marginBottom: 12 }}>
-            현재 계정에 연결된 매장이 없습니다. 아래에서 첫 매장을 등록해주세요.
-          </p>
-
-          <form onSubmit={handleCreateStore}>
-            <input
-              type="text"
-              placeholder="매장 이름 (예: 광주 수완지구 1호점)"
-              value={newStoreName}
-              onChange={(e) => setNewStoreName(e.target.value)}
-              style={{
-                width: '100%',
-                padding: 10,
-                marginBottom: 8,
-                color: '#000',
-              }}
-            />
-            <button
-              type="submit"
-              disabled={creatingStore}
-              style={{
-                padding: 10,
-                minWidth: 160,
-                background: 'seagreen',
-                color: '#fff',
-                border: 0,
-                cursor: 'pointer',
-              }}
-            >
-              {creatingStore ? '생성 중...' : '매장 생성'}
-            </button>
-          </form>
-        </section>
-      ) : (
-        // ---- 매장이 있을 때: 선택 + 직원 관리 ----
-        <section style={{ maxWidth: 720 }}>
-          <h2 style={{ fontSize: 20, marginBottom: 8 }}>내 매장 선택</h2>
-
-          <select
-            value={currentStoreId ?? ''}
-            onChange={(e) => setCurrentStoreId(e.target.value)}
-            style={{
-              padding: 8,
-              minWidth: 260,
-              color: '#000',
-              marginBottom: 16,
-            }}
-          >
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-
-          <div style={{ marginTop: 8, marginBottom: 24 }}>
-            <p>
-              현재 선택된 매장:{' '}
-              {stores.find((s) => s.id === currentStoreId)?.name}
-            </p>
-            <p style={{ marginTop: 4, fontSize: 14, color: '#aaa' }}>
-              아래에서 이 매장의 직원 / 스케줄 / 급여를 관리하게 됩니다.
-            </p>
-          </div>
-
-          {/* 직원 추가 폼 */}
-          <div style={{ marginBottom: 24 }}>
-            <h3 style={{ fontSize: 18, marginBottom: 8 }}>직원 추가</h3>
-            <form
-              onSubmit={handleCreateEmployee}
-              style={{
-                display: 'flex',
-                gap: 8,
-                flexWrap: 'wrap',
-                alignItems: 'flex-end',
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <label style={{ fontSize: 12 }}>이름</label>
-                <input
-                  type="text"
-                  placeholder="직원 이름"
-                  value={newEmpName}
-                  onChange={(e) => setNewEmpName(e.target.value)}
-                  style={{ padding: 8, color: '#000', minWidth: 120 }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <label style={{ fontSize: 12 }}>시급(원)</label>
-                <input
-                  type="number"
-                  placeholder="시급 (원)"
-                  value={newEmpWage}
-                  onChange={(e) => setNewEmpWage(e.target.value)}
-                  style={{ padding: 8, color: '#000', minWidth: 100 }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <label style={{ fontSize: 12 }}>형태</label>
-                <select
-                  value={newEmpType}
-                  onChange={(e) =>
-                    setNewEmpType(
-                      e.target.value as 'freelancer' | 'insured',
-                    )
-                  }
-                  style={{ padding: 8, color: '#000', minWidth: 140 }}
-                >
-                  <option value="freelancer">3.3% 프리랜서</option>
-                  <option value="insured">4대 보험 직원</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <label style={{ fontSize: 12 }}>입사일</label>
-                <input
-                  type="date"
-                  value={newEmpHireDate}
-                  onChange={(e) => setNewEmpHireDate(e.target.value)}
-                  style={{ padding: 8, color: '#000' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <label style={{ fontSize: 12 }}>퇴사일(선택)</label>
-                <input
-                  type="date"
-                  value={newEmpEndDate}
-                  onChange={(e) => setNewEmpEndDate(e.target.value)}
-                  style={{ padding: 8, color: '#000' }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                style={{
-                  padding: '8px 16px',
-                  background: 'dodgerblue',
-                  color: '#fff',
-                  border: 0,
-                  cursor: 'pointer',
-                  height: 38,
-                }}
-              >
-                직원 추가
-              </button>
-            </form>
-          </div>
-
-          {/* 직원 리스트 */}
-          <div>
-            <h3 style={{ fontSize: 18, marginBottom: 8 }}>직원 목록</h3>
-            {loadingEmployees ? (
-              <p>직원 목록 불러오는 중...</p>
-            ) : employees.length === 0 ? (
-              <p style={{ fontSize: 14, color: '#aaa' }}>
-                아직 등록된 직원이 없습니다.
-              </p>
-            ) : (
-              <ul style={{ listStyle: 'none', padding: 0 }}>
-                {employees.map((emp) => {
-                  const terminated = isTerminated(emp);
-                  const typeLabel =
-                    emp.employment_type === 'freelancer'
-                      ? '3.3% 프리랜서'
-                      : emp.employment_type === 'insured'
-                      ? '4대 보험 직원'
-                      : '-';
-
-                  return (
-                    <li
-                      key={emp.id}
-                      style={{
-                        padding: '6px 0',
-                        borderBottom: '1px solid #333',
-                        fontSize: 14,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 8,
-                      }}
-                    >
-                      <div>
-                        <strong>{emp.name}</strong>{' '}
-                        <span style={{ marginLeft: 8 }}>
-                          {emp.hourly_wage != null
-                            ? `${emp.hourly_wage.toLocaleString()}원`
-                            : '-'}
-                        </span>
-                        <span style={{ marginLeft: 8 }}>
-                          {typeLabel}
-                        </span>
-                        {emp.hire_date && (
-                          <span style={{ marginLeft: 8, fontSize: 12 }}>
-                            입사: {emp.hire_date}
-                          </span>
-                        )}
-                        {emp.end_date && (
-                          <span style={{ marginLeft: 8, fontSize: 12 }}>
-                            퇴사 예정: {emp.end_date}
-                          </span>
-                        )}
-                        {(terminated || emp.is_active === false) && (
-                          <span style={{ marginLeft: 8, color: 'orange' }}>
-                            (퇴사)
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <button
-                          style={{
-                            marginRight: 8,
-                            padding: '4px 8px',
-                            cursor: 'pointer',
-                          }}
-                          onClick={() => handleStartEdit(emp)}
-                        >
-                          수정
-                        </button>
-                        <button
-                          style={{
-                            padding: '4px 8px',
-                            cursor: 'pointer',
-                            opacity: deletingId === emp.id ? 0.6 : 1,
-                          }}
-                          onClick={() => handleDeleteEmployee(emp.id)}
-                          disabled={deletingId === emp.id}
-                        >
-                          {deletingId === emp.id ? '삭제 중...' : '삭제'}
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* 직원 수정 모달 */}
-      {editingEmployee && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
+      <section style={{ maxWidth: 900 }}>
+        {/* 매장 선택 / 생성 */}
+        <StoreSelector
+          stores={stores}
+          currentStoreId={currentStoreId}
+          onChangeStore={(storeId) => {
+            setCurrentStoreId(storeId);
+            setCurrentTab('employees'); // 매장 바꾸면 직원 탭부터 보여주기
           }}
-        >
-          <div
-            style={{
-              backgroundColor: '#fff',
-              color: '#000',
-              padding: 20,
-              borderRadius: 8,
-              minWidth: 340,
-            }}
-          >
-            <h3 style={{ marginBottom: 12 }}>
-              직원 수정 - {editingEmployee.name}
-            </h3>
-            <form
-              onSubmit={handleSaveEdit}
+          creatingStore={creatingStore}
+          onCreateStore={handleCreateStore}
+        />
+
+        {/* 매장이 있을 때만 탭과 내용 표시 */}
+        {stores.length > 0 && currentStoreId && (
+          <div>
+            {/* 탭 버튼 영역 */}
+            <div
               style={{
                 display: 'flex',
-                flexDirection: 'column',
                 gap: 8,
+                borderBottom: '1px solid #333',
+                marginBottom: 16,
+                marginTop: 8,
               }}
             >
-              <label style={{ fontSize: 12 }}>
-                이름
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  style={{ padding: 8, marginTop: 2, width: '100%' }}
-                />
-              </label>
+              {(
+                [
+                  { key: 'employees', label: '직원 관리' },
+                  { key: 'schedules', label: '스케줄 관리' },
+                  { key: 'payroll', label: '급여 / 정산' },
+                ] as { key: TabKey; label: string }[]
+              ).map((tab) => {
+                const isActive = currentTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setCurrentTab(tab.key)}
+                    style={{
+                      padding: '8px 14px',
+                      border: 'none',
+                      borderBottom: isActive
+                        ? '2px solid dodgerblue'
+                        : '2px solid transparent',
+                      background: 'transparent',
+                      color: isActive ? '#fff' : '#aaa',
+                      cursor: 'pointer',
+                      fontSize: 14,
+                      fontWeight: isActive ? 600 : 400,
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
 
-              <label style={{ fontSize: 12 }}>
-                시급(원)
-                <input
-                  type="number"
-                  value={editWage}
-                  onChange={(e) => setEditWage(e.target.value)}
-                  style={{ padding: 8, marginTop: 2, width: '100%' }}
-                />
-              </label>
-
-              <label style={{ fontSize: 12 }}>
-                형태
-                <select
-                  value={editType}
-                  onChange={(e) =>
-                    setEditType(
-                      e.target.value as 'freelancer' | 'insured',
-                    )
-                  }
-                  style={{ padding: 8, marginTop: 2, width: '100%' }}
-                >
-                  <option value="freelancer">3.3% 프리랜서</option>
-                  <option value="insured">4대 보험 직원</option>
-                </select>
-              </label>
-
-              <label style={{ fontSize: 12 }}>
-                입사일
-                <input
-                  type="date"
-                  value={editHireDate}
-                  onChange={(e) => setEditHireDate(e.target.value)}
-                  style={{ padding: 8, marginTop: 2, width: '100%' }}
-                />
-              </label>
-
-              <label style={{ fontSize: 12 }}>
-                퇴사일(선택)
-                <input
-                  type="date"
-                  value={editEndDate}
-                  onChange={(e) => setEditEndDate(e.target.value)}
-                  style={{ padding: 8, marginTop: 2, width: '100%' }}
-                />
-              </label>
-
-              <label style={{ fontSize: 12 }}>
-                <input
-                  type="checkbox"
-                  checked={editActive}
-                  onChange={(e) => setEditActive(e.target.checked)}
-                  style={{ marginRight: 4 }}
-                />
-                재직 중(체크 해제 시 퇴사/비활성 처리)
-              </label>
-
-              <div
-                style={{
-                  marginTop: 16,
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: 8,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setEditingEmployee(null)}
-                  style={{ padding: '6px 12px', cursor: 'pointer' }}
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingEdit}
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: 'dodgerblue',
-                    color: '#fff',
-                    border: 0,
-                    cursor: 'pointer',
-                    opacity: savingEdit ? 0.7 : 1,
-                  }}
-                >
-                  {savingEdit ? '저장 중...' : '저장'}
-                </button>
-              </div>
-            </form>
+            {/* 탭별 내용 */}
+            <div>{renderTabContent()}</div>
           </div>
-        </div>
-      )}
+        )}
+      </section>
     </main>
   );
 }
