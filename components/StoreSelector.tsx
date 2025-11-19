@@ -37,7 +37,6 @@ export function StoreSelector({
     <div style={{ marginBottom: 24 }}>
       <h2 style={{ fontSize: 20, marginBottom: 8 }}>내 매장 선택</h2>
 
-      {/* 매장 선택 드롭다운 */}
       {stores.length > 0 ? (
         <>
           <select
@@ -70,7 +69,6 @@ export function StoreSelector({
         </p>
       )}
 
-      {/* 매장 추가 토글 버튼 */}
       <button
         type="button"
         onClick={() => setShowCreateForm((prev) => !prev)}
@@ -88,7 +86,6 @@ export function StoreSelector({
         {showCreateForm ? '매장 추가 닫기' : '새 매장 추가하기'}
       </button>
 
-      {/* 매장 추가 폼 */}
       {showCreateForm && (
         <form
           onSubmit={handleSubmit}
