@@ -84,8 +84,8 @@ export default function AuthPage() {
         // Supabase 타입은 Provider인데, 우리가 kakao/naver를 쓰기 위해 any 캐스팅
         provider: provider as any,
         options: {
-          // 로그인 이후 돌아올 주소 (대시보드로 바로 보내기)
-          redirectTo: `${window.location.origin}/dashboard`,
+// ✅ 중간 정거장(callback)을 거쳐서, 거기서 대시보드로 보내줘야 합니다.
+redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
