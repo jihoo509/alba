@@ -15,10 +15,6 @@ import TemplateSection from '@/components/TemplateSection';
 
 // ✅ 대시보드에서 사용하는 형태
 // DB: store_id / store_name / user_id
-type Store = {
-  id: string;
-  name: string;
-};
 
 type Store = {
   id: string;
@@ -49,15 +45,14 @@ export default function DashboardPage() {
   // ---- 탭 상태 ----
   const [currentTab, setCurrentTab] = useState<TabKey>('employees');
 
-  // -------- 매장 목록 불러오기 (user_id 기준) --------
 // -------- 매장 목록 불러오기 --------
 const loadStores = useCallback(
   async (userId: string) => {
-    const { data, error } = await supabase
-      .from('stores')
-      .select('store_id, store_name, user_id')
-      .eq('user_id', userId)               // 로그인한 유저 것만
-      .order('store_id', { ascending: true });
+    // 1) 일단 모든 컬럼 가져오기 (*)
+const { data, error } = await supabase
+  .from('stores')
+  .select('*')
+  .eq('owner_id', userId); // <--- ✅ 실제 DB 컬럼명으로 변경
 
     if (error) {
       console.error('loadStores real error:', error);
@@ -68,14 +63,19 @@ const loadStores = useCallback(
     }
 
     const rows = (data ?? []) as any[];
+    console.log('stores rows from DB:', rows); // 👉 어떤 컬럼이 실제로 오는지 확인용
 
+    // 2) 실제 오는 컬럼 이름에 맞춰서 매핑
     const list: Store[] = rows.map((row) => ({
-      id: String(row.store_id),           // PK
-      name: row.store_name as string,     // 매장 이름
+      // store_id가 있으면 그걸 쓰고, 없으면 id를 씀
+      id: String(row.store_id ?? row.id),
+      // store_name이 있으면 그걸 쓰고, 없으면 name을 씀
+      name: (row.store_name ?? row.name) as string,
     }));
 
     setStores(list);
 
+    // 3) 처음 들어왔는데 선택된 매장이 없으면 첫 번째 매장을 선택
     if (list.length > 0 && !currentStoreId) {
       setCurrentStoreId(list[0].id);
     }
@@ -90,13 +90,11 @@ const loadStores = useCallback(
       setLoadingEmployees(true);
       setErrorMsg(null);
 
-      const { data, error } = await supabase
-        .from('employees')
-        .select(
-          'employee_id, name, hourly_wage, employment_type, hire_date',
-        )
-        .eq('store_id', Number(storeId))
-        .order('employee_id', { ascending: true });
+const { data, error } = await supabase
+  .from('employees')
+  .select('*')
+  .eq('store_id', storeId)          // <--- ✅ 그냥 문자열(UUID) 그대로 전달
+  .order('created_at', { ascending: true });
 
       if (error) {
         console.error('loadEmployees error:', error);
@@ -106,13 +104,14 @@ const loadStores = useCallback(
         return;
       }
 
-      const list: Employee[] = (data ?? []).map((row: any) => ({
-        id: String(row.employee_id),
-        name: row.name,
-        hourly_wage: row.hourly_wage,
-        employment_type: row.employment_type,
-        is_active: true, // 테이블에 없으니 일단 항상 true로
-        hire_date: row.hire_date,
+const list: Employee[] = (data ?? []).map((row: any) => ({
+  // ✅ row.id가 있으면 쓰고, 혹시나 row.employee_id가 있으면 그걸 씀
+  id: String(row.id ?? row.employee_id), 
+  name: row.name,
+  hourly_wage: row.hourly_wage,
+  employment_type: row.employment_type,
+  is_active: true,
+  hire_date: row.hire_date,
       }));
 
       setEmployees(list);
@@ -170,28 +169,26 @@ const loadStores = useCallback(
         return;
       }
 
-      // DB 컬럼: store_name / user_id
-      const { data: storeRow, error: storeError } = await supabase
-        .from('stores')
-        .insert({
-          store_name: storeName.trim(),
-          user_id: user.id,
-        })
-        .select('store_id, store_name, user_id')
-        .single();
+const { data: storeRow, error: storeError } = await supabase
+  .from('stores')
+  .insert({
+    store_name: storeName.trim(),
+    owner_id: user.id,     // <--- ✅ 여기도 owner_id로 변경
+  })
+  .select('*')   // ✅ 컬럼 이름 지정하지 말고 전체
+  .single();
 
-      if (storeError || !storeRow) {
-        console.error('create store error:', storeError);
-        setCreatingStore(false);
-        setErrorMsg('매장 생성에 실패했습니다.');
-        return;
-      }
+if (storeError || !storeRow) {
+  console.error('create store error:', storeError);
+  setCreatingStore(false);
+  setErrorMsg('매장 생성에 실패했습니다.');
+  return;
+}
 
-      // 대시보드에서 쓰는 형태로 변환
-      const newStore: Store = {
-        id: String((storeRow as any).store_id),
-        name: (storeRow as any).store_name as string,
-      };
+const newStore: Store = {
+  id: String((storeRow as any).store_id ?? (storeRow as any).id),
+  name: ((storeRow as any).store_name ?? (storeRow as any).name) as string,
+};
 
       // 로컬 상태에 추가
       setStores((prev) => [...prev, newStore]);
@@ -230,9 +227,9 @@ const loadStores = useCallback(
         return;
       }
 
-      const { error } = await supabase.from('employees').insert({
-        store_id: Number(currentStoreId),
-        name: name.trim(),
+const { error } = await supabase.from('employees').insert({
+  store_id: currentStoreId,         // <--- ✅ Number() 제거
+  name: name.trim(),
         hourly_wage: hourlyWage,
         employment_type:
           employmentType === 'freelancer_33' ? 'freelancer' : 'employee',
