@@ -23,6 +23,15 @@ type Store = {
 
 type TabKey = 'employees' | 'schedules' | 'payroll';
 
+// ✅ [추가] 여기에 Employee 타입을 추가하세요! (export 필수)
+export type Employee = {
+  id: string;
+  name: string;
+  hourly_wage: number;
+  employment_type: 'freelancer' | 'employee';
+  is_active: boolean;
+  hire_date?: string;
+};
 
 export default function DashboardPage() {
   const router = useRouter();
