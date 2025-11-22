@@ -11,7 +11,7 @@ import type { ScheduleTemplate, SimpleEmployee } from './TemplateSection';
 type Props = {
   currentStoreId: string | null;
   selectedTemplate: ScheduleTemplate | null;
-  employees: SimpleEmployee[]; // 👈 직원 목록 받음
+  employees: SimpleEmployee[]; // 직원 목록
 };
 
 type Schedule = {
@@ -20,8 +20,8 @@ type Schedule = {
   start_time: string;
   end_time: string;
   color: string;
-  employee_id: string | null; // 직원 ID
-  employees?: { name: string }; // 조인된 직원 정보
+  employee_id: string | null; // 배정된 직원 ID
+  employees?: { name: string }; // 조인된 직원 정보 (이름 등)
 };
 
 export default function ScheduleCalendar({ currentStoreId, selectedTemplate, employees }: Props) {
@@ -99,7 +99,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     }
   };
 
-  // 캘린더 계산
+  // 캘린더 날짜 계산
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart);
@@ -151,37 +151,52 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                 {format(day, 'd')}
               </div>
 
-              {/* 스케줄 리스트 (동시간대 여러 명 쌓임) */}
+              {/* 스케줄 리스트 (여기가 중요!) */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {daySchedules.map(sch => (
-                  <div 
-                    key={sch.id}
-                    onClick={(e) => {
-                      e.stopPropagation(); // 부모 클릭 방지
-                      setTargetSchedule(sch); // 설정 팝업 열기
-                    }}
-                    style={{
-                      backgroundColor: sch.color || '#555',
-                      color: '#fff', fontSize: 11, padding: '3px 5px', borderRadius: 3,
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                      border: sch.employee_id ? '1px solid rgba(255,255,255,0.5)' : '1px dashed rgba(255,255,255,0.3)'
-                    }}
-                    title={`${sch.start_time}~${sch.end_time} (클릭하여 배정)`}
-                  >
-                    {/* 직원 이름이 있으면 이름, 없으면 시간 표시 */}
-                    {sch.employees?.name 
-                      ? `${sch.employees.name} (${sch.start_time})` 
-                      : `${sch.start_time} (미배정)`}
-                  </div>
-                ))}
+                {daySchedules.map(sch => {
+                  // 시간만 자르기 (09:00:00 -> 09:00)
+                  const start = sch.start_time.slice(0, 5);
+                  const end = sch.end_time.slice(0, 5);
+                  // 익일 퇴근 체크 (단순 문자열 비교)
+                  const isNextDay = sch.start_time > sch.end_time;
+
+                  return (
+                    <div 
+                      key={sch.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTargetSchedule(sch);
+                      }}
+                      style={{
+                        backgroundColor: sch.color || '#555',
+                        color: '#fff', fontSize: 11, padding: '4px 6px', borderRadius: 4,
+                        marginBottom: 2, cursor: 'pointer', 
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                        border: sch.employee_id ? '1px solid rgba(255,255,255,0.3)' : '1px dashed rgba(255,255,255,0.5)',
+                        lineHeight: 1.3
+                      }}
+                      title={`${start}~${end}${isNextDay ? '(익일)' : ''} - ${sch.employees?.name || '미배정'}`}
+                    >
+                      {/* 1줄: 시간 */}
+                      <div style={{ fontSize: 10, opacity: 0.9 }}>
+                        {start}~{end}
+                        {isNextDay && <span style={{ color: '#ff6b6b', fontWeight: 'bold', marginLeft: 2 }}>(+1)</span>}
+                      </div>
+                      
+                      {/* 2줄: 이름 */}
+                      <div style={{ fontWeight: 'bold', fontSize: 12, marginTop: 1 }}>
+                        {sch.employees?.name || <span style={{ color: '#ddd', fontWeight: 'normal' }}>미배정</span>}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* ✅ 직원 배정 팝업 (스케줄 클릭 시 뜸) */}
+      {/* ✅ 직원 배정 팝업 */}
       {targetSchedule && (
         <div style={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -195,12 +210,23 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+            {/* 배정 취소(미배정으로 돌리기) 버튼 추가 */}
+            <button
+               onClick={() => handleAssignEmployee(targetSchedule.id, null as any)} // null을 보내서 배정 해제
+               style={{
+                 padding: '8px', background: '#555', color: '#fff', border: '1px solid #777', borderRadius: 4, cursor: 'pointer'
+               }}
+            >
+              (미배정으로)
+            </button>
+
             {employees.map(emp => (
               <button
                 key={emp.id}
                 onClick={() => handleAssignEmployee(targetSchedule.id, emp.id)}
                 style={{
-                  padding: '8px', background: targetSchedule.employee_id === emp.id ? 'dodgerblue' : '#444',
+                  padding: '8px', 
+                  background: targetSchedule.employee_id === emp.id ? 'dodgerblue' : '#444',
                   color: '#fff', border: '1px solid #555', borderRadius: 4, cursor: 'pointer'
                 }}
               >
@@ -211,7 +237,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
             <button onClick={() => handleDeleteSchedule(targetSchedule.id)} style={{ background: 'darkred', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 4, cursor: 'pointer' }}>
-              삭제하기
+              스케줄 삭제
             </button>
             <button onClick={() => setTargetSchedule(null)} style={{ background: '#555', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 4, cursor: 'pointer' }}>
               닫기

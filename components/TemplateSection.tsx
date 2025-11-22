@@ -84,6 +84,13 @@ export default function TemplateSection({ currentStoreId }: Props) {
           />
         </div>
 
+    {/* ✅ [추가] 주간 스케줄 관리자 (하단 배치) */}
+    <WeeklyScheduleManager 
+      currentStoreId={currentStoreId} 
+      employees={employees} 
+    />
+  </div>
+  
       </div>
     </div>
   );
