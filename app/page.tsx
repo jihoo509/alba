@@ -80,12 +80,11 @@ export default function AuthPage() {
     try {
       setMsg(null);
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        // Supabase 타입은 Provider인데, 우리가 kakao/naver를 쓰기 위해 any 캐스팅
-        provider: provider as any,
-        options: {
-// ✅ 중간 정거장(callback)을 거쳐서, 거기서 대시보드로 보내줘야 합니다.
-redirectTo: `${window.location.origin}/auth/callback`,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: provider as any,
+      options: {
+        // ✅ [수정] 헷갈리지 않게 실제 배포 주소를 직접 입력하세요.
+        redirectTo: 'https://ez-alba.ba-damda.com/auth/callback',
         },
       });
 
