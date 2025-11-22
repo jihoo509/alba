@@ -75,12 +75,11 @@ const { data, error } = await supabase
     console.log('stores rows from DB:', rows); // 👉 어떤 컬럼이 실제로 오는지 확인용
 
     // 2) 실제 오는 컬럼 이름에 맞춰서 매핑
-    const list: Store[] = rows.map((row) => ({
-      // store_id가 있으면 그걸 쓰고, 없으면 id를 씀
-      id: String(row.store_id ?? row.id),
-      // store_name이 있으면 그걸 쓰고, 없으면 name을 씀
-      name: (row.store_name ?? row.name) as string,
-    }));
+const list: Store[] = rows.map((row) => ({
+  id: String(row.id),  // (참고: store_id도 없다면 row.id로 통일)
+  // 👇 깔끔하게 수정
+  name: row.name as string,
+}));
 
     setStores(list);
 
@@ -181,10 +180,10 @@ const list: Employee[] = (data ?? []).map((row: any) => ({
 const { data: storeRow, error: storeError } = await supabase
   .from('stores')
   .insert({
-    store_name: storeName.trim(),
-    owner_id: user.id,     // <--- ✅ 여기도 owner_id로 변경
+    name: storeName.trim(),        // ✅ 올바른 컬럼명으로 수정
+    owner_id: user.id,
   })
-  .select('*')   // ✅ 컬럼 이름 지정하지 말고 전체
+  .select('*')
   .single();
 
 if (storeError || !storeRow) {
@@ -195,8 +194,9 @@ if (storeError || !storeRow) {
 }
 
 const newStore: Store = {
-  id: String((storeRow as any).store_id ?? (storeRow as any).id),
-  name: ((storeRow as any).store_name ?? (storeRow as any).name) as string,
+  id: String((storeRow as any).id),
+  // 👇 깔끔하게 수정
+  name: (storeRow as any).name as string,
 };
 
       // 로컬 상태에 추가
