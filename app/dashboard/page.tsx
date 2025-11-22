@@ -13,9 +13,6 @@ import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
 import TemplateSection from '@/components/TemplateSection';
 
-// ✅ 대시보드에서 사용하는 형태
-// DB: store_id / store_name / user_id
-
 type Store = {
   id: string;
   name: string;
@@ -23,7 +20,6 @@ type Store = {
 
 type TabKey = 'employees' | 'schedules' | 'payroll';
 
-// ✅ [추가] 여기에 Employee 타입을 추가하세요! (export 필수)
 export type Employee = {
   id: string;
   name: string;
@@ -54,73 +50,68 @@ export default function DashboardPage() {
   // ---- 탭 상태 ----
   const [currentTab, setCurrentTab] = useState<TabKey>('employees');
 
-// -------- 매장 목록 불러오기 --------
-const loadStores = useCallback(
-  async (userId: string) => {
-    // 1) 일단 모든 컬럼 가져오기 (*)
-const { data, error } = await supabase
-  .from('stores')
-  .select('*')
-  .eq('owner_id', userId); // <--- ✅ 실제 DB 컬럼명으로 변경
+  // -------- 매장 목록 불러오기 --------
+  const loadStores = useCallback(
+    async (userId: string) => {
+      const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('owner_id', userId);
 
-    if (error) {
-      console.error('loadStores real error:', error);
-      setErrorMsg('매장 목록을 불러오는 데 실패했습니다.');
-      setStores([]);
-      setCurrentStoreId(null);
-      return;
-    }
+      if (error) {
+        console.error('loadStores real error:', error);
+        setErrorMsg('매장 목록을 불러오는 데 실패했습니다.');
+        setStores([]);
+        setCurrentStoreId(null);
+        return;
+      }
 
-      // ✅ [추가] 매장 삭제 함수
-  const handleDeleteStore = useCallback(async (storeId: string) => {
-    if (!window.confirm('정말 이 매장을 삭제하시겠습니까?\n소속된 직원 및 모든 데이터가 함께 삭제됩니다.')) {
-      return;
-    }
+      const rows = (data ?? []) as any[];
+      
+      const list: Store[] = rows.map((row) => ({
+        id: String(row.id),
+        name: row.name as string, // name으로 깔끔하게 정리
+      }));
 
-    // 1. DB에서 삭제
-    const { error } = await supabase
-      .from('stores')
-      .delete()
-      .eq('id', storeId); // store_id가 아니라 id 컬럼 사용 주의!
+      setStores(list);
 
-    if (error) {
-      console.error('delete store error:', error);
-      alert('매장 삭제 실패: ' + error.message);
-      return;
-    }
+      if (list.length > 0 && !currentStoreId) {
+        setCurrentStoreId(list[0].id);
+      }
+    },
+    [supabase, currentStoreId]
+  );
 
-    // 2. 로컬 상태 업데이트 (삭제된 매장 빼고 다시 목록 설정)
-    setStores((prev) => prev.filter((s) => s.id !== storeId));
-    
-    // 3. 현재 보고 있던 매장이 삭제됐다면 -> 선택 초기화
-    if (currentStoreId === storeId) {
-      setCurrentStoreId(null);
-      setEmployees([]);
-    }
-    
-    alert('매장이 삭제되었습니다.');
-  }, [supabase, currentStoreId]);
-  
-    const rows = (data ?? []) as any[];
-    console.log('stores rows from DB:', rows); // 👉 어떤 컬럼이 실제로 오는지 확인용
+  // -------- ✅ [위치 수정됨] 매장 삭제 함수 (밖으로 꺼냄) --------
+  const handleDeleteStore = useCallback(
+    async (storeId: string) => {
+      if (
+        !window.confirm(
+          '정말 이 매장을 삭제하시겠습니까?\n소속된 직원 및 모든 데이터가 함께 삭제됩니다.'
+        )
+      ) {
+        return;
+      }
 
-    // 2) 실제 오는 컬럼 이름에 맞춰서 매핑
-const list: Store[] = rows.map((row) => ({
-  id: String(row.id),  // (참고: store_id도 없다면 row.id로 통일)
-  // 👇 깔끔하게 수정
-  name: row.name as string,
-}));
+      const { error } = await supabase.from('stores').delete().eq('id', storeId);
 
-    setStores(list);
+      if (error) {
+        console.error('delete store error:', error);
+        alert('매장 삭제 실패: ' + error.message);
+        return;
+      }
 
-    // 3) 처음 들어왔는데 선택된 매장이 없으면 첫 번째 매장을 선택
-    if (list.length > 0 && !currentStoreId) {
-      setCurrentStoreId(list[0].id);
-    }
-  },
-  [supabase, currentStoreId],
-);
+      setStores((prev) => prev.filter((s) => s.id !== storeId));
 
+      if (currentStoreId === storeId) {
+        setCurrentStoreId(null);
+        setEmployees([]);
+      }
+
+      alert('매장이 삭제되었습니다.');
+    },
+    [supabase, currentStoreId]
+  );
 
   // -------- 직원 목록 불러오기 --------
   const loadEmployees = useCallback(
@@ -128,11 +119,11 @@ const list: Store[] = rows.map((row) => ({
       setLoadingEmployees(true);
       setErrorMsg(null);
 
-const { data, error } = await supabase
-  .from('employees')
-  .select('*')
-  .eq('store_id', storeId)          // <--- ✅ 그냥 문자열(UUID) 그대로 전달
-  .order('created_at', { ascending: true });
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: true });
 
       if (error) {
         console.error('loadEmployees error:', error);
@@ -142,20 +133,19 @@ const { data, error } = await supabase
         return;
       }
 
-const list: Employee[] = (data ?? []).map((row: any) => ({
-  // ✅ row.id가 있으면 쓰고, 혹시나 row.employee_id가 있으면 그걸 씀
-  id: String(row.id ?? row.employee_id), 
-  name: row.name,
-  hourly_wage: row.hourly_wage,
-  employment_type: row.employment_type,
-  is_active: true,
-  hire_date: row.hire_date,
+      const list: Employee[] = (data ?? []).map((row: any) => ({
+        id: String(row.id ?? row.employee_id),
+        name: row.name,
+        hourly_wage: row.hourly_wage,
+        employment_type: row.employment_type,
+        is_active: true,
+        hire_date: row.hire_date,
       }));
 
       setEmployees(list);
       setLoadingEmployees(false);
     },
-    [supabase],
+    [supabase]
   );
 
   // -------- 로그인 확인 + 첫 로딩 --------
@@ -169,8 +159,6 @@ const list: Employee[] = (data ?? []).map((row: any) => ({
       }
 
       setUserEmail(data.user.email ?? '');
-
-      // ✅ 로그인한 유저 아이디 기준으로 매장 로딩
       await loadStores(data.user.id);
       setLoading(false);
     }
@@ -207,37 +195,33 @@ const list: Employee[] = (data ?? []).map((row: any) => ({
         return;
       }
 
-const { data: storeRow, error: storeError } = await supabase
-  .from('stores')
-  .insert({
-    name: storeName.trim(),        // ✅ 올바른 컬럼명으로 수정
-    owner_id: user.id,
-  })
-  .select('*')
-  .single();
+      const { data: storeRow, error: storeError } = await supabase
+        .from('stores')
+        .insert({
+          name: storeName.trim(),
+          owner_id: user.id,
+        })
+        .select('*')
+        .single();
 
-if (storeError || !storeRow) {
-  console.error('create store error:', storeError);
-  setCreatingStore(false);
-  setErrorMsg('매장 생성에 실패했습니다.');
-  return;
-}
+      if (storeError || !storeRow) {
+        console.error('create store error:', storeError);
+        setCreatingStore(false);
+        setErrorMsg('매장 생성에 실패했습니다.');
+        return;
+      }
 
-const newStore: Store = {
-  id: String((storeRow as any).id),
-  // 👇 깔끔하게 수정
-  name: (storeRow as any).name as string,
-};
+      const newStore: Store = {
+        id: String((storeRow as any).id),
+        name: (storeRow as any).name as string,
+      };
 
-      // 로컬 상태에 추가
       setStores((prev) => [...prev, newStore]);
       setCreatingStore(false);
-
-      // 새 매장을 현재 선택값으로
       setCurrentStoreId(newStore.id);
       setCurrentTab('employees');
     },
-    [supabase],
+    [supabase]
   );
 
   // -------- 직원 추가 --------
@@ -266,9 +250,9 @@ const newStore: Store = {
         return;
       }
 
-const { error } = await supabase.from('employees').insert({
-  store_id: currentStoreId,         // <--- ✅ Number() 제거
-  name: name.trim(),
+      const { error } = await supabase.from('employees').insert({
+        store_id: currentStoreId,
+        name: name.trim(),
         hourly_wage: hourlyWage,
         employment_type:
           employmentType === 'freelancer_33' ? 'freelancer' : 'employee',
@@ -283,7 +267,7 @@ const { error } = await supabase.from('employees').insert({
 
       await loadEmployees(currentStoreId);
     },
-    [currentStoreId, supabase, loadEmployees],
+    [currentStoreId, supabase, loadEmployees]
   );
 
   // -------- 직원 삭제 --------
@@ -313,7 +297,7 @@ const { error } = await supabase.from('employees').insert({
         setErrorMsg('직원 삭제 중 오류가 발생했습니다.');
       }
     },
-    [currentStoreId, loadEmployees],
+    [currentStoreId, loadEmployees]
   );
 
   // -------- 탭 렌더링 --------
@@ -343,7 +327,8 @@ const { error } = await supabase.from('employees').insert({
         <div>
           <h2 style={{ fontSize: 20, marginBottom: 12 }}>스케줄 관리</h2>
           <p style={{ fontSize: 14, color: '#ccc', marginBottom: 16 }}>
-            템플릿을 만들어 두고, 나중에 주간 캘린더에 자동 배정하는 구조로 설계 중입니다.
+            템플릿을 만들어 두고, 나중에 주간 캘린더에 자동 배정하는 구조로 설계
+            중입니다.
           </p>
           <TemplateSection currentStoreId={currentStoreId} />
         </div>
@@ -354,17 +339,17 @@ const { error } = await supabase.from('employees').insert({
       <div>
         <h2 style={{ fontSize: 20, marginBottom: 12 }}>급여 / 정산</h2>
         <p style={{ fontSize: 14, color: '#ccc', marginBottom: 8 }}>
-          이 탭에서는 스케줄 데이터를 기반으로 월별 급여, 야간수당, 휴일수당, 주휴수당을 자동 계산할 예정입니다.
+          이 탭에서는 스케줄 데이터를 기반으로 월별 급여, 야간수당, 휴일수당,
+          주휴수당을 자동 계산할 예정입니다.
         </p>
         <p style={{ fontSize: 14, color: '#ccc' }}>
-          다음 단계에서 매장별 급여 설정(5인 이상/미만, 수당 적용 여부)을 먼저 구현한 뒤,
-          여기서 월 선택 + 급여표를 보여줄 수 있도록 할게요.
+          다음 단계에서 매장별 급여 설정(5인 이상/미만, 수당 적용 여부)을 먼저
+          구현한 뒤, 여기서 월 선택 + 급여표를 보여줄 수 있도록 할게요.
         </p>
       </div>
     );
   };
 
-  // -------- 로딩 중 UI --------
   if (loading) {
     return (
       <main style={{ padding: 40, color: '#fff' }}>
@@ -373,7 +358,6 @@ const { error } = await supabase.from('employees').insert({
     );
   }
 
-  // -------- 화면 렌더링 --------
   return (
     <main style={{ padding: 40, color: '#fff' }}>
       <header
@@ -393,7 +377,6 @@ const { error } = await supabase.from('employees').insert({
       )}
 
       <section style={{ maxWidth: 900 }}>
-        {/* 👇 StoreSelector에 onDeleteStore 속성 추가! */}
         <StoreSelector
           stores={stores}
           currentStoreId={currentStoreId}
@@ -403,7 +386,7 @@ const { error } = await supabase.from('employees').insert({
           }}
           creatingStore={creatingStore}
           onCreateStore={handleCreateStore}
-          onDeleteStore={handleDeleteStore}  // ✅ 여기에 전달
+          onDeleteStore={handleDeleteStore} // ✅ 이제 함수를 찾을 수 있음
         />
 
         {stores.length > 0 && currentStoreId && (
