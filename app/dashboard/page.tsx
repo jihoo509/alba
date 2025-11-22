@@ -71,6 +71,36 @@ const { data, error } = await supabase
       return;
     }
 
+      // ✅ [추가] 매장 삭제 함수
+  const handleDeleteStore = useCallback(async (storeId: string) => {
+    if (!window.confirm('정말 이 매장을 삭제하시겠습니까?\n소속된 직원 및 모든 데이터가 함께 삭제됩니다.')) {
+      return;
+    }
+
+    // 1. DB에서 삭제
+    const { error } = await supabase
+      .from('stores')
+      .delete()
+      .eq('id', storeId); // store_id가 아니라 id 컬럼 사용 주의!
+
+    if (error) {
+      console.error('delete store error:', error);
+      alert('매장 삭제 실패: ' + error.message);
+      return;
+    }
+
+    // 2. 로컬 상태 업데이트 (삭제된 매장 빼고 다시 목록 설정)
+    setStores((prev) => prev.filter((s) => s.id !== storeId));
+    
+    // 3. 현재 보고 있던 매장이 삭제됐다면 -> 선택 초기화
+    if (currentStoreId === storeId) {
+      setCurrentStoreId(null);
+      setEmployees([]);
+    }
+    
+    alert('매장이 삭제되었습니다.');
+  }, [supabase, currentStoreId]);
+  
     const rows = (data ?? []) as any[];
     console.log('stores rows from DB:', rows); // 👉 어떤 컬럼이 실제로 오는지 확인용
 
@@ -363,6 +393,7 @@ const { error } = await supabase.from('employees').insert({
       )}
 
       <section style={{ maxWidth: 900 }}>
+        {/* 👇 StoreSelector에 onDeleteStore 속성 추가! */}
         <StoreSelector
           stores={stores}
           currentStoreId={currentStoreId}
@@ -372,6 +403,7 @@ const { error } = await supabase.from('employees').insert({
           }}
           creatingStore={creatingStore}
           onCreateStore={handleCreateStore}
+          onDeleteStore={handleDeleteStore}  // ✅ 여기에 전달
         />
 
         {stores.length > 0 && currentStoreId && (
