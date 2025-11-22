@@ -54,13 +54,13 @@ export default function ScheduleTemplateManager({ currentStoreId }: Props) {
     if (!name.trim()) return alert('템플릿 이름(예: 오픈조)을 입력해주세요.');
     if (!currentStoreId) return;
 
-    const { error } = await supabase.from('schedule_templates').insert({
-      store_id: Number(currentStoreId), // store_id가 숫자형이면 Number() 필수, uuid면 제거
-      name,
-      start_time: startTime,
-      end_time: endTime,
-      color: selectedColor // DB에 color 컬럼이 없으면 SQL로 추가해야 함 (아래 참조)
-    });
+const { error } = await supabase.from('schedule_templates').insert({
+  store_id: currentStoreId,         // ✅ UUID 문자열 그대로 전송
+  name,
+  start_time: startTime,
+  end_time: endTime,
+  color: selectedColor
+});
 
     if (error) {
       console.error(error);
