@@ -12,6 +12,11 @@ import UserBar from '@/components/UserBar';
 import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
 import TemplateSection from '@/components/TemplateSection';
+// ✅ [추가] 급여 설정 컴포넌트 import
+import StoreSettings from '@/components/StoreSettings';
+
+// ✅ 대시보드에서 사용하는 형태
+// DB: store_id / store_name / user_id
 
 type Store = {
   id: string;
@@ -53,6 +58,7 @@ export default function DashboardPage() {
   // -------- 매장 목록 불러오기 --------
   const loadStores = useCallback(
     async (userId: string) => {
+      // 1) 일단 모든 컬럼 가져오기 (*)
       const { data, error } = await supabase
         .from('stores')
         .select('*')
@@ -70,11 +76,12 @@ export default function DashboardPage() {
       
       const list: Store[] = rows.map((row) => ({
         id: String(row.id),
-        name: row.name as string, // name으로 깔끔하게 정리
+        name: row.name as string,
       }));
 
       setStores(list);
 
+      // 3) 처음 들어왔는데 선택된 매장이 없으면 첫 번째 매장을 선택
       if (list.length > 0 && !currentStoreId) {
         setCurrentStoreId(list[0].id);
       }
@@ -82,7 +89,7 @@ export default function DashboardPage() {
     [supabase, currentStoreId]
   );
 
-  // -------- ✅ [위치 수정됨] 매장 삭제 함수 (밖으로 꺼냄) --------
+  // -------- 매장 삭제 함수 --------
   const handleDeleteStore = useCallback(
     async (storeId: string) => {
       if (
@@ -335,16 +342,18 @@ export default function DashboardPage() {
       );
     }
 
+    // ✅ [수정된 부분] 급여/정산 탭에 설정 컴포넌트 연결
     return (
       <div>
         <h2 style={{ fontSize: 20, marginBottom: 12 }}>급여 / 정산</h2>
-        <p style={{ fontSize: 14, color: '#ccc', marginBottom: 8 }}>
-          이 탭에서는 스케줄 데이터를 기반으로 월별 급여, 야간수당, 휴일수당,
-          주휴수당을 자동 계산할 예정입니다.
-        </p>
+        
+        {/* 새로 만든 매장 설정 컴포넌트 */}
+        <StoreSettings storeId={currentStoreId} />
+
+        <hr style={{ margin: '32px 0', borderColor: '#333' }} />
+
         <p style={{ fontSize: 14, color: '#ccc' }}>
-          다음 단계에서 매장별 급여 설정(5인 이상/미만, 수당 적용 여부)을 먼저
-          구현한 뒤, 여기서 월 선택 + 급여표를 보여줄 수 있도록 할게요.
+          (추후 기능) 위 설정을 바탕으로 직원별 급여 내역이 이곳에 표시됩니다.
         </p>
       </div>
     );
@@ -386,7 +395,7 @@ export default function DashboardPage() {
           }}
           creatingStore={creatingStore}
           onCreateStore={handleCreateStore}
-          onDeleteStore={handleDeleteStore} // ✅ 이제 함수를 찾을 수 있음
+          onDeleteStore={handleDeleteStore}
         />
 
         {stores.length > 0 && currentStoreId && (

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+// types를 '@/app/dashboard/page'에서 가져오는데, 
+// 만약 에러나면 직접 type Employee = { ... } 정의를 여기에 복사해도 됩니다.
 import type { Employee } from '@/app/dashboard/page';
 
 type Props = {
@@ -14,10 +16,17 @@ type Props = {
   onDeleteEmployee: (employeeId: string) => void | Promise<void>;
 };
 
+// ✅ [수정됨] 고용 형태를 한글로 바꿔주는 함수 (기존 데이터 호환성 추가)
 function getEmploymentLabel(type: string) {
-  if (type === 'four_insurance') return '4대 보험 직원';
+  // 1. 현재 쓰는 값
+  if (type === 'four_insurance') return '4대 보험';
   if (type === 'freelancer_33') return '3.3% 프리랜서';
-  return type;
+  
+  // 2. 혹시 DB에 남아있을지 모를 옛날 값(영어) 처리
+  if (type === 'employee' || type === 'insured') return '4대 보험';
+  if (type === 'freelancer') return '3.3% 프리랜서';
+
+  return type; // 그 외에는 그냥 출력
 }
 
 export function EmployeeSection({
@@ -50,7 +59,7 @@ export function EmployeeSection({
       hireDate: newEmpHireDate || undefined,
     });
 
-    // (성공/실패 상관없이 일단 폼 초기화 – 필요하면 나중에 조건 분기)
+    // 폼 초기화
     setNewEmpName('');
     setNewEmpWage('');
     setNewEmpType('freelancer_33');
@@ -137,18 +146,32 @@ export function EmployeeSection({
                   gap: 8,
                 }}
               >
-                <div>
-                  <strong>{emp.name}</strong>{' '}
-                  <span style={{ marginLeft: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <strong style={{ fontSize: 16 }}>{emp.name}</strong>{' '}
+                  <span style={{ marginLeft: 8, color: '#ccc' }}>
                     {emp.hourly_wage
                       ? `${emp.hourly_wage.toLocaleString()}원`
                       : '-'}
                   </span>
-                  <span style={{ marginLeft: 8 }}>
+                  
+                  {/* ✅ [수정됨] 고용형태를 뱃지 스타일로 예쁘게 표시 */}
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      fontSize: 12,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      // 프리랜서는 파란색 계열, 4대보험은 초록색 계열
+                      backgroundColor: emp.employment_type.includes('free') ? '#112a45' : '#133a1b',
+                      color: emp.employment_type.includes('free') ? '#40a9ff' : '#73d13d',
+                      border: `1px solid ${emp.employment_type.includes('free') ? '#1890ff' : '#52c41a'}`
+                    }}
+                  >
                     {getEmploymentLabel(emp.employment_type)}
                   </span>
+
                   {emp.hire_date && (
-                    <span style={{ marginLeft: 8, fontSize: 12 }}>
+                    <span style={{ marginLeft: 12, fontSize: 13, color: '#888' }}>
                       입사: {emp.hire_date}
                     </span>
                   )}
@@ -160,32 +183,35 @@ export function EmployeeSection({
                 </div>
 
                 <div style={{ display: 'flex', gap: 6 }}>
+                  {/* 수정 버튼 (기능은 추후 구현) */}
                   <button
                     type="button"
                     style={{
                       padding: '4px 10px',
                       fontSize: 13,
-                      background: '#555',
+                      background: '#444',
                       color: '#fff',
                       border: 0,
                       cursor: 'pointer',
+                      borderRadius: 4,
                     }}
                     onClick={() => {
-                      // TODO: 추후 직원 수정 기능 구현 예정
                       alert('직원 수정 기능은 추후 구현 예정입니다.');
                     }}
                   >
                     수정
                   </button>
+                  {/* 삭제 버튼 */}
                   <button
                     type="button"
                     style={{
                       padding: '4px 10px',
                       fontSize: 13,
-                      background: '#aa3333',
+                      background: '#c0392b',
                       color: '#fff',
                       border: 0,
                       cursor: 'pointer',
+                      borderRadius: 4,
                     }}
                     onClick={() => onDeleteEmployee(emp.id)}
                   >
