@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import ScheduleCalendar from '@/components/ScheduleCalendar';
 import ScheduleTemplateManager from '@/components/ScheduleTemplateManager';
+// ✅ [필수] 이 줄이 빠져서 에러가 났을 수 있습니다.
+import WeeklyScheduleManager from '@/components/WeeklyScheduleManager';
 
 type Props = {
   currentStoreId: string;
@@ -48,6 +50,7 @@ export default function TemplateSection({ currentStoreId }: Props) {
 
   return (
     <div>
+      {/* 상단 안내 문구 */}
       <div style={{ marginBottom: 16 }}>
         <p style={{ fontSize: 14, color: '#ccc', margin: 0 }}>
           {selectedTemplate ? (
@@ -64,6 +67,7 @@ export default function TemplateSection({ currentStoreId }: Props) {
         </p>
       </div>
 
+      {/* 2열 레이아웃 (왼쪽: 달력 / 오른쪽: 템플릿 관리) */}
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 20, alignItems: 'start' }}>
         
         {/* 1. 달력 (직원 목록 employees 전달!) */}
@@ -71,7 +75,7 @@ export default function TemplateSection({ currentStoreId }: Props) {
           <ScheduleCalendar 
             currentStoreId={currentStoreId} 
             selectedTemplate={selectedTemplate}
-            employees={employees} // 👈 추가됨
+            employees={employees} 
           />
         </div>
 
@@ -84,14 +88,15 @@ export default function TemplateSection({ currentStoreId }: Props) {
           />
         </div>
 
-    {/* ✅ [추가] 주간 스케줄 관리자 (하단 배치) */}
-    <WeeklyScheduleManager 
-      currentStoreId={currentStoreId} 
-      employees={employees} 
-    />
-  </div>
-  
-      </div>
+      </div> 
+      {/* 👆 여기서 Grid 레이아웃(좌우 배치)은 끝납니다. */}
+
+      {/* ✅ [추가] 주간 스케줄 관리자 (Grid 밖, 하단에 배치) */}
+      <WeeklyScheduleManager 
+        currentStoreId={currentStoreId} 
+        employees={employees} 
+      />
+
     </div>
   );
 }
