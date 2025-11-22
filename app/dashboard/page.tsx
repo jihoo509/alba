@@ -15,9 +15,6 @@ import TemplateSection from '@/components/TemplateSection';
 // ✅ [추가] 급여 설정 컴포넌트 import
 import StoreSettings from '@/components/StoreSettings';
 
-// ✅ 대시보드에서 사용하는 형태
-// DB: store_id / store_name / user_id
-
 type Store = {
   id: string;
   name: string;
@@ -25,6 +22,7 @@ type Store = {
 
 type TabKey = 'employees' | 'schedules' | 'payroll';
 
+// ✅ [수정] DB에 추가한 컬럼들(전화번호, 계좌 등)을 타입에 반영
 export type Employee = {
   id: string;
   name: string;
@@ -32,6 +30,12 @@ export type Employee = {
   employment_type: 'freelancer' | 'employee';
   is_active: boolean;
   hire_date?: string;
+  // 👇 새로 추가된 필드들
+  phone_number?: string;
+  birth_date?: string;
+  bank_name?: string;
+  account_number?: string;
+  end_date?: string;
 };
 
 export default function DashboardPage() {
@@ -58,22 +62,20 @@ export default function DashboardPage() {
   // -------- 매장 목록 불러오기 --------
   const loadStores = useCallback(
     async (userId: string) => {
-      // 1) 일단 모든 컬럼 가져오기 (*)
       const { data, error } = await supabase
         .from('stores')
         .select('*')
         .eq('owner_id', userId);
 
       if (error) {
-        console.error('loadStores real error:', error);
-        setErrorMsg('매장 목록을 불러오는 데 실패했습니다.');
+        console.error('loadStores error:', error);
+        setErrorMsg('매장 목록 로딩 실패');
         setStores([]);
         setCurrentStoreId(null);
         return;
       }
 
       const rows = (data ?? []) as any[];
-      
       const list: Store[] = rows.map((row) => ({
         id: String(row.id),
         name: row.name as string,
@@ -81,7 +83,6 @@ export default function DashboardPage() {
 
       setStores(list);
 
-      // 3) 처음 들어왔는데 선택된 매장이 없으면 첫 번째 매장을 선택
       if (list.length > 0 && !currentStoreId) {
         setCurrentStoreId(list[0].id);
       }
@@ -89,7 +90,7 @@ export default function DashboardPage() {
     [supabase, currentStoreId]
   );
 
-  // -------- 매장 삭제 함수 --------
+  // -------- 매장 삭제 --------
   const handleDeleteStore = useCallback(
     async (storeId: string) => {
       if (
@@ -128,105 +129,33 @@ export default function DashboardPage() {
 
       const { data, error } = await supabase
         .from('employees')
-        .select('*')
+        .select('*') // 모든 컬럼(새로 추가한 정보 포함) 가져오기
         .eq('store_id', storeId)
         .order('created_at', { ascending: true });
 
       if (error) {
         console.error('loadEmployees error:', error);
-        setErrorMsg('직원 목록을 불러오는 데 실패했습니다.');
+        setErrorMsg('직원 목록 로딩 실패');
         setEmployees([]);
-        setLoadingEmployees(false);
-        return;
+      } else {
+        // DB 데이터를 타입에 맞춰 매핑
+        const list: Employee[] = (data ?? []).map((row: any) => ({
+          id: String(row.id),
+          name: row.name,
+          hourly_wage: row.hourly_wage,
+          employment_type: row.employment_type,
+          is_active: row.is_active,
+          hire_date: row.hire_date,
+          // 👇 추가 정보 매핑
+          phone_number: row.phone_number,
+          birth_date: row.birth_date,
+          bank_name: row.bank_name,
+          account_number: row.account_number,
+          end_date: row.end_date,
+        }));
+        setEmployees(list);
       }
-
-      const list: Employee[] = (data ?? []).map((row: any) => ({
-        id: String(row.id ?? row.employee_id),
-        name: row.name,
-        hourly_wage: row.hourly_wage,
-        employment_type: row.employment_type,
-        is_active: true,
-        hire_date: row.hire_date,
-      }));
-
-      setEmployees(list);
       setLoadingEmployees(false);
-    },
-    [supabase]
-  );
-
-  // -------- 로그인 확인 + 첫 로딩 --------
-  useEffect(() => {
-    async function init() {
-      const { data, error } = await supabase.auth.getUser();
-
-      if (error || !data.user) {
-        router.replace('/');
-        return;
-      }
-
-      setUserEmail(data.user.email ?? '');
-      await loadStores(data.user.id);
-      setLoading(false);
-    }
-
-    init();
-  }, [supabase, router, loadStores]);
-
-  // -------- 매장 변경되면 직원 자동 로딩 --------
-  useEffect(() => {
-    if (!currentStoreId) return;
-    loadEmployees(currentStoreId);
-  }, [currentStoreId, loadEmployees]);
-
-  // -------- 매장 생성 --------
-  const handleCreateStore = useCallback(
-    async (storeName: string) => {
-      setErrorMsg(null);
-
-      if (!storeName.trim()) {
-        setErrorMsg('매장 이름을 입력해주세요.');
-        return;
-      }
-
-      setCreatingStore(true);
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setCreatingStore(false);
-        setErrorMsg('로그인이 필요합니다.');
-        return;
-      }
-
-      const { data: storeRow, error: storeError } = await supabase
-        .from('stores')
-        .insert({
-          name: storeName.trim(),
-          owner_id: user.id,
-        })
-        .select('*')
-        .single();
-
-      if (storeError || !storeRow) {
-        console.error('create store error:', storeError);
-        setCreatingStore(false);
-        setErrorMsg('매장 생성에 실패했습니다.');
-        return;
-      }
-
-      const newStore: Store = {
-        id: String((storeRow as any).id),
-        name: (storeRow as any).name as string,
-      };
-
-      setStores((prev) => [...prev, newStore]);
-      setCreatingStore(false);
-      setCurrentStoreId(newStore.id);
-      setCurrentTab('employees');
     },
     [supabase]
   );
@@ -246,12 +175,10 @@ export default function DashboardPage() {
         setErrorMsg('먼저 매장을 선택해주세요.');
         return;
       }
-
       if (!name.trim()) {
         setErrorMsg('직원 이름을 입력해주세요.');
         return;
       }
-
       if (!hourlyWage || Number.isNaN(hourlyWage) || hourlyWage <= 0) {
         setErrorMsg('시급은 0보다 큰 숫자로 입력해주세요.');
         return;
@@ -264,11 +191,12 @@ export default function DashboardPage() {
         employment_type:
           employmentType === 'freelancer_33' ? 'freelancer' : 'employee',
         hire_date: hireDate || null,
+        is_active: true,
       });
 
       if (error) {
         console.error('create employee error:', error);
-        setErrorMsg('직원 추가에 실패했습니다.');
+        setErrorMsg('직원 추가 실패');
         return;
       }
 
@@ -280,34 +208,105 @@ export default function DashboardPage() {
   // -------- 직원 삭제 --------
   const handleDeleteEmployee = useCallback(
     async (employeeId: string) => {
-      if (!currentStoreId) {
-        setErrorMsg('먼저 매장을 선택해주세요.');
+      if (!currentStoreId) return;
+      
+      if(!confirm("정말 삭제하시겠습니까?")) return;
+
+      try {
+        const { error } = await supabase.from('employees').delete().eq('id', employeeId);
+        if (error) throw error;
+        await loadEmployees(currentStoreId);
+      } catch (err: any) {
+        console.error('delete employee error:', err);
+        setErrorMsg('직원 삭제 실패');
+      }
+    },
+    [currentStoreId, supabase, loadEmployees]
+  );
+
+  // -------- ✅ [추가] 직원 정보 수정 함수 --------
+  const handleUpdateEmployee = useCallback(
+    async (id: string, updates: Partial<Employee>) => {
+      const { error } = await supabase
+        .from('employees')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) {
+        console.error('update employee error:', error);
+        alert('수정 실패: ' + error.message);
+      } else {
+        alert('성공적으로 수정되었습니다.');
+        if (currentStoreId) await loadEmployees(currentStoreId);
+      }
+    },
+    [supabase, currentStoreId, loadEmployees]
+  );
+
+  // -------- 매장 생성 --------
+  const handleCreateStore = useCallback(
+    async (storeName: string) => {
+      setErrorMsg(null);
+      if (!storeName.trim()) return;
+
+      setCreatingStore(true);
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        setCreatingStore(false);
+        setErrorMsg('로그인 필요');
         return;
       }
 
-      try {
-        const res = await fetch(`/api/employees/${employeeId}`, {
-          method: 'DELETE',
-        });
+      const { data: storeRow, error: storeError } = await supabase
+        .from('stores')
+        .insert({
+          name: storeName.trim(),
+          owner_id: user.id,
+        })
+        .select('*')
+        .single();
 
-        const data = await res.json();
-
-        if (!res.ok) {
-          console.error('delete employee error:', data);
-          setErrorMsg(data?.error || '직원 삭제에 실패했습니다.');
-          return;
-        }
-
-        await loadEmployees(currentStoreId);
-      } catch (err: any) {
-        console.error('delete employee fetch error:', err);
-        setErrorMsg('직원 삭제 중 오류가 발생했습니다.');
+      if (storeError || !storeRow) {
+        setCreatingStore(false);
+        setErrorMsg('매장 생성 실패');
+        return;
       }
+
+      const newStore: Store = {
+        id: String((storeRow as any).id),
+        name: (storeRow as any).name as string,
+      };
+
+      setStores((prev) => [...prev, newStore]);
+      setCreatingStore(false);
+      setCurrentStoreId(newStore.id);
+      setCurrentTab('employees');
     },
-    [currentStoreId, loadEmployees]
+    [supabase]
   );
 
-  // -------- 탭 렌더링 --------
+  // -------- 초기 로딩 --------
+  useEffect(() => {
+    async function init() {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        router.replace('/');
+        return;
+      }
+      setUserEmail(data.user.email ?? '');
+      await loadStores(data.user.id);
+      setLoading(false);
+    }
+    init();
+  }, [supabase, router, loadStores]);
+
+  // -------- 매장 변경 감지 --------
+  useEffect(() => {
+    if (currentStoreId) loadEmployees(currentStoreId);
+  }, [currentStoreId, loadEmployees]);
+
+  // -------- 탭 내용 렌더링 --------
   const renderTabContent = () => {
     if (!currentStoreId) {
       return (
@@ -325,6 +324,7 @@ export default function DashboardPage() {
           loadingEmployees={loadingEmployees}
           onCreateEmployee={handleCreateEmployee}
           onDeleteEmployee={handleDeleteEmployee}
+          onUpdateEmployee={handleUpdateEmployee} // ✅ 수정 함수 전달
         />
       );
     }
@@ -333,25 +333,20 @@ export default function DashboardPage() {
       return (
         <div>
           <h2 style={{ fontSize: 20, marginBottom: 12 }}>스케줄 관리</h2>
-          <p style={{ fontSize: 14, color: '#ccc', marginBottom: 16 }}>
-            템플릿을 만들어 두고, 나중에 주간 캘린더에 자동 배정하는 구조로 설계
-            중입니다.
-          </p>
           <TemplateSection currentStoreId={currentStoreId} />
         </div>
       );
     }
 
-    // ✅ [수정된 부분] 급여/정산 탭에 설정 컴포넌트 연결
+    // ✅ [수정] 급여 탭에 설정 컴포넌트 표시
     return (
       <div>
         <h2 style={{ fontSize: 20, marginBottom: 12 }}>급여 / 정산</h2>
         
-        {/* 새로 만든 매장 설정 컴포넌트 */}
+        {/* 5인 이상, 수당 설정 컴포넌트 */}
         <StoreSettings storeId={currentStoreId} />
 
         <hr style={{ margin: '32px 0', borderColor: '#333' }} />
-
         <p style={{ fontSize: 14, color: '#ccc' }}>
           (추후 기능) 위 설정을 바탕으로 직원별 급여 내역이 이곳에 표시됩니다.
         </p>
@@ -360,11 +355,7 @@ export default function DashboardPage() {
   };
 
   if (loading) {
-    return (
-      <main style={{ padding: 40, color: '#fff' }}>
-        로그인 상태 확인 중...
-      </main>
-    );
+    return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
   }
 
   return (
@@ -389,8 +380,8 @@ export default function DashboardPage() {
         <StoreSelector
           stores={stores}
           currentStoreId={currentStoreId}
-          onChangeStore={(storeId) => {
-            setCurrentStoreId(storeId);
+          onChangeStore={(id) => {
+            setCurrentStoreId(id);
             setCurrentTab('employees');
           }}
           creatingStore={creatingStore}
