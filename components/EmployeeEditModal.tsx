@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Employee } from '@/app/dashboard/page';
+import DateSelector from './DateSelector'; // ✅ 날짜 선택기 import
 
 type Props = {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         birth_date: employee.birth_date || '',
         bank_name: employee.bank_name || '',
         account_number: employee.account_number || '',
+        is_active: employee.is_active,
       });
     }
   }, [isOpen, employee]);
@@ -40,9 +42,13 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     }));
   };
 
+  // ✅ DateSelector용 핸들러
+  const handleDateChange = (field: keyof Employee, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleSave = async () => {
     setSaving(true);
-    // 빈 날짜값 처리
     const updates = {
       ...formData,
       hire_date: formData.hire_date === '' ? null : formData.hire_date,
@@ -81,10 +87,13 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             </select>
           </div>
 
-          {/* 생년월일 / 전화번호 */}
+          {/* ✅ [수정] 생년월일 (DateSelector 사용) */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>생년월일</label>
-            <input name="birth_date" type="date" value={formData.birth_date || ''} onChange={handleChange} style={styles.input} />
+            <DateSelector 
+              value={formData.birth_date} 
+              onChange={(val) => handleDateChange('birth_date', val)} 
+            />
           </div>
           <div style={styles.inputGroup}>
             <label style={styles.label}>전화번호</label>
@@ -101,14 +110,20 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             <input name="account_number" placeholder="- 포함 가능" value={formData.account_number || ''} onChange={handleChange} style={styles.input} />
           </div>
 
-          {/* 입사일 / 퇴사일 */}
-          <div style={styles.inputGroup}>
+          {/* ✅ [수정] 입사일 / 퇴사일 (DateSelector 사용) */}
+          <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
             <label style={styles.label}>입사일</label>
-            <input name="hire_date" type="date" value={formData.hire_date || ''} onChange={handleChange} style={styles.input} />
+            <DateSelector 
+              value={formData.hire_date} 
+              onChange={(val) => handleDateChange('hire_date', val)} 
+            />
           </div>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>퇴사일 (입력 시 자동 퇴사 처리)</label>
-            <input name="end_date" type="date" value={formData.end_date || ''} onChange={handleChange} style={styles.input} />
+          <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
+            <label style={styles.label}>퇴사일 (선택 시 자동 퇴사 처리)</label>
+            <DateSelector 
+              value={formData.end_date} 
+              onChange={(val) => handleDateChange('end_date', val)} 
+            />
           </div>
         </div>
 
