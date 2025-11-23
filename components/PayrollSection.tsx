@@ -5,7 +5,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import StoreSettings from './StoreSettings';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
 import * as XLSX from 'xlsx';
-import PayStubModal from './PayStubModal'; // ✅ 팝업 추가
+import PayStubModal from './PayStubModal';
 
 type Props = {
   currentStoreId: string;
@@ -22,7 +22,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
   const [loading, setLoading] = useState(false);
   const [storeSettings, setStoreSettings] = useState<any>(null);
 
-  // 상세 팝업용 상태
   const [selectedPayStub, setSelectedPayStub] = useState<any>(null);
 
   const loadAndCalculate = useCallback(async () => {
@@ -34,7 +33,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
     const { data: employees } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
 
-    // 날짜 범위 (넉넉하게)
     const startStr = `${year}-${String(month - 1).padStart(2,'0')}-20`;
     const endStr = `${year}-${String(month + 1).padStart(2,'0')}-10`;
     
@@ -56,7 +54,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
     loadAndCalculate();
   }, [loadAndCalculate]);
 
-  // ✅ 엑셀 다운로드 (세무사용 상세 양식)
+  // 엑셀 다운로드
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
 
@@ -64,8 +62,9 @@ export default function PayrollSection({ currentStoreId }: Props) {
       '이름': p.name,
       '총지급급여': p.totalPay,
       '세후지급급여': p.finalPay,
-      '소득세': p.taxDetails.income,
-      '지방소득세': p.taxDetails.local,
+      // ✅ [수정] 바뀐 변수명 적용
+      '소득세': p.taxDetails.incomeTax,
+      '지방소득세': p.taxDetails.localTax,
       '국민연금': p.taxDetails.pension,
       '건강보험': p.taxDetails.health,
       '장기요양': p.taxDetails.care,
@@ -124,9 +123,9 @@ export default function PayrollSection({ currentStoreId }: Props) {
                   <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.totalPay.toLocaleString()}</td>
                   <td style={{ ...tdStyle, color: '#ffeaa7', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
                   
-                  {/* 세금 상세 내역 */}
-                  <td style={{...tdStyle, color: '#aaa'}}>{p.taxDetails.income > 0 ? p.taxDetails.income.toLocaleString() : '-'}</td>
-                  <td style={{...tdStyle, color: '#aaa'}}>{p.taxDetails.local > 0 ? p.taxDetails.local.toLocaleString() : '-'}</td>
+                  {/* ✅ [수정] 바뀐 변수명 적용 (incomeTax, localTax) */}
+                  <td style={{...tdStyle, color: '#aaa'}}>{p.taxDetails.incomeTax > 0 ? p.taxDetails.incomeTax.toLocaleString() : '-'}</td>
+                  <td style={{...tdStyle, color: '#aaa'}}>{p.taxDetails.localTax > 0 ? p.taxDetails.localTax.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.pension > 0 ? p.taxDetails.pension.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.health > 0 ? p.taxDetails.health.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.care > 0 ? p.taxDetails.care.toLocaleString() : '-'}</td>
@@ -152,7 +151,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
         * [명세서 보기]를 눌러 직원에게 보낼 이미지를 저장하세요.
       </p>
 
-      {/* 팝업 */}
       <PayStubModal 
         isOpen={!!selectedPayStub} 
         onClose={() => setSelectedPayStub(null)} 
