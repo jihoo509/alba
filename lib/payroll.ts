@@ -1,20 +1,15 @@
 import { differenceInMinutes, getDay, startOfWeek, endOfWeek, addDays, format, isSameMonth } from 'date-fns';
 
-// 2024/2025 기준 4대보험 요율
+// 요일 배열 (0:일 ~ 6:토)
+const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
 const RATES = {
-  pension: 0.045,        // 국민연금
-  health: 0.03545,       // 건강보험
-  care: 0.1295,          // 장기요양
-  employment: 0.009,     // 고용보험
-  incomeTax: 0.03,       // 소득세 (3.3% 기준)
-  localTax: 0.1,         // 지방세 (소득세의 10%)
+  pension: 0.045, health: 0.03545, care: 0.1295, employment: 0.009, incomeTax: 0.03, localTax: 0.1
 };
 
-// 야간 시간 계산
 function calculateNightMinutes(start: string, end: string) {
   const [sH, sM] = start.split(':').map(Number);
   const [eH, eM] = end.split(':').map(Number);
-  
   let startMin = sH * 60 + sM;
   let endMin = eH * 60 + eM;
   if (endMin < startMin) endMin += 24 * 60; 
@@ -22,19 +17,13 @@ function calculateNightMinutes(start: string, end: string) {
   let nightMin = 0;
   for (let t = startMin; t < endMin; t++) {
     const timeOfDay = t % 1440; 
-    if (timeOfDay >= 1320 || timeOfDay < 360) {
-      nightMin++;
-    }
+    if (timeOfDay >= 1320 || timeOfDay < 360) nightMin++;
   }
   return nightMin;
 }
 
 export function calculateMonthlyPayroll(
-  year: number, 
-  month: number, 
-  employees: any[], 
-  schedules: any[], 
-  storeSettings: any
+  year: number, month: number, employees: any[], schedules: any[], storeSettings: any
 ) {
   return employees.map(emp => {
     const empSchedules = schedules.filter(s => s.employee_id === emp.id);
@@ -43,26 +32,40 @@ export function calculateMonthlyPayroll(
     let totalNightMinutes = 0;
     let weeklyHolidayPay = 0;
     
-    // 일별 상세 내역
+    // ✅ [수정] 일별 상세 내역에 '요일', '야간수당액' 추가
     const dailyLogs = empSchedules.map((s: any) => {
+        const d = new Date(s.date);
+        const dayLabel = DAYS[d.getDay()]; // 요일 구하기
+
         const [sH, sM] = s.start_time.split(':').map(Number);
         const [eH, eM] = s.end_time.split(':').map(Number);
         let mins = (eH * 60 + eM) - (sH * 60 + sM);
         if (mins < 0) mins += 24 * 60;
         
         const hours = mins / 60;
-        const dailyPay = Math.floor(hours * emp.hourly_wage);
+        const basePay = Math.floor(hours * emp.hourly_wage);
+        
+        // 해당 일자의 야간수당 계산
+        let nightMins = 0;
+        let nightPay = 0;
+        if (storeSettings.is_five_plus && storeSettings.pay_night) {
+             nightMins = calculateNightMinutes(s.start_time, s.end_time);
+             nightPay = Math.floor((nightMins / 60) * emp.hourly_wage * 0.5);
+        }
 
         return {
             date: s.date,
+            dayLabel: dayLabel, // 요일 추가
             startTime: s.start_time.slice(0,5),
             endTime: s.end_time.slice(0,5),
             hours: hours.toFixed(1),
-            pay: dailyPay
+            basePay: basePay,   // 기본급
+            nightPay: nightPay, // 야간수당
+            total: basePay + nightPay
         };
     }).sort((a: any, b: any) => a.date.localeCompare(b.date));
 
-    // 주휴수당 계산
+    // --- 주휴수당 계산 (기존 유지) ---
     const monthStart = new Date(year, month - 1, 1);
     const monthEnd = new Date(year, month, 0);
     let current = startOfWeek(monthStart, { weekStartsOn: 1 }); 
@@ -100,7 +103,7 @@ export function calculateMonthlyPayroll(
       current = addDays(current, 7);
     }
 
-    // 기본급 및 야간수당
+    // --- 총합 계산 ---
     const thisMonthSchedules = empSchedules.filter((s: any) => {
         const d = new Date(s.date);
         return d.getMonth() === month - 1 && d.getFullYear() === year;
@@ -118,27 +121,22 @@ export function calculateMonthlyPayroll(
       }
     });
 
-    const basePay = (totalWorkMinutes / 60) * emp.hourly_wage;
-    const nightPay = (totalNightMinutes / 60) * emp.hourly_wage * 0.5;
-    const totalPay = basePay + nightPay + weeklyHolidayPay;
+    const basePayTotal = (totalWorkMinutes / 60) * emp.hourly_wage;
+    const nightPayTotal = (totalNightMinutes / 60) * emp.hourly_wage * 0.5;
+    const totalPay = basePayTotal + nightPayTotal + weeklyHolidayPay;
 
-    // ✅ [수정된 부분] 변수명 통일 (income -> incomeTax, local -> localTax)
+    // 세금 계산
     let taxDetails = {
-        pension: 0, health: 0, care: 0, employment: 0, 
-        incomeTax: 0, // 여기 수정됨
-        localTax: 0,  // 여기 수정됨
-        total: 0
+        pension: 0, health: 0, care: 0, employment: 0, incomeTax: 0, localTax: 0, total: 0
     };
 
     if (emp.employment_type.includes('four')) {
-        // 4대보험
         taxDetails.pension = Math.floor(totalPay * RATES.pension / 10) * 10;
         taxDetails.health = Math.floor(totalPay * RATES.health / 10) * 10;
         taxDetails.care = Math.floor(taxDetails.health * RATES.care / 10) * 10;
         taxDetails.employment = Math.floor(totalPay * RATES.employment / 10) * 10;
         taxDetails.total = taxDetails.pension + taxDetails.health + taxDetails.care + taxDetails.employment;
     } else {
-        // 3.3% 프리랜서
         taxDetails.incomeTax = Math.floor(totalPay * RATES.incomeTax / 10) * 10;
         taxDetails.localTax = Math.floor(taxDetails.incomeTax * RATES.localTax / 10) * 10;
         taxDetails.total = taxDetails.incomeTax + taxDetails.localTax;
@@ -150,8 +148,8 @@ export function calculateMonthlyPayroll(
       wage: emp.hourly_wage,
       type: emp.employment_type,
       totalHours: (totalWorkMinutes / 60).toFixed(1),
-      basePay: Math.floor(basePay),
-      nightPay: Math.floor(nightPay),
+      basePay: Math.floor(basePayTotal),
+      nightPay: Math.floor(nightPayTotal),
       weeklyHolidayPay: Math.floor(weeklyHolidayPay),
       totalPay: Math.floor(totalPay),
       taxDetails: taxDetails,
@@ -160,7 +158,7 @@ export function calculateMonthlyPayroll(
         bank: emp.bank_name,
         account: emp.account_number,
       },
-      dailyLogs: dailyLogs
+      dailyLogs: dailyLogs // 상세 내역
     };
   });
 }
