@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import UserBar from '@/components/UserBar';
@@ -8,162 +8,121 @@ import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
 import TemplateSection from '@/components/TemplateSection';
 import PayrollSection from '@/components/PayrollSection';
+import { format } from 'date-fns';
 
-type Store = {
-  id: string;
-  name: string;
-};
+type Store = { id: string; name: string; };
 
-type TabKey = 'employees' | 'schedules' | 'payroll';
+type TabKey = 'home' | 'employees' | 'schedules' | 'payroll';
 
-// 직원 타입
 export type Employee = {
-  id: string;
-  name: string;
-  hourly_wage: number;
-  employment_type: 'freelancer' | 'employee';
-  is_active: boolean;
-  hire_date?: string;
-  phone_number?: string;
-  birth_date?: string;
-  bank_name?: string;
-  account_number?: string;
-  end_date?: string;
+  id: string; name: string; hourly_wage: number; employment_type: 'freelancer' | 'employee';
+  is_active: boolean; hire_date?: string; phone_number?: string; birth_date?: string;
+  bank_name?: string; account_number?: string; end_date?: string;
 };
 
-export default function DashboardPage() {
+// ✅ [핵심 변경 1] 원래 컴포넌트 이름을 Content로 변경 (export default 제거)
+function DashboardContent() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // ✅ URL 파라미터 읽기
+  const searchParams = useSearchParams(); // 👈 이게 에러의 원인 (Suspense 필요)
   const pathname = usePathname();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
   const [stores, setStores] = useState<Store[]>([]);
   const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
   const [creatingStore, setCreatingStore] = useState(false);
-
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
 
-  // ✅ 탭 상태 초기값: URL에 있는 'tab' 값을 보고 결정 (없으면 'employees')
   const [currentTab, setCurrentTab] = useState<TabKey>(
-    (searchParams.get('tab') as TabKey) || 'employees'
+    (searchParams.get('tab') as TabKey) || 'home'
   );
 
-  // ✅ 탭 변경 시 URL도 같이 변경
+  const [todayWorkers, setTodayWorkers] = useState<any[]>([]);
+
   const handleTabChange = (tab: TabKey) => {
     setCurrentTab(tab);
-    // URL 업데이트 (새로고침 없이 주소만 변경)
     router.replace(`${pathname}?tab=${tab}`);
   };
 
-  // 매장 목록 로딩
   const loadStores = useCallback(async (userId: string) => {
     const { data, error } = await supabase.from('stores').select('*').eq('owner_id', userId);
-    if (error) {
-      console.error('loadStores error:', error);
-      setErrorMsg('매장 목록 로딩 실패');
-      return;
-    }
+    if (error) { setErrorMsg('매장 로딩 실패'); return; }
     const list = (data ?? []).map((row: any) => ({ id: String(row.id), name: row.name }));
     setStores(list);
     if (list.length > 0 && !currentStoreId) setCurrentStoreId(list[0].id);
   }, [supabase, currentStoreId]);
 
-  // 매장 삭제
   const handleDeleteStore = useCallback(async (storeId: string) => {
-    if (!window.confirm('정말 삭제하시겠습니까? 모든 데이터가 삭제됩니다.')) return;
+    if (!window.confirm('정말 삭제하시겠습니까?')) return;
     const { error } = await supabase.from('stores').delete().eq('id', storeId);
-    if (error) { alert('삭제 실패: ' + error.message); return; }
-    setStores((prev) => prev.filter((s) => s.id !== storeId));
-    if (currentStoreId === storeId) { setCurrentStoreId(null); setEmployees([]); }
-    alert('삭제되었습니다.');
+    if (error) alert('삭제 실패');
+    else {
+      setStores((prev) => prev.filter((s) => s.id !== storeId));
+      if (currentStoreId === storeId) { setCurrentStoreId(null); setEmployees([]); }
+    }
   }, [supabase, currentStoreId]);
 
-  // 직원 목록 로딩
   const loadEmployees = useCallback(async (storeId: string) => {
     setLoadingEmployees(true);
-    const { data, error } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('store_id', storeId)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('loadEmployees error:', error);
-      setEmployees([]);
-    } else {
-      const list: Employee[] = (data ?? []).map((row: any) => ({
-        id: String(row.id),
-        name: row.name,
-        hourly_wage: row.hourly_wage,
-        employment_type: row.employment_type,
-        is_active: row.is_active,
-        hire_date: row.hire_date,
-        phone_number: row.phone_number,
-        birth_date: row.birth_date,
-        bank_name: row.bank_name,
-        account_number: row.account_number,
-        end_date: row.end_date,
-      }));
-      setEmployees(list);
+    const { data } = await supabase.from('employees').select('*').eq('store_id', storeId).order('created_at', { ascending: true });
+    if (data) {
+      setEmployees(data.map((row: any) => ({
+        id: String(row.id), name: row.name, hourly_wage: row.hourly_wage, employment_type: row.employment_type,
+        is_active: row.is_active, hire_date: row.hire_date, phone_number: row.phone_number,
+        birth_date: row.birth_date, bank_name: row.bank_name, account_number: row.account_number, end_date: row.end_date,
+      })));
     }
     setLoadingEmployees(false);
   }, [supabase]);
 
-  // 직원 추가
+  const loadTodaySchedule = useCallback(async (storeId: string) => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const { data, error } = await supabase
+      .from('schedules')
+      .select('*, employees(name, phone_number)')
+      .eq('store_id', storeId)
+      .eq('date', todayStr)
+      .order('start_time', { ascending: true });
+
+    if (!error && data) {
+      setTodayWorkers(data);
+    } else {
+      setTodayWorkers([]);
+    }
+  }, [supabase]);
+
   const handleCreateEmployee = useCallback(async (payload: any) => {
     if (!currentStoreId) return;
-    const { error } = await supabase.from('employees').insert({
-      store_id: currentStoreId,
-      name: payload.name,
-      hourly_wage: payload.hourlyWage,
-      employment_type: payload.employmentType === 'freelancer_33' ? 'freelancer' : 'employee',
-      hire_date: payload.hireDate || null,
-      is_active: true,
-    });
-    if (error) alert('추가 실패: ' + error.message);
-    else await loadEmployees(currentStoreId);
+    const { error } = await supabase.from('employees').insert({ ...payload, store_id: currentStoreId, is_active: true });
+    if (error) alert('실패'); else await loadEmployees(currentStoreId);
   }, [currentStoreId, supabase, loadEmployees]);
 
-  // 직원 삭제
   const handleDeleteEmployee = useCallback(async (id: string) => {
-    if (!confirm('삭제하시겠습니까?')) return;
-    const { error } = await supabase.from('employees').delete().eq('id', id);
-    if (error) alert('삭제 실패: ' + error.message);
-    else if (currentStoreId) await loadEmployees(currentStoreId);
+    if (!confirm('삭제?')) return;
+    await supabase.from('employees').delete().eq('id', id);
+    if (currentStoreId) await loadEmployees(currentStoreId);
   }, [currentStoreId, supabase, loadEmployees]);
 
-  // 직원 수정
   const handleUpdateEmployee = useCallback(async (id: string, updates: Partial<Employee>) => {
-    const { error } = await supabase.from('employees').update(updates).eq('id', id);
-    if (error) {
-      alert('수정 실패: ' + error.message);
-    } else {
-      alert('수정되었습니다.');
-      if (currentStoreId) await loadEmployees(currentStoreId);
-    }
+    await supabase.from('employees').update(updates).eq('id', id);
+    if (currentStoreId) await loadEmployees(currentStoreId);
   }, [supabase, currentStoreId, loadEmployees]);
 
-  // 매장 생성
   const handleCreateStore = useCallback(async (name: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data, error } = await supabase.from('stores').insert({ name, owner_id: user.id }).select().single();
-    if (error || !data) alert('생성 실패');
-    else {
+    const { data } = await supabase.from('stores').insert({ name, owner_id: user.id }).select().single();
+    if (data) {
       const newStore = { id: String(data.id), name: data.name };
       setStores(prev => [...prev, newStore]);
       setCurrentStoreId(newStore.id);
-      // 탭 변경 시 URL 업데이트도 같이
       handleTabChange('employees');
     }
   }, [supabase]);
 
-  // 초기 로딩
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -175,16 +134,54 @@ export default function DashboardPage() {
     init();
   }, [supabase, router, loadStores]);
 
-  // 매장 변경 시
   useEffect(() => {
-    if (currentStoreId) loadEmployees(currentStoreId);
-  }, [currentStoreId, loadEmployees]);
+    if (currentStoreId) {
+      loadEmployees(currentStoreId);
+      loadTodaySchedule(currentStoreId);
+    }
+  }, [currentStoreId, loadEmployees, loadTodaySchedule]);
 
-
-  // 탭 렌더링
   const renderTabContent = () => {
-    if (!currentStoreId) return <p style={{ color: '#aaa' }}>매장을 선택해주세요.</p>;
+    if (!currentStoreId) return <p style={{ color: '#aaa', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
 
+    if (currentTab === 'home') {
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          <div style={cardStyle}>
+            <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #444', paddingBottom: 8 }}>
+              📅 오늘 근무자 ({todayWorkers.length}명)
+            </h3>
+            {todayWorkers.length === 0 ? (
+              <p style={{ color: '#777', textAlign: 'center', padding: 20 }}>오늘 예정된 근무가 없습니다.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                {todayWorkers.map(w => (
+                  <li key={w.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #333' }}>
+                    <div>
+                      <strong style={{ fontSize: 16, color: '#fff' }}>{w.employees?.name || '미배정'}</strong>
+                      <span style={{ color: '#aaa', fontSize: 13, marginLeft: 8 }}>{w.employees?.phone_number}</span>
+                    </div>
+                    <div style={{ color: 'dodgerblue', fontWeight: 'bold' }}>
+                      {w.start_time.slice(0,5)} ~ {w.end_time.slice(0,5)}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div style={cardStyle}>
+            <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #444', paddingBottom: 8 }}>
+              📢 시스템 공지사항
+            </h3>
+            <ul style={{ paddingLeft: 20, color: '#ccc', lineHeight: 1.6 }}>
+              <li>[업데이트] 급여 명세서 이미지 저장 기능 추가</li>
+              <li>[안내] 주간 스케줄 자동 생성 기능 사용법</li>
+              <li>[공지] 5인 이상 사업장 수당 계산 관련</li>
+            </ul>
+          </div>
+        </div>
+      );
+    }
     if (currentTab === 'employees') {
       return (
         <EmployeeSection
@@ -205,51 +202,53 @@ export default function DashboardPage() {
         </div>
       );
     }
-    
     if (currentTab === 'payroll') {
-      return (
-        <PayrollSection currentStoreId={currentStoreId} />
-      );
+      return <PayrollSection currentStoreId={currentStoreId} />;
     }
   };
 
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
   return (
-    <main style={{ padding: 40, color: '#fff' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1>사장님 대시보드</h1>
+    <main style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <h1 style={{ fontSize: 24 }}>사장님 대시보드</h1>
         <UserBar email={userEmail} />
       </header>
-      <section style={{ maxWidth: 900 }}>
+
+      {errorMsg && <div style={{ marginBottom: 16, color: 'salmon' }}>{errorMsg}</div>}
+
+      <section>
         <StoreSelector
           stores={stores}
           currentStoreId={currentStoreId}
-          onChangeStore={(id) => { 
-            setCurrentStoreId(id); 
-            handleTabChange('employees'); // 매장 바꾸면 기본 탭으로
-          }}
+          onChangeStore={(id) => { setCurrentStoreId(id); handleTabChange('home'); }}
           creatingStore={creatingStore}
           onCreateStore={handleCreateStore}
           onDeleteStore={handleDeleteStore}
         />
+
         {stores.length > 0 && currentStoreId && (
           <div>
-            <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #333', marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #333', marginBottom: 24 }}>
               {[
+                { key: 'home', label: '🏠 홈' },
                 { key: 'employees', label: '직원 관리' },
                 { key: 'schedules', label: '스케줄 관리' },
                 { key: 'payroll', label: '급여 / 정산' }
               ].map((tab) => (
                 <button
                   key={tab.key}
-                  // ✅ 클릭 시 URL 업데이트 함수 호출
                   onClick={() => handleTabChange(tab.key as TabKey)}
                   style={{
-                    padding: '8px 14px',
-                    borderBottom: currentTab === tab.key ? '2px solid dodgerblue' : '2px solid transparent',
-                    background: 'transparent', color: currentTab === tab.key ? '#fff' : '#aaa',
-                    border: 'none', cursor: 'pointer', fontWeight: currentTab === tab.key ? 600 : 400
+                    padding: '10px 20px',
+                    border: 'none',
+                    borderBottom: currentTab === tab.key ? '3px solid dodgerblue' : '3px solid transparent',
+                    background: 'transparent',
+                    color: currentTab === tab.key ? '#fff' : '#888',
+                    cursor: 'pointer',
+                    fontSize: 15,
+                    fontWeight: currentTab === tab.key ? 'bold' : 'normal'
                   }}
                 >
                   {tab.label}
@@ -261,5 +260,22 @@ export default function DashboardPage() {
         )}
       </section>
     </main>
+  );
+}
+
+const cardStyle = {
+  backgroundColor: '#1f1f1f',
+  borderRadius: 8,
+  padding: 24,
+  border: '1px solid #333',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+};
+
+// ✅ [핵심 변경 2] 진짜 Export되는 컴포넌트 (Suspense로 감싸기)
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 40, color: '#fff' }}>대시보드 로딩 중...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
