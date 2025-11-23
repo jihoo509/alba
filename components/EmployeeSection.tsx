@@ -1,6 +1,9 @@
+'use client';
+
 import React, { useState } from 'react';
 import type { Employee } from '@/app/dashboard/page';
 import EmployeeEditModal from './EmployeeEditModal';
+import DateSelector from './DateSelector'; // ✅ 날짜 선택기 가져오기
 
 type Props = {
   currentStoreId: string | null;
@@ -28,37 +31,35 @@ export function EmployeeSection({
   const [newEmpName, setNewEmpName] = useState('');
   const [newEmpWage, setNewEmpWage] = useState('');
   const [newEmpType, setNewEmpType] = useState<'freelancer_33' | 'four_insurance'>('freelancer_33');
+  // ✅ 날짜 상태 (YYYY-MM-DD)
   const [newEmpHireDate, setNewEmpHireDate] = useState('');
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-  // ✅ 근무 중 / 퇴사자 분리 로직
-  const today = new Date().toISOString().split('T')[0]; // 오늘 날짜 (YYYY-MM-DD)
-
-  const activeEmployees = employees.filter(emp => {
-    // 퇴사일이 없거나, 퇴사일이 아직 안 지났으면 근무 중
-    if (!emp.end_date) return true;
-    return emp.end_date >= today;
-  });
-
-  const retiredEmployees = employees.filter(emp => {
-    // 퇴사일이 있고, 오늘보다 과거면 퇴사자
-    if (!emp.end_date) return false;
-    return emp.end_date < today;
-  });
+  // 근무/퇴사자 분리
+  const today = new Date().toISOString().split('T')[0];
+  const activeEmployees = employees.filter(emp => !emp.end_date || emp.end_date >= today);
+  const retiredEmployees = employees.filter(emp => emp.end_date && emp.end_date < today);
 
   if (!currentStoreId) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const wage = Number(newEmpWage.replace(/,/g, ''));
+    
+    if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
+    if (!wage) return alert('시급을 입력해주세요.');
+    // 날짜가 비어있으면 오늘 날짜로 넣거나, 입력을 강제할 수 있습니다. (여기선 선택 사항으로 둠)
+
     await onCreateEmployee({
       name: newEmpName,
       hourlyWage: wage,
       employmentType: newEmpType,
       hireDate: newEmpHireDate || undefined,
     });
+
+    // 초기화
     setNewEmpName('');
     setNewEmpWage('');
     setNewEmpType('freelancer_33');
@@ -70,7 +71,6 @@ export function EmployeeSection({
     setIsEditOpen(true);
   };
 
-  // 리스트 렌더링 헬퍼 (중복 코드 제거)
   const renderList = (list: Employee[], isRetired = false) => (
     <ul style={{ listStyle: 'none', padding: 0 }}>
       {list.map((emp) => (
@@ -100,22 +100,81 @@ export function EmployeeSection({
 
   return (
     <section>
-      {/* 직원 추가 폼 */}
+      {/* ✅ 직원 등록 폼 (디자인 개선) */}
       <div style={{ marginBottom: 32, padding: 20, backgroundColor: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
-        <h3 style={{ fontSize: 16, marginBottom: 12, color: '#ddd' }}>새 직원 등록</h3>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <input type="text" placeholder="이름" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} style={{ padding: 8, color: '#000', borderRadius: 4, border: '1px solid #555', width: 100 }} />
-          <input type="number" placeholder="시급" value={newEmpWage} onChange={(e) => setNewEmpWage(e.target.value)} style={{ padding: 8, color: '#000', borderRadius: 4, border: '1px solid #555', width: 100 }} />
-          <select value={newEmpType} onChange={(e) => setNewEmpType(e.target.value as any)} style={{ padding: 8, color: '#000', borderRadius: 4, border: '1px solid #555' }}>
-            <option value="freelancer_33">3.3% 프리랜서</option>
-            <option value="four_insurance">4대 보험</option>
-          </select>
-          <input type="date" value={newEmpHireDate} onChange={(e) => setNewEmpHireDate(e.target.value)} style={{ padding: 8, color: '#000', borderRadius: 4, border: '1px solid #555' }} />
-          <button type="submit" style={{ padding: '8px 16px', background: 'dodgerblue', color: '#fff', border: 0, cursor: 'pointer', borderRadius: 4, fontWeight: 'bold' }}>+ 추가</button>
+        <h3 style={{ fontSize: 16, marginBottom: 12, color: '#ddd', marginTop: 0 }}>새 직원 등록</h3>
+        
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            
+            {/* 이름 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 12, color: '#aaa' }}>이름</label>
+              <input 
+                type="text" 
+                value={newEmpName} 
+                onChange={(e) => setNewEmpName(e.target.value)} 
+                style={{ ...inputStyle, width: 100 }} 
+              />
+            </div>
+
+            {/* 시급 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 12, color: '#aaa' }}>시급 (원)</label>
+              <input 
+                type="number" 
+                value={newEmpWage} 
+                onChange={(e) => setNewEmpWage(e.target.value)} 
+                style={{ ...inputStyle, width: 100 }} 
+              />
+            </div>
+
+            {/* 고용 형태 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 12, color: '#aaa' }}>고용 형태</label>
+              <select 
+                value={newEmpType} 
+                onChange={(e) => setNewEmpType(e.target.value as any)} 
+                style={{ ...inputStyle, width: 140 }}
+              >
+                <option value="freelancer_33">3.3% 프리랜서</option>
+                <option value="four_insurance">4대 보험</option>
+              </select>
+            </div>
+
+            {/* ✅ 입사일 (DateSelector 적용!) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 12, color: '#aaa' }}>입사일</label>
+              <div style={{ minWidth: 240 }}>
+                <DateSelector 
+                  value={newEmpHireDate} 
+                  onChange={setNewEmpHireDate} 
+                />
+              </div>
+            </div>
+
+            {/* 추가 버튼 */}
+            <button 
+              type="submit" 
+              style={{ 
+                padding: '10px 20px', 
+                background: 'dodgerblue', 
+                color: '#fff', 
+                border: 0, 
+                cursor: 'pointer', 
+                borderRadius: 4, 
+                fontWeight: 'bold',
+                height: 38, // 높이 맞춤
+                marginBottom: 1
+              }}
+            >
+              + 추가
+            </button>
+          </div>
         </form>
       </div>
 
-      {/* 1. 근무 중인 직원 */}
+      {/* 근무 중인 직원 */}
       <div style={{ marginBottom: 40 }}>
         <h3 style={{ fontSize: 20, marginBottom: 10, borderBottom: '2px solid #fff', paddingBottom: 8 }}>
           근무 중인 직원 <span style={{ fontSize: 14, color: 'dodgerblue', marginLeft: 4 }}>{activeEmployees.length}명</span>
@@ -123,7 +182,7 @@ export function EmployeeSection({
         {loadingEmployees ? <p>로딩 중...</p> : activeEmployees.length === 0 ? <p style={{ color: '#666' }}>근무 중인 직원이 없습니다.</p> : renderList(activeEmployees)}
       </div>
 
-      {/* 2. 퇴사한 직원 (있을 때만 표시) */}
+      {/* 퇴사한 직원 */}
       {retiredEmployees.length > 0 && (
         <div>
           <h3 style={{ fontSize: 18, marginBottom: 10, color: '#aaa', borderBottom: '1px solid #555', paddingBottom: 8 }}>
@@ -144,3 +203,13 @@ export function EmployeeSection({
     </section>
   );
 }
+
+const inputStyle = {
+  padding: '10px', 
+  color: '#fff', 
+  borderRadius: 4, 
+  border: '1px solid #555', 
+  backgroundColor: '#333',
+  fontSize: '14px',
+  outline: 'none'
+};

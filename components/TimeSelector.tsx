@@ -1,24 +1,24 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 
 type Props = {
   value: string; // "HH:mm" (24시간제)
   onChange: (value: string) => void;
+  interval?: number; // ✅ [추가] 분 단위 설정 (기본값 30)
 };
 
-export default function TimeSelector({ value, onChange }: Props) {
+export default function TimeSelector({ value, onChange, interval = 30 }: Props) {
   const [ampm, setAmpm] = useState('AM');
   const [hour, setHour] = useState('12');
   const [minute, setMinute] = useState('00');
 
-  // 값 변경 시 (24시간제 -> 12시간제 변환)
+  // 값 변경 감지 및 초기화
   useEffect(() => {
     if (value) {
       const [hStr, mStr] = value.split(':');
       let h = parseInt(hStr, 10);
       
-      // AM/PM 계산
       if (h >= 12) {
         setAmpm('PM');
         if (h > 12) h -= 12;
@@ -32,7 +32,7 @@ export default function TimeSelector({ value, onChange }: Props) {
     }
   }, [value]);
 
-  // 사용자가 선택했을 때 (12시간제 -> 24시간제 변환 후 부모에게 전달)
+  // 변경 핸들러
   const handleChange = (type: 'ampm' | 'hour' | 'minute', val: string) => {
     let newAmpm = ampm;
     let newHour = hour;
@@ -42,14 +42,12 @@ export default function TimeSelector({ value, onChange }: Props) {
     if (type === 'hour') newHour = val;
     if (type === 'minute') newMinute = val;
 
-    // 12시간제 -> 24시간제 변환
     let h24 = parseInt(newHour, 10);
     if (newAmpm === 'PM' && h24 !== 12) h24 += 12;
     if (newAmpm === 'AM' && h24 === 12) h24 = 0;
 
     const finalTime = `${String(h24).padStart(2, '0')}:${newMinute}`;
     
-    // 내부 상태 즉시 업데이트 (UI 반응성)
     if (type === 'ampm') setAmpm(val);
     if (type === 'hour') setHour(val);
     if (type === 'minute') setMinute(val);
@@ -57,8 +55,16 @@ export default function TimeSelector({ value, onChange }: Props) {
     onChange(finalTime);
   };
 
+  // ✅ [수정] interval에 따라 분 목록 동적 생성
+  const minutes = useMemo(() => {
+    const list = [];
+    for (let i = 0; i < 60; i += interval) {
+      list.push(String(i).padStart(2, '0'));
+    }
+    return list;
+  }, [interval]);
+
   const hours = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
-  const minutes = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')); // 5분 단위
 
   return (
     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -66,7 +72,7 @@ export default function TimeSelector({ value, onChange }: Props) {
       <select
         value={ampm}
         onChange={(e) => handleChange('ampm', e.target.value)}
-        style={{ ...selectStyle, width: 65 }}
+        style={{ ...selectStyle, width: 60 }}
       >
         <option value="AM">오전</option>
         <option value="PM">오후</option>
@@ -76,19 +82,19 @@ export default function TimeSelector({ value, onChange }: Props) {
       <select
         value={hour}
         onChange={(e) => handleChange('hour', e.target.value)}
-        style={{ ...selectStyle, width: 55 }}
+        style={{ ...selectStyle, width: 50 }}
       >
         {hours.map((h) => (
           <option key={h} value={h}>{h}</option>
         ))}
       </select>
-      <span style={{ color: '#fff', fontWeight: 'bold' }}>:</span>
+      <span style={{ color: '#aaa', fontWeight: 'bold' }}>:</span>
 
       {/* 분 */}
       <select
         value={minute}
         onChange={(e) => handleChange('minute', e.target.value)}
-        style={{ ...selectStyle, width: 55 }}
+        style={{ ...selectStyle, width: 50 }}
       >
         {minutes.map((m) => (
           <option key={m} value={m}>{m}</option>
@@ -99,12 +105,12 @@ export default function TimeSelector({ value, onChange }: Props) {
 }
 
 const selectStyle = {
-  padding: '8px 4px',
+  padding: '8px 2px',
   backgroundColor: '#333',
   border: '1px solid #555',
   borderRadius: 4,
   color: '#fff',
-  fontSize: '14px',
+  fontSize: '13px',
   textAlign: 'center' as const,
   outline: 'none',
   cursor: 'pointer'
