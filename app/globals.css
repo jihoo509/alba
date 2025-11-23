@@ -1,0 +1,42 @@
+/* app/globals.css */
+
+/* 기본 배경색 및 글자색 (다크모드) */
+body {
+  background-color: #000;
+  color: #fff;
+  margin: 0;
+  padding: 0;
+}
+
+/* PC에서만 보이게 (화면 폭 769px 이상) */
+@media (max-width: 768px) {
+  .pc-only {
+    display: none !important;
+  }
+}
+
+/* 모바일에서만 보이게 (화면 폭 768px 이하) */
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* 중앙 콘텐츠 영역 반응형 처리 */
+.dashboard-content {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  /* PC일 때는 양옆 160px 띄우기 (광고 자리) */
+  margin-left: 160px;
+  margin-right: 160px;
+}
+
+/* 모바일일 때는 꽉 채우기 & 하단 배너 공간 확보 */
+@media (max-width: 768px) {
+  .dashboard-content {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-bottom: 60px; /* 하단 배너 높이만큼 띄우기 */
+  }
+}

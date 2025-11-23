@@ -1,6 +1,7 @@
 import React from 'react';
 import AdBanner from '@/components/AdBanner';
 import AdPopup from '@/components/AdPopup';
+import MobileAdBanner from '@/components/MobileAdBanner'; // ✅ 추가됨
 
 export default function DashboardLayout({
   children,
@@ -9,29 +10,27 @@ export default function DashboardLayout({
 }) {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#000', color: '#fff' }}>
-      {/* 1. 팝업 광고 (대시보드 들어오면 뜸) */}
+      {/* 1. 팝업 광고 (공통) */}
       <AdPopup />
 
-      {/* 2. 왼쪽 광고 (PC에서만 보임) */}
+      {/* 2. PC용 왼쪽 광고 (모바일엔 숨김) */}
       <div className="pc-only">
         <AdBanner position="left" />
       </div>
 
-      {/* 3. 중앙 콘텐츠 영역 (광고 자리 비켜주기) */}
-      <div style={{ 
-        marginLeft: '160px', // 왼쪽 광고 너비만큼 띄움
-        marginRight: '160px', // 오른쪽 광고 너비만큼 띄움
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-        {/* 실제 대시보드 내용이 여기에 들어갑니다 */}
+      {/* 3. 중앙 콘텐츠 영역 (CSS 클래스로 마진 조절) */}
+      <div className="dashboard-content">
         {children}
       </div>
 
-      {/* 4. 오른쪽 광고 */}
+      {/* 4. PC용 오른쪽 광고 (모바일엔 숨김) */}
       <div className="pc-only">
         <AdBanner position="right" />
+      </div>
+
+      {/* 5. 모바일용 하단 광고 (PC엔 숨김) */}
+      <div className="mobile-only">
+        <MobileAdBanner />
       </div>
     </div>
   );
