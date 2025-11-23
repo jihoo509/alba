@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import UserBar from '@/components/UserBar';
 import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
 import TemplateSection from '@/components/TemplateSection';
-// ✅ [변경] StoreSettings 대신 PayrollSection을 가져옵니다.
 import PayrollSection from '@/components/PayrollSection';
 
 type Store = {
@@ -34,6 +33,8 @@ export type Employee = {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams(); // ✅ URL 파라미터 읽기
+  const pathname = usePathname();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const [loading, setLoading] = useState(true);
@@ -47,7 +48,17 @@ export default function DashboardPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
 
-  const [currentTab, setCurrentTab] = useState<TabKey>('employees');
+  // ✅ 탭 상태 초기값: URL에 있는 'tab' 값을 보고 결정 (없으면 'employees')
+  const [currentTab, setCurrentTab] = useState<TabKey>(
+    (searchParams.get('tab') as TabKey) || 'employees'
+  );
+
+  // ✅ 탭 변경 시 URL도 같이 변경
+  const handleTabChange = (tab: TabKey) => {
+    setCurrentTab(tab);
+    // URL 업데이트 (새로고침 없이 주소만 변경)
+    router.replace(`${pathname}?tab=${tab}`);
+  };
 
   // 매장 목록 로딩
   const loadStores = useCallback(async (userId: string) => {
@@ -147,7 +158,8 @@ export default function DashboardPage() {
       const newStore = { id: String(data.id), name: data.name };
       setStores(prev => [...prev, newStore]);
       setCurrentStoreId(newStore.id);
-      setCurrentTab('employees');
+      // 탭 변경 시 URL 업데이트도 같이
+      handleTabChange('employees');
     }
   }, [supabase]);
 
@@ -194,7 +206,6 @@ export default function DashboardPage() {
       );
     }
     
-    // ✅ [수정됨] 급여 탭: StoreSettings를 지우고 PayrollSection으로 교체!
     if (currentTab === 'payroll') {
       return (
         <PayrollSection currentStoreId={currentStoreId} />
@@ -214,7 +225,10 @@ export default function DashboardPage() {
         <StoreSelector
           stores={stores}
           currentStoreId={currentStoreId}
-          onChangeStore={(id) => { setCurrentStoreId(id); setCurrentTab('employees'); }}
+          onChangeStore={(id) => { 
+            setCurrentStoreId(id); 
+            handleTabChange('employees'); // 매장 바꾸면 기본 탭으로
+          }}
           creatingStore={creatingStore}
           onCreateStore={handleCreateStore}
           onDeleteStore={handleDeleteStore}
@@ -229,7 +243,8 @@ export default function DashboardPage() {
               ].map((tab) => (
                 <button
                   key={tab.key}
-                  onClick={() => setCurrentTab(tab.key as TabKey)}
+                  // ✅ 클릭 시 URL 업데이트 함수 호출
+                  onClick={() => handleTabChange(tab.key as TabKey)}
                   style={{
                     padding: '8px 14px',
                     borderBottom: currentTab === tab.key ? '2px solid dodgerblue' : '2px solid transparent',

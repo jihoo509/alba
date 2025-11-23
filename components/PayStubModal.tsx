@@ -26,7 +26,7 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
 
   if (!isOpen || !data) return null;
 
-  // 재계산
+  // 재계산 로직
   let newBasePay = 0;
   let newNightPay = 0;
   let newWeeklyPay = 0;
@@ -73,17 +73,17 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
     }}>
       <div style={{ backgroundColor: '#222', color: '#fff', borderRadius: 8, maxWidth: 600, width: '95%', maxHeight: '95vh', display: 'flex', flexDirection: 'column' }}>
         
-        {/* 상단 옵션 */}
+        {/* 옵션 조절 */}
         <div style={{ padding: 16, borderBottom: '1px solid #444', backgroundColor: '#333' }}>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 지급 옵션 (체크 해제 시 금액 차감)</h3>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 지급 옵션 (이 직원에게만 적용)</h3>
           <div style={{ display: 'flex', gap: 16 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} />
-              주휴수당 포함
+              주휴수당 지급 ({data.weeklyHolidayPay.toLocaleString()}원)
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} />
-              기타수당 포함
+              야간수당 지급 ({data.nightPay.toLocaleString()}원)
             </label>
           </div>
         </div>
@@ -154,28 +154,22 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
               </div>
             </div>
 
-            {/* ✅ [수정] 하단 공제 내역 정렬 (2열 Grid) */}
+            {/* ✅ [수정] 하단 공제 내역에 콤마(toLocaleString) 적용 */}
             <div style={{ marginTop: 25, borderTop: '1px solid #eee', paddingTop: 15 }}>
                <p style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 8, color: '#333' }}>[참고] 공제 내역 상세 (원단위 절사)</p>
                
-               <div style={{ 
-                 display: 'grid', 
-                 gridTemplateColumns: '1fr 1fr', // 2열 배치
-                 gap: '4px 20px', // 행간 4px, 열간 20px
-                 fontSize: 11, 
-                 color: '#666' 
-               }}>
+               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px', fontSize: 11, color: '#666' }}>
                   {data.type.includes('four') ? (
                     <>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>국민연금</span> <span>{Math.floor(currentTotal * 0.045 / 10) * 10}원</span></div>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>건강보험</span> <span>{Math.floor(currentTotal * 0.03545 / 10) * 10}원</span></div>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>장기요양</span> <span>{Math.floor((currentTotal * 0.03545) * 0.1295 / 10) * 10}원</span></div>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>고용보험</span> <span>{Math.floor(currentTotal * 0.009 / 10) * 10}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>국민연금</span> <span>{(Math.floor(currentTotal * 0.045 / 10) * 10).toLocaleString()}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>건강보험</span> <span>{(Math.floor(currentTotal * 0.03545 / 10) * 10).toLocaleString()}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>장기요양</span> <span>{(Math.floor((currentTotal * 0.03545) * 0.1295 / 10) * 10).toLocaleString()}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>고용보험</span> <span>{(Math.floor(currentTotal * 0.009 / 10) * 10).toLocaleString()}원</span></div>
                     </>
                   ) : (
                     <>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>소득세(3%)</span> <span>{Math.floor(currentTotal * 0.03 / 10) * 10}원</span></div>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>지방세(0.3%)</span> <span>{Math.floor(currentTotal * 0.003 / 10) * 10}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>소득세(3%)</span> <span>{(Math.floor(currentTotal * 0.03 / 10) * 10).toLocaleString()}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>지방세(0.3%)</span> <span>{(Math.floor(currentTotal * 0.003 / 10) * 10).toLocaleString()}원</span></div>
                     </>
                   )}
                </div>
@@ -187,6 +181,7 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
           </div>
         </div>
 
+        {/* 하단 버튼 */}
         <div style={{ padding: 16, backgroundColor: '#333', borderTop: '1px solid #444', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} style={{ padding: '10px 20px', background: '#555', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>닫기</button>
           <button onClick={handleSaveImage} style={{ padding: '10px 20px', background: 'seagreen', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
