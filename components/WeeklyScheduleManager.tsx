@@ -23,6 +23,7 @@ const DAYS = [
 type ShiftPattern = {
   id: string;
   name: string;
+  // ✅ DB 컬럼명과 일치시킴 (weekly_rules)
   weekly_rules: Record<number, { start: string; end: string }>;
   color: string;
 };
@@ -40,10 +41,10 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   const [timeRules, setTimeRules] = useState<Record<number, { start: string; end: string }>>({});
   const [lastInputTime, setLastInputTime] = useState({ start: '10:00', end: '16:00' });
 
-  // ✅ [추가] 시간 간격 설정 (기본 30분)
+  // 시간 간격 설정 (기본 30분)
   const [minuteInterval, setMinuteInterval] = useState(30);
 
-  // ✅ [추가] 간격에 따라 시간 목록 동적 생성 (useMemo)
+  // 간격에 따라 시간 목록 동적 생성
   const timeOptions = useMemo(() => {
     const options = [];
     for (let i = 0; i < 24 * 60; i += minuteInterval) {
@@ -221,7 +222,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     }
   };
 
-  // 요일 그룹화 (화면 표시용)
+  // 요일 그룹화
   const groupRulesByTime = (rules: Record<number, { start: string; end: string }>) => {
     const groups: Record<string, number[]> = {};
     Object.entries(rules).forEach(([dayStr, time]) => {
@@ -262,7 +263,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            {/* ✅ [추가] 시간 단위 선택 버튼 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <label style={{ fontSize: 13, color: '#aaa' }}>요일 및 시간 설정</label>
               <div style={{ display: 'flex', gap: 4 }}>
@@ -296,7 +296,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                       <span style={{ color: isChecked ? 'dodgerblue' : '#aaa' }}>{day.label}</span>
                     </label>
                     
-                    {/* 시간 선택 Select Box (동적으로 변함) */}
                     <select 
                       disabled={!isChecked}
                       value={timeRules[day.num]?.start || ''}
@@ -341,8 +340,9 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                   <button onClick={() => handleDeletePattern(pattern.id)} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer' }}>삭제</button>
                 </div>
 
+                {/* ✅ [수정됨] schedule_rules -> weekly_rules로 변경 완료 */}
                 <div style={{ padding: '12px 16px', fontSize: 13, color: '#ccc', borderBottom: '1px solid #444' }}>
-                  {groupRulesByTime(pattern.schedule_rules).map((group, idx) => (
+                  {groupRulesByTime(pattern.weekly_rules).map((group, idx) => (
                     <div key={idx} style={{ marginBottom: 4 }}>
                       <strong style={{ color: 'dodgerblue', marginRight: 6 }}>{group.labels}</strong> 
                       {group.timeRange}
@@ -401,5 +401,5 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
 }
 
 const inputStyle = { width: '100%', padding: 10, backgroundColor: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, boxSizing: 'border-box' as const };
-const timeSelectStyle = { padding: '6px', borderRadius: 4, border: '1px solid #555', color: '#fff', width: 120 }; // 너비 늘림
+const timeSelectStyle = { padding: '6px', borderRadius: 4, border: '1px solid #555', color: '#fff', width: 120 }; 
 const addBtnStyle = { width: '100%', padding: 12, backgroundColor: 'royalblue', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer', marginTop: 16 };
