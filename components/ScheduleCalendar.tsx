@@ -24,7 +24,23 @@ type Schedule = {
   employees?: { name: string };
 };
 
-export default function ScheduleCalendar({ currentStoreId, employees }: Props) {
+// ✅ [추가] 직원 이름으로 고유 색상을 만드는 함수 (해시값 기반)
+// 매번 똑같은 사람에게는 똑같은 색이 나옵니다.
+const getEmployeeColor = (name: string | undefined) => {
+  if (!name) return '#555'; // 미배정은 회색
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#9B59B6', 
+    '#3498DB', '#F1C40F', '#E67E22', '#2ECC71', '#E74C3C',
+    '#8E44AD', '#1ABC9C'
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
+export default function ScheduleCalendar({ currentStoreId, selectedTemplate, employees }: Props) {
   const supabase = createSupabaseBrowserClient();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -53,7 +69,7 @@ export default function ScheduleCalendar({ currentStoreId, employees }: Props) {
     fetchSchedules();
   }, [fetchSchedules]);
 
-  const handleAssignEmployee = async (scheduleId: string, employeeId: string) => {
+  const handleAssignEmployee = async (scheduleId: string, employeeId: string | null) => {
     const { error } = await supabase
       .from('schedules')
       .update({ employee_id: employeeId })
@@ -73,6 +89,22 @@ export default function ScheduleCalendar({ currentStoreId, employees }: Props) {
       fetchSchedules();
       setTargetSchedule(null);
     }
+  };
+
+  const handleDateClick = async (day: Date) => {
+    if (!currentStoreId || !selectedTemplate) return;
+    // (스케줄 생성 로직 - 기존과 동일)
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const { error } = await supabase.from('schedules').insert({
+      store_id: currentStoreId,
+      date: dateStr,
+      start_time: selectedTemplate.start_time,
+      end_time: selectedTemplate.end_time,
+      color: selectedTemplate.color,
+      employee_id: null 
+    });
+    if (error) alert('생성 실패: ' + error.message);
+    else fetchSchedules();
   };
 
   const monthStart = startOfMonth(currentDate);
@@ -99,7 +131,7 @@ export default function ScheduleCalendar({ currentStoreId, employees }: Props) {
       {/* 요일 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 10, textAlign: 'center' }}>
         {weeks.map((day, idx) => (
-          <div key={day} style={{ color: idx === 0 ? 'salmon' : idx === 6 ? 'skyblue' : '#aaa', fontWeight: 'bold' }}>{day}</div>
+          <div key={day} style={{ color: idx === 0 ? 'salmon' : idx === 6 ? 'skyblue' : '#aaa', fontWeight: 'bold', fontSize: 16 }}>{day}</div>
         ))}
       </div>
 
@@ -110,7 +142,7 @@ export default function ScheduleCalendar({ currentStoreId, employees }: Props) {
           const isCurrentMonth = isSameMonth(day, monthStart);
           const isTodayDate = isToday(day);
           
-          // ✅ [수정] 해당 날짜 스케줄 필터링 + 시간순 정렬 (오전 -> 오후)
+          // 시간순 정렬
           const daySchedules = schedules
             .filter(s => s.date === dateStr)
             .sort((a, b) => a.start_time.localeCompare(b.start_time));
@@ -118,25 +150,40 @@ export default function ScheduleCalendar({ currentStoreId, employees }: Props) {
           return (
             <div 
               key={day.toString()} 
+              onClick={() => handleDateClick(day)} // 템플릿 있으면 클릭 시 생성
               style={{ 
-                // ✅ [수정] 높이 고정 (내용이 없어도 120px 유지 -> 깔끔함)
-                minHeight: 120, 
-                padding: 6, 
+                minHeight: 130, // ✅ 높이 더 키움
+                padding: '4px 4px 12px 4px', 
                 borderRight: '1px solid #444', 
                 borderBottom: '1px solid #444',
-                backgroundColor: isCurrentMonth ? (isTodayDate ? '#2c3e50' : 'transparent') : '#222',
-                opacity: isCurrentMonth ? 1 : 0.5
+                backgroundColor: isCurrentMonth ? (isTodayDate ? '#222f3e' : 'transparent') : '#111',
+                opacity: isCurrentMonth ? 1 : 0.4,
+                cursor: selectedTemplate ? 'cell' : 'default', // 템플릿 선택 시 커서 변경
+                display: 'flex',
+                flexDirection: 'column',
               }}
             >
-              <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14, color: isTodayDate ? 'dodgerblue' : '#fff', fontWeight: isTodayDate ? 'bold' : 'normal' }}>
+              {/* 날짜 숫자 */}
+              <div style={{ 
+                textAlign: 'center', marginBottom: 6, fontSize: 14, 
+                color: isTodayDate ? 'dodgerblue' : '#fff', 
+                fontWeight: isTodayDate ? 'bold' : 'normal',
+                paddingTop: 4
+              }}>
                 {format(day, 'd')}
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* 스케줄 바 영역 (꽉 차게) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                 {daySchedules.map(sch => {
                   const start = sch.start_time.slice(0, 5);
                   const end = sch.end_time.slice(0, 5);
+                  const isNextDay = sch.start_time > sch.end_time;
+                  const empName = sch.employees?.name;
                   
+                  // ✅ 직원별 색상 적용
+                  const bgColor = empName ? getEmployeeColor(empName) : '#444'; 
+
                   return (
                     <div 
                       key={sch.id}
@@ -145,19 +192,24 @@ export default function ScheduleCalendar({ currentStoreId, employees }: Props) {
                         setTargetSchedule(sch);
                       }}
                       style={{
-                        backgroundColor: sch.color || '#555',
-                        color: '#fff', fontSize: 11, padding: '4px 6px', borderRadius: 4,
+                        backgroundColor: bgColor,
+                        color: '#fff', 
+                        fontSize: 12, 
+                        padding: '6px', // 패딩 늘림
+                        borderRadius: 6,
                         cursor: 'pointer', 
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                        border: sch.employee_id ? '1px solid rgba(255,255,255,0.3)' : '1px dashed rgba(255,255,255,0.5)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        border: sch.employee_id ? 'none' : '2px dashed #777', // 미배정은 점선 테두리
+                        textAlign: 'center', // ✅ 가운데 정렬
+                        opacity: empName ? 1 : 0.7,
+                        display: 'flex', flexDirection: 'column', justifyContent: 'center'
                       }}
                     >
-                      {/* ✅ [수정] (+1) 제거, 시간 심플하게 표시 */}
-                      <div style={{ fontSize: 10, opacity: 0.9, marginBottom: 1 }}>
-                        {start}~{end}
+                      <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 2 }}>
+                        {empName || '❓ 미배정'}
                       </div>
-                      <div style={{ fontWeight: 'bold', fontSize: 12 }}>
-                        {sch.employees?.name || <span style={{ color: '#ddd', fontWeight: 'normal' }}>미배정</span>}
+                      <div style={{ fontSize: 11, opacity: 0.9 }}>
+                        {start} ~ {end} {isNextDay && <span style={{ color: '#ffcccc', fontWeight: 'bold' }}>+1</span>}
                       </div>
                     </div>
                   );
@@ -172,30 +224,32 @@ export default function ScheduleCalendar({ currentStoreId, employees }: Props) {
       {targetSchedule && (
         <div style={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          backgroundColor: '#333', padding: 20, borderRadius: 8, boxShadow: '0 10px 25px rgba(0,0,0,0.8)',
-          zIndex: 100, border: '1px solid #555', minWidth: 300
+          backgroundColor: '#2c3e50', padding: 24, borderRadius: 12, boxShadow: '0 20px 50px rgba(0,0,0,0.8)',
+          zIndex: 100, border: '1px solid #555', minWidth: 320
         }}>
-          <h3 style={{ marginTop: 0, marginBottom: 16, color: '#fff' }}>직원 배정</h3>
-          <p style={{ color: '#ccc', fontSize: 14, marginBottom: 12 }}>
-            {targetSchedule.date} <br/> 
-            {targetSchedule.start_time} ~ {targetSchedule.end_time}
-          </p>
+          <h3 style={{ marginTop: 0, marginBottom: 16, color: '#fff', textAlign: 'center' }}>직원 배정 / 변경</h3>
+          <div style={{ textAlign: 'center', color: '#ddd', marginBottom: 20, fontSize: 15, backgroundColor: '#111', padding: 10, borderRadius: 6 }}>
+            📅 {targetSchedule.date} <br/> 
+            ⏰ {targetSchedule.start_time.slice(0,5)} ~ {targetSchedule.end_time.slice(0,5)}
+          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
             <button
-               onClick={() => handleAssignEmployee(targetSchedule.id, null as any)}
-               style={{ padding: '8px', background: '#555', color: '#fff', border: '1px solid #777', borderRadius: 4, cursor: 'pointer' }}
+               onClick={() => handleAssignEmployee(targetSchedule.id, null)}
+               style={{ padding: '10px', background: '#444', color: '#ccc', border: '1px solid #666', borderRadius: 6, cursor: 'pointer' }}
             >
-              (미배정)
+              (미배정으로)
             </button>
             {employees.map(emp => (
               <button
                 key={emp.id}
                 onClick={() => handleAssignEmployee(targetSchedule.id, emp.id)}
                 style={{
-                  padding: '8px', 
-                  background: targetSchedule.employee_id === emp.id ? 'dodgerblue' : '#444',
-                  color: '#fff', border: '1px solid #555', borderRadius: 4, cursor: 'pointer'
+                  padding: '10px', 
+                  background: targetSchedule.employee_id === emp.id ? 'dodgerblue' : '#333',
+                  color: '#fff', border: '1px solid #555', borderRadius: 6, cursor: 'pointer',
+                  fontWeight: targetSchedule.employee_id === emp.id ? 'bold' : 'normal',
+                  boxShadow: targetSchedule.employee_id === emp.id ? '0 0 10px dodgerblue' : 'none'
                 }}
               >
                 {emp.name}
@@ -203,9 +257,13 @@ export default function ScheduleCalendar({ currentStoreId, employees }: Props) {
             ))}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
-            <button onClick={() => handleDeleteSchedule(targetSchedule.id)} style={{ background: 'darkred', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 4, cursor: 'pointer' }}>스케줄 삭제</button>
-            <button onClick={() => setTargetSchedule(null)} style={{ background: '#555', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 4, cursor: 'pointer' }}>닫기</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <button onClick={() => handleDeleteSchedule(targetSchedule.id)} style={{ background: '#c0392b', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold' }}>
+              🗑️ 스케줄 삭제
+            </button>
+            <button onClick={() => setTargetSchedule(null)} style={{ background: '#555', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: 6, cursor: 'pointer' }}>
+              닫기
+            </button>
           </div>
         </div>
       )}
@@ -213,4 +271,4 @@ export default function ScheduleCalendar({ currentStoreId, employees }: Props) {
   );
 }
 
-const btnStyle = { padding: '6px 12px', background: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, cursor: 'pointer' };
+const btnStyle = { padding: '8px 16px', background: '#333', border: '1px solid #555', color: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 14 };
