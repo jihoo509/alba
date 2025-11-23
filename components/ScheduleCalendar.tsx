@@ -6,13 +6,15 @@ import {
   eachDayOfInterval, addMonths, subMonths, isSameMonth, isToday 
 } from 'date-fns';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
-import type { ScheduleTemplate, SimpleEmployee } from './TemplateSection';
+import type { ScheduleTemplate } from './TemplateSection';
 import TimeSelector from './TimeSelector';
+// ✅ [수정] Employee 타입을 dashboard에서 가져오도록 변경
+import type { Employee } from '@/app/dashboard/page';
 
 type Props = {
   currentStoreId: string | null;
   selectedTemplate: ScheduleTemplate | null;
-  employees: SimpleEmployee[];
+  employees: Employee[]; // ✅ SimpleEmployee -> Employee로 변경
 };
 
 type Schedule = {
@@ -26,7 +28,8 @@ type Schedule = {
   exclude_holiday_pay?: boolean;
 };
 
-const getEmployeeColor = (empId: string | null, employees: SimpleEmployee[]) => {
+// ✅ [수정] 타입 변경 반영
+const getEmployeeColor = (empId: string | null, employees: Employee[]) => {
   if (!empId) return '#444';
   const index = employees.findIndex(e => e.id === empId);
   const PALETTE = [
@@ -53,7 +56,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   const [editEmpId, setEditEmpId] = useState<string | null>(null);
   const [editExcludePay, setEditExcludePay] = useState(false);
 
-  // ✅ [추가] 일괄 삭제 모드
+  // 일괄 삭제 모드
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedDeleteIds, setSelectedDeleteIds] = useState<string[]>([]);
 
@@ -80,7 +83,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // ✅ [추가] 미래 스케줄 초기화
+  // 미래 스케줄 초기화
   const handleResetFuture = async () => {
     if (!confirm('정말 내일부터의 모든 스케줄을 초기화(삭제)하시겠습니까?')) return;
     
@@ -101,7 +104,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     }
   };
 
-  // ✅ [추가] 일괄 삭제 실행
+  // 일괄 삭제 실행
   const handleBulkDelete = async () => {
     if (selectedDeleteIds.length === 0) return;
     if (!confirm(`선택한 ${selectedDeleteIds.length}개의 스케줄을 삭제하시겠습니까?`)) return;
@@ -119,17 +122,15 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     }
   };
 
-  // 스케줄 클릭 핸들러 (모드에 따라 동작 분기)
+  // 스케줄 클릭 핸들러
   const handleScheduleClick = (e: React.MouseEvent, sch: Schedule) => {
     e.stopPropagation();
 
     if (isDeleteMode) {
-      // 삭제 모드일 땐 선택 토글
       setSelectedDeleteIds(prev => 
         prev.includes(sch.id) ? prev.filter(id => id !== sch.id) : [...prev, sch.id]
       );
     } else {
-      // 일반 모드일 땐 수정 팝업
       setTargetSchedule(sch);
       setEditDate(sch.date);
       setEditStartTime(sch.start_time.slice(0, 5));
@@ -143,7 +144,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
 
   // 날짜 클릭 (신규 추가)
   const handleDateClick = (day: Date) => {
-    if (isDeleteMode) return; // 삭제 모드에선 신규 추가 막음
+    if (isDeleteMode) return;
     
     setTargetSchedule(null);
     setEditDate(format(day, 'yyyy-MM-dd'));
@@ -268,8 +269,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                   const end = sch.end_time.slice(0, 5);
                   const empName = sch.employees?.name;
                   const bgColor = getEmployeeColor(sch.employee_id, employees); 
-                  
-                  // 삭제 모드일 때 선택 여부 시각화
                   const isSelectedForDelete = selectedDeleteIds.includes(sch.id);
 
                   return (
@@ -301,7 +300,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         })}
       </div>
 
-      {/* 팝업 (수정/추가) */}
+      {/* 팝업 */}
       {popupOpen && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
