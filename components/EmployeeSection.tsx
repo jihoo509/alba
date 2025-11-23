@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import type { Employee } from '@/app/dashboard/page';
 import EmployeeEditModal from './EmployeeEditModal';
-import DateSelector from './DateSelector'; // ✅ 날짜 선택기 가져오기
+import DateSelector from './DateSelector';
 
 type Props = {
   currentStoreId: string | null;
@@ -14,10 +14,11 @@ type Props = {
   onUpdateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
 };
 
+// ✅ [수정] 영어 코드를 한글로 완벽 변환 (과거 데이터 호환)
 function getEmploymentLabel(type: string) {
-  if (type === 'four_insurance') return '4대 보험';
-  if (type === 'freelancer_33') return '3.3% 프리랜서';
-  return type;
+  if (type === 'four_insurance' || type === 'employee' || type === 'insured') return '4대 보험';
+  if (type === 'freelancer_33' || type === 'freelancer') return '3.3% 프리랜서';
+  return type; // 그 외는 그대로 출력
 }
 
 export function EmployeeSection({
@@ -31,13 +32,11 @@ export function EmployeeSection({
   const [newEmpName, setNewEmpName] = useState('');
   const [newEmpWage, setNewEmpWage] = useState('');
   const [newEmpType, setNewEmpType] = useState<'freelancer_33' | 'four_insurance'>('freelancer_33');
-  // ✅ 날짜 상태 (YYYY-MM-DD)
   const [newEmpHireDate, setNewEmpHireDate] = useState('');
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-  // 근무/퇴사자 분리
   const today = new Date().toISOString().split('T')[0];
   const activeEmployees = employees.filter(emp => !emp.end_date || emp.end_date >= today);
   const retiredEmployees = employees.filter(emp => emp.end_date && emp.end_date < today);
@@ -50,7 +49,6 @@ export function EmployeeSection({
     
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
     if (!wage) return alert('시급을 입력해주세요.');
-    // 날짜가 비어있으면 오늘 날짜로 넣거나, 입력을 강제할 수 있습니다. (여기선 선택 사항으로 둠)
 
     await onCreateEmployee({
       name: newEmpName,
@@ -59,7 +57,6 @@ export function EmployeeSection({
       hireDate: newEmpHireDate || undefined,
     });
 
-    // 초기화
     setNewEmpName('');
     setNewEmpWage('');
     setNewEmpType('freelancer_33');
@@ -71,6 +68,9 @@ export function EmployeeSection({
     setIsEditOpen(true);
   };
 
+  // ✅ [수정] 뱃지 색상 로직 강화 (영어 코드 포함)
+  const isFreelancer = (type: string) => type.includes('free'); 
+
   const renderList = (list: Employee[], isRetired = false) => (
     <ul style={{ listStyle: 'none', padding: 0 }}>
       {list.map((emp) => (
@@ -79,7 +79,16 @@ export function EmployeeSection({
             <strong style={{ fontSize: 16 }}>{emp.name}</strong>
             <span style={{ color: '#ccc' }}>{emp.hourly_wage?.toLocaleString()}원</span>
             
-            <span style={{ fontSize: 12, padding: '2px 6px', borderRadius: 4, backgroundColor: emp.employment_type.includes('free') ? '#112a45' : '#133a1b', color: emp.employment_type.includes('free') ? '#40a9ff' : '#73d13d', border: `1px solid ${emp.employment_type.includes('free') ? '#1890ff' : '#52c41a'}` }}>
+            {/* 고용 형태 뱃지 */}
+            <span style={{ 
+              fontSize: 12, 
+              padding: '2px 6px', 
+              borderRadius: 4, 
+              // 프리랜서 계열이면 파란색, 아니면(4대보험) 초록색
+              backgroundColor: isFreelancer(emp.employment_type) ? '#112a45' : '#133a1b', 
+              color: isFreelancer(emp.employment_type) ? '#40a9ff' : '#73d13d', 
+              border: `1px solid ${isFreelancer(emp.employment_type) ? '#1890ff' : '#52c41a'}` 
+            }}>
               {getEmploymentLabel(emp.employment_type)}
             </span>
 
@@ -100,7 +109,7 @@ export function EmployeeSection({
 
   return (
     <section>
-      {/* ✅ 직원 등록 폼 (디자인 개선) */}
+      {/* 직원 등록 폼 */}
       <div style={{ marginBottom: 32, padding: 20, backgroundColor: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
         <h3 style={{ fontSize: 16, marginBottom: 12, color: '#ddd', marginTop: 0 }}>새 직원 등록</h3>
         
@@ -142,7 +151,7 @@ export function EmployeeSection({
               </select>
             </div>
 
-            {/* ✅ 입사일 (DateSelector 적용!) */}
+            {/* 입사일 (DateSelector 적용) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 12, color: '#aaa' }}>입사일</label>
               <div style={{ minWidth: 240 }}>
@@ -164,7 +173,7 @@ export function EmployeeSection({
                 cursor: 'pointer', 
                 borderRadius: 4, 
                 fontWeight: 'bold',
-                height: 38, // 높이 맞춤
+                height: 38, 
                 marginBottom: 1
               }}
             >

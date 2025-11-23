@@ -48,11 +48,14 @@ export default function DateSelector({ value, onChange, placeholder = '날짜 �
     }
   };
 
-  // 연도 목록 (1950 ~ 2035)
-  const years = Array.from({ length: 86 }, (_, i) => String(1950 + i));
-  // 월 목록 (01 ~ 12)
+  // ✅ [수정] 연도: 올해(2025)부터 1950년까지 "거꾸로" (최신순)
+  // 이러면 드롭다운 열자마자 2000년대를 금방 찾을 수 있습니다.
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => String(currentYear - i));
+
+  // 월 (01 ~ 12)
   const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
-  // 일 목록 (01 ~ 31)
+  // 일 (01 ~ 31)
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 
   return (
