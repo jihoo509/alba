@@ -20,11 +20,10 @@ const DAYS = [
   { num: 0, label: '일' },
 ];
 
-// 근무 패턴 타입 (템플릿 + 요일별 시간)
+// 근무 패턴 타입
 type ShiftPattern = {
   id: string;
   name: string;
-  // 요일별 시간 설정 (day_num -> { start, end })
   schedule_rules: Record<number, { start: string; end: string }>;
   color: string;
 };
@@ -32,75 +31,78 @@ type ShiftPattern = {
 export default function WeeklyScheduleManager({ currentStoreId, employees }: Props) {
   const supabase = createSupabaseBrowserClient();
   
-  // 상태 관리
-  const [patterns, setPatterns] = useState<ShiftPattern[]>([]); // 생성된 패턴 목록
-  const [assignments, setAssignments] = useState<Record<string, string[]>>({}); // 패턴ID -> [직원ID들]
+  const [patterns, setPatterns] = useState<ShiftPattern[]>([]); 
+  const [assignments, setAssignments] = useState<Record<string, string[]>>({}); 
   const [loading, setLoading] = useState(false);
 
   // 패턴 생성 폼 상태
   const [newPatternName, setNewPatternName] = useState('');
   const [newPatternColor, setNewPatternColor] = useState('#4ECDC4');
-  // 요일별 시간 입력 상태 (체크된 요일만 시간 입력 활성화)
+  
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [timeRules, setTimeRules] = useState<Record<number, { start: string; end: string }>>({});
 
-  // 1. 데이터 로딩
+  // ✅ [추가] 마지막으로 입력한 시간을 기억하는 상태 (자동 채우기용)
+  const [lastInputTime, setLastInputTime] = useState({ start: '10:00', end: '16:00' });
+
+  // 1. 데이터 로딩 (DB 연동 전이라 일단 스킵, 추후 실제 로딩 로직 필요)
   const loadData = useCallback(async () => {
-    setLoading(true);
-    
-    // 1) 템플릿(패턴) 가져오기
-    // (기존 schedule_templates 테이블을 활용하되, '요일별 시간'은 name이나 별도 컬럼에 저장해야 완벽하지만
-    //  지금은 기존 구조를 활용해 '가상 패턴'을 만드는 방식으로 구현합니다.)
-    //  -> 사장님 요청에 맞춰 '요일별 시간'을 저장할 수 있도록 DB에 JSON 컬럼을 추가하는 게 베스트지만,
-    //     일단 기존 템플릿 테이블을 '패턴 헤더'로 쓰고, 세부 규칙을 로컬에서 관리하는 형태로 가겠습니다.
-    //     (더 완벽하게 하려면 schedule_templates 테이블에 `rules` jsonb 컬럼을 추가하는 SQL이 필요합니다.)
-    
-    // 일단 화면 UI 구성을 먼저 잡겠습니다.
     setLoading(false);
   }, [currentStoreId, supabase]);
 
-  // 요일 체크 토글
+  // ✅ [수정] 요일 체크 토글 (체크 시 마지막 시간 자동 입력)
   const toggleDay = (day: number) => {
     if (selectedDays.includes(day)) {
+      // 체크 해제
       setSelectedDays(prev => prev.filter(d => d !== day));
       const newRules = { ...timeRules };
       delete newRules[day];
       setTimeRules(newRules);
     } else {
+      // 체크 (추가) -> ✨ 마지막으로 썼던 시간(lastInputTime)을 자동으로 넣어줌!
       setSelectedDays(prev => [...prev, day]);
-      // 기본 시간 세팅
-      setTimeRules(prev => ({ ...prev, [day]: { start: '10:00', end: '16:00' } }));
+      setTimeRules(prev => ({ 
+        ...prev, 
+        [day]: { start: lastInputTime.start, end: lastInputTime.end } 
+      }));
     }
   };
 
-  // 시간 변경
+  // ✅ [수정] 시간 변경 (변경 시 마지막 입력 시간도 업데이트)
   const handleTimeChange = (day: number, type: 'start' | 'end', value: string) => {
+    // 1. 해당 요일 시간 업데이트
     setTimeRules(prev => ({
       ...prev,
       [day]: { ...prev[day], [type]: value }
     }));
+
+    // 2. "마지막 입력 시간" 상태 업데이트 (다음 요일 체크할 때 쓰려고)
+    setLastInputTime(prev => ({
+      ...prev,
+      [type]: value
+    }));
   };
 
-  // (임시) 패턴 목록에 추가 (DB 연동 전 UI 확인용)
+  // 패턴 생성
   const handleAddPattern = () => {
     if (!newPatternName.trim()) return alert('패턴 이름을 입력해주세요.');
     if (selectedDays.length === 0) return alert('요일을 하나 이상 선택해주세요.');
 
     const newPattern: ShiftPattern = {
-      id: Math.random().toString(), // 임시 ID
+      id: Math.random().toString(),
       name: newPatternName,
       schedule_rules: timeRules,
       color: newPatternColor
     };
 
     setPatterns([...patterns, newPattern]);
+    
     // 초기화
     setNewPatternName('');
     setSelectedDays([]);
     setTimeRules({});
   };
 
-  // 직원 배정 토글
   const toggleAssignment = (patternId: string, empId: string) => {
     setAssignments(prev => {
       const currentList = prev[patternId] || [];
@@ -109,6 +111,26 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
       } else {
         return { ...prev, [patternId]: [...currentList, empId] };
       }
+    });
+  };
+
+  // ✅ [추가] 시간을 기준으로 요일을 묶어주는 함수 (화, 목 10:00~16:00 처럼 표시)
+  const groupRulesByTime = (rules: Record<number, { start: string; end: string }>) => {
+    const groups: Record<string, number[]> = {};
+    
+    Object.entries(rules).forEach(([dayStr, time]) => {
+      const day = Number(dayStr);
+      // 키를 "시작~종료" 로 잡음
+      const timeKey = `${time.start} ~ ${time.end}`;
+      if (!groups[timeKey]) groups[timeKey] = [];
+      groups[timeKey].push(day);
+    });
+
+    return Object.entries(groups).map(([timeRange, dayNums]) => {
+      // 요일 정렬 (월~일 순서)
+      dayNums.sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b));
+      const labels = dayNums.map(d => DAYS.find(day => day.num === d)?.label).join(', ');
+      return { timeRange, labels };
     });
   };
 
@@ -142,16 +164,19 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
               {DAYS.map(day => {
                 const isChecked = selectedDays.includes(day.num);
                 return (
-                  <div key={day.num} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: isChecked ? 1 : 0.5 }}>
+                  <div key={day.num} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: isChecked ? 1 : 0.4 }}>
+                    {/* 요일 체크박스 */}
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: 60, cursor: 'pointer' }}>
                       <input 
                         type="checkbox" 
                         checked={isChecked} 
                         onChange={() => toggleDay(day.num)}
+                        style={{ width: 16, height: 16 }}
                       />
                       <span style={{ fontWeight: isChecked ? 'bold' : 'normal', color: isChecked ? 'dodgerblue' : '#aaa' }}>{day.label}</span>
                     </label>
                     
+                    {/* ✅ [수정] 입력창 너비 늘림 (width: 120px) */}
                     <input 
                       type="time" 
                       disabled={!isChecked}
@@ -195,17 +220,14 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                   <button style={{ background: 'transparent', border: 'none', color: '#aaa', fontSize: 12, cursor: 'pointer' }}>삭제</button>
                 </div>
 
-                {/* 패턴 내용 (요일/시간) */}
+                {/* ✅ [수정] 패턴 내용 (시간 같으면 묶어서 표시) */}
                 <div style={{ padding: '12px 16px', fontSize: 13, color: '#ccc', borderBottom: '1px solid #444' }}>
-                  {DAYS.map(d => {
-                    const rule = pattern.schedule_rules[d.num];
-                    if (!rule) return null;
-                    return (
-                      <span key={d.num} style={{ marginRight: 12, display: 'inline-block', marginBottom: 4 }}>
-                        <strong style={{ color: 'dodgerblue' }}>{d.label}</strong> {rule.start}~{rule.end}
-                      </span>
-                    );
-                  })}
+                  {groupRulesByTime(pattern.schedule_rules).map((group, idx) => (
+                    <div key={idx} style={{ marginBottom: 4 }}>
+                      <strong style={{ color: 'dodgerblue', marginRight: 6 }}>{group.labels}</strong> 
+                      {group.timeRange}
+                    </div>
+                  ))}
                 </div>
 
                 {/* 직원 배정 영역 */}
@@ -266,5 +288,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
 
 // 스타일
 const inputStyle = { width: '100%', padding: 10, backgroundColor: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, boxSizing: 'border-box' as const };
-const timeInputStyle = { padding: '6px', backgroundColor: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, width: 80 };
+// ✅ [수정] 시간 입력칸 너비 늘림 (width: 120px)
+const timeInputStyle = { padding: '6px', backgroundColor: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, width: 120 };
 const addBtnStyle = { width: '100%', padding: 12, backgroundColor: 'royalblue', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer', marginTop: 16 };
