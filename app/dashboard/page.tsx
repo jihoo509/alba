@@ -13,7 +13,7 @@ import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
 import TemplateSection from '@/components/TemplateSection';
 // ✅ [추가] 급여 설정 컴포넌트 import
-import StoreSettings from '@/components/StoreSettings';
+import PayrollSection from '@/components/PayrollSection';
 
 type Store = {
   id: string;
@@ -338,6 +338,13 @@ export default function DashboardPage() {
       );
     }
 
+        if (currentTab === 'payroll') {
+      return (
+        // ✅ 여기만 이렇게 바꾸면 됩니다!
+        <PayrollSection currentStoreId={currentStoreId} />
+      );
+    }
+    
     // ✅ [수정] 급여 탭에 설정 컴포넌트 표시
     return (
       <div>
