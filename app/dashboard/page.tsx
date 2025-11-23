@@ -8,7 +8,9 @@ import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
 import TemplateSection from '@/components/TemplateSection';
 import PayrollSection from '@/components/PayrollSection';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns'; // 날짜 헬퍼 추가
+// ✅ [추가] 급여 계산 엔진 가져오기
+import { calculateMonthlyPayroll } from '@/lib/payroll';
 
 type Store = { id: string; name: string; };
 
@@ -20,10 +22,9 @@ export type Employee = {
   bank_name?: string; account_number?: string; end_date?: string;
 };
 
-// ✅ [핵심 변경 1] 원래 컴포넌트 이름을 Content로 변경 (export default 제거)
 function DashboardContent() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // 👈 이게 에러의 원인 (Suspense 필요)
+  const searchParams = useSearchParams();
   const pathname = usePathname();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
@@ -40,7 +41,9 @@ function DashboardContent() {
     (searchParams.get('tab') as TabKey) || 'home'
   );
 
+  // 홈 화면용 상태
   const [todayWorkers, setTodayWorkers] = useState<any[]>([]);
+  const [monthlyEstPay, setMonthlyEstPay] = useState<number>(0); // ✅ 이번 달 예상 급여
 
   const handleTabChange = (tab: TabKey) => {
     setCurrentTab(tab);
@@ -78,20 +81,57 @@ function DashboardContent() {
     setLoadingEmployees(false);
   }, [supabase]);
 
-  const loadTodaySchedule = useCallback(async (storeId: string) => {
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const { data, error } = await supabase
+  // ✅ [수정] 홈 화면 데이터 통합 로딩 (오늘 근무자 + 이번 달 급여)
+  const loadHomeStats = useCallback(async (storeId: string) => {
+    const today = new Date();
+    const todayStr = format(today, 'yyyy-MM-dd');
+
+    // 1. 오늘 근무자 조회
+    const { data: todayData } = await supabase
       .from('schedules')
       .select('*, employees(name, phone_number)')
       .eq('store_id', storeId)
       .eq('date', todayStr)
       .order('start_time', { ascending: true });
 
-    if (!error && data) {
-      setTodayWorkers(data);
-    } else {
-      setTodayWorkers([]);
+    if (todayData) setTodayWorkers(todayData);
+    else setTodayWorkers([]);
+
+    // 2. 이번 달 예상 급여 계산
+    // (매장 설정 + 직원 목록 + 이번 달 전체 스케줄 필요)
+    const { data: storeSettings } = await supabase.from('stores').select('*').eq('id', storeId).single();
+    const { data: allEmployees } = await supabase.from('employees').select('*').eq('store_id', storeId);
+    
+    const startOfMonthStr = format(startOfMonth(today), 'yyyy-MM-dd');
+    const endOfMonthStr = format(endOfMonth(today), 'yyyy-MM-dd');
+
+    // 넉넉하게 전월 20일 ~ 익월 10일까지 가져와서 계산기에 넣음 (주휴수당 정확도 위해)
+    // 하지만 홈 화면에서는 '대략적인 예상'이므로 이번 달 1일~말일 데이터만 있어도 충분히 유의미함.
+    // 계산기 엔진(calculateMonthlyPayroll)을 재활용하기 위해 데이터를 맞춰줌.
+    const fetchStart = format(new Date(today.getFullYear(), today.getMonth() - 1, 20), 'yyyy-MM-dd');
+    const fetchEnd = format(new Date(today.getFullYear(), today.getMonth() + 1, 10), 'yyyy-MM-dd');
+
+    const { data: monthSchedules } = await supabase
+      .from('schedules')
+      .select('*')
+      .eq('store_id', storeId)
+      .gte('date', fetchStart)
+      .lte('date', fetchEnd);
+
+    if (storeSettings && allEmployees && monthSchedules) {
+      const payrollResult = calculateMonthlyPayroll(
+        today.getFullYear(), 
+        today.getMonth() + 1, 
+        allEmployees, 
+        monthSchedules, 
+        storeSettings
+      );
+      
+      // 총 지급액(세전) 합계
+      const totalEst = payrollResult.reduce((acc, p) => acc + p.totalPay, 0);
+      setMonthlyEstPay(totalEst);
     }
+
   }, [supabase]);
 
   const handleCreateEmployee = useCallback(async (payload: any) => {
@@ -137,9 +177,9 @@ function DashboardContent() {
   useEffect(() => {
     if (currentStoreId) {
       loadEmployees(currentStoreId);
-      loadTodaySchedule(currentStoreId);
+      loadHomeStats(currentStoreId); // ✅ 홈 데이터 로딩
     }
-  }, [currentStoreId, loadEmployees, loadTodaySchedule]);
+  }, [currentStoreId, loadEmployees, loadHomeStats]);
 
   const renderTabContent = () => {
     if (!currentStoreId) return <p style={{ color: '#aaa', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
@@ -147,9 +187,10 @@ function DashboardContent() {
     if (currentTab === 'home') {
       return (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          {/* 왼쪽: 오늘 근무자 */}
           <div style={cardStyle}>
             <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #444', paddingBottom: 8 }}>
-              📅 오늘 근무자 ({todayWorkers.length}명)
+              📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
             </h3>
             {todayWorkers.length === 0 ? (
               <p style={{ color: '#777', textAlign: 'center', padding: 20 }}>오늘 예정된 근무가 없습니다.</p>
@@ -169,19 +210,38 @@ function DashboardContent() {
               </ul>
             )}
           </div>
-          <div style={cardStyle}>
-            <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #444', paddingBottom: 8 }}>
-              📢 시스템 공지사항
-            </h3>
-            <ul style={{ paddingLeft: 20, color: '#ccc', lineHeight: 1.6 }}>
-              <li>[업데이트] 급여 명세서 이미지 저장 기능 추가</li>
-              <li>[안내] 주간 스케줄 자동 생성 기능 사용법</li>
-              <li>[공지] 5인 이상 사업장 수당 계산 관련</li>
-            </ul>
+
+          {/* 오른쪽: 요약 및 공지 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            
+            {/* ✅ [추가] 이번 달 예상 급여 카드 */}
+            <div style={cardStyle}>
+              <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#aaa' }}>
+                💰 11월 예상 급여 지출 (세전)
+              </h3>
+              <div style={{ fontSize: 32, fontWeight: 'bold', color: '#fff' }}>
+                {monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span>
+              </div>
+              <p style={{ margin: '8px 0 0 0', fontSize: 13, color: '#666' }}>
+                * 현재까지 확정된 스케줄 기준 (주휴/야간 포함)
+              </p>
+            </div>
+
+            {/* 공지사항 */}
+            <div style={cardStyle}>
+              <h3 style={{ marginTop: 0, marginBottom: 12, borderBottom: '1px solid #444', paddingBottom: 8 }}>
+                📢 시스템 공지사항
+              </h3>
+              <ul style={{ paddingLeft: 20, color: '#ccc', lineHeight: 1.6, fontSize: 14, margin: 0 }}>
+                <li>[Tip] 급여 탭에서 <strong>명세서 이미지 저장</strong>이 가능합니다.</li>
+                <li>[안내] <strong>주간 스케줄 자동 생성</strong> 기능이 추가되었습니다.</li>
+              </ul>
+            </div>
           </div>
         </div>
       );
     }
+
     if (currentTab === 'employees') {
       return (
         <EmployeeSection
@@ -271,7 +331,6 @@ const cardStyle = {
   boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
 };
 
-// ✅ [핵심 변경 2] 진짜 Export되는 컴포넌트 (Suspense로 감싸기)
 export default function DashboardPage() {
   return (
     <Suspense fallback={<div style={{ padding: 40, color: '#fff' }}>대시보드 로딩 중...</div>}>
