@@ -21,7 +21,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
   const [payrollData, setPayrollData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [storeSettings, setStoreSettings] = useState<any>(null);
-
   const [selectedPayStub, setSelectedPayStub] = useState<any>(null);
 
   const loadAndCalculate = useCallback(async () => {
@@ -31,6 +30,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
     const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
     setStoreSettings(storeData);
 
+    // 직원 정보 가져올 때 생년월일, 전화번호 등 다 가져옴
     const { data: employees } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
 
     const startStr = `${year}-${String(month - 1).padStart(2,'0')}-20`;
@@ -54,26 +54,38 @@ export default function PayrollSection({ currentStoreId }: Props) {
     loadAndCalculate();
   }, [loadAndCalculate]);
 
-  // 엑셀 다운로드
+  // ✅ [수정] 엑셀 다운로드 (포맷팅 및 컬럼 순서 적용)
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
 
+    // 천 단위 콤마 찍는 함수
+    const fmt = (num: number) => num.toLocaleString();
+
     const excelRows = payrollData.map(p => ({
       '이름': p.name,
-      '총지급급여': p.totalPay,
-      '세후지급급여': p.finalPay,
-      // ✅ [수정] 바뀐 변수명 적용
-      '소득세': p.taxDetails.incomeTax,
-      '지방소득세': p.taxDetails.localTax,
-      '국민연금': p.taxDetails.pension,
-      '건강보험': p.taxDetails.health,
-      '장기요양': p.taxDetails.care,
-      '고용보험': p.taxDetails.employment,
-      '은행': p.details.bank,
-      '계좌번호': p.details.account
+      '생년월일': p.birthDate || '-',
+      '전화번호': p.phoneNumber || '-',
+      '은행': p.details.bank || '-',
+      '계좌번호': p.details.account || '-',
+      '총지급급여': fmt(p.totalPay),
+      '세후지급급여': fmt(p.finalPay),
+      '소득세': fmt(p.taxDetails.incomeTax),
+      '지방소득세': fmt(p.taxDetails.localTax),
+      '국민연금': fmt(p.taxDetails.pension),
+      '건강보험': fmt(p.taxDetails.health),
+      '장기요양': fmt(p.taxDetails.care),
+      '고용보험': fmt(p.taxDetails.employment),
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelRows);
+    
+    // 컬럼 너비 자동 조정 (대략적으로)
+    ws['!cols'] = [
+      { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 20 },
+      { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, 
+      { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }
+    ];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "급여대장");
     XLSX.writeFile(wb, `${year}년_${month}월_세무용_급여대장.xlsx`);
@@ -123,7 +135,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
                   <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.totalPay.toLocaleString()}</td>
                   <td style={{ ...tdStyle, color: '#ffeaa7', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
                   
-                  {/* ✅ [수정] 바뀐 변수명 적용 (incomeTax, localTax) */}
                   <td style={{...tdStyle, color: '#aaa'}}>{p.taxDetails.incomeTax > 0 ? p.taxDetails.incomeTax.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#aaa'}}>{p.taxDetails.localTax > 0 ? p.taxDetails.localTax.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.pension > 0 ? p.taxDetails.pension.toLocaleString() : '-'}</td>
@@ -132,10 +143,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.employment > 0 ? p.taxDetails.employment.toLocaleString() : '-'}</td>
 
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
-                    <button 
-                      onClick={() => setSelectedPayStub(p)}
-                      style={{ padding: '4px 8px', fontSize: 12, cursor: 'pointer', borderRadius: 4, border: '1px solid #777', background: 'transparent', color: '#fff' }}
-                    >
+                    <button onClick={() => setSelectedPayStub(p)} style={{ padding: '4px 8px', fontSize: 12, cursor: 'pointer', borderRadius: 4, border: '1px solid #777', background: 'transparent', color: '#fff' }}>
                       명세서 보기
                     </button>
                   </td>
@@ -145,10 +153,8 @@ export default function PayrollSection({ currentStoreId }: Props) {
           </table>
         </div>
       )}
-
       <p style={{ fontSize: 13, color: '#777', marginTop: 12 }}>
-        * 4대보험은 표준 요율(2024/25) 기준으로 자동 계산되었습니다. <br/>
-        * [명세서 보기]를 눌러 직원에게 보낼 이미지를 저장하세요.
+        * 4대보험은 표준 요율(2024/25) 기준으로 자동 계산되었습니다.
       </p>
 
       <PayStubModal 

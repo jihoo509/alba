@@ -161,6 +161,8 @@ export function calculateMonthlyPayroll(
       name: emp.name,
       wage: emp.hourly_wage,
       type: emp.employment_type,
+      birthDate: emp.birth_date,
+      phoneNumber: emp.phone_number,
       totalHours: (totalWorkMinutes / 60).toFixed(1),
       basePay: totalBasePay,
       nightPay: totalNightPay,
