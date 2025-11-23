@@ -1,20 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // ✅ useRef 추가
 import { 
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, 
   eachDayOfInterval, addMonths, subMonths, isSameMonth, isToday 
 } from 'date-fns';
+import html2canvas from 'html2canvas'; // ✅ html2canvas 추가 (없으면 npm install html2canvas)
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import type { ScheduleTemplate } from './TemplateSection';
 import TimeSelector from './TimeSelector';
-// ✅ [수정] Employee 타입을 dashboard에서 가져오도록 변경
 import type { Employee } from '@/app/dashboard/page';
 
 type Props = {
   currentStoreId: string | null;
   selectedTemplate: ScheduleTemplate | null;
-  employees: Employee[]; // ✅ SimpleEmployee -> Employee로 변경
+  employees: Employee[]; 
 };
 
 type Schedule = {
@@ -28,7 +28,6 @@ type Schedule = {
   exclude_holiday_pay?: boolean;
 };
 
-// ✅ [수정] 타입 변경 반영
 const getEmployeeColor = (empId: string | null, employees: Employee[]) => {
   if (!empId) return '#444';
   const index = employees.findIndex(e => e.id === empId);
@@ -45,6 +44,9 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   const [currentDate, setCurrentDate] = useState(new Date());
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   
+  // ✅ 캡쳐를 위한 Ref 생성
+  const calendarRef = useRef<HTMLDivElement>(null);
+
   const [targetSchedule, setTargetSchedule] = useState<Schedule | null>(null);
   const [popupOpen, setPopupOpen] = useState(false);
   const [isNew, setIsNew] = useState(false);
@@ -82,6 +84,31 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
+
+  // ✅ 이미지 다운로드 함수 추가
+  const handleDownloadImage = async () => {
+    if (!calendarRef.current) return;
+
+    try {
+      const canvas = await html2canvas(calendarRef.current, {
+        backgroundColor: '#1a1a1a', // 배경색 지정 (투명 방지)
+        scale: 2, // 고화질 저장
+        ignoreElements: (element) => {
+           // (선택사항) 캡쳐 시 버튼들을 숨기고 싶다면 여기에 로직 추가 가능
+           // 현재는 그냥 버튼까지 다 같이 찍히도록 둠
+           return false; 
+        }
+      });
+
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = `${format(currentDate, 'yyyy-MM')}_스케줄표.png`;
+      link.click();
+    } catch (err) {
+      console.error('이미지 저장 실패:', err);
+      alert('이미지 저장 중 오류가 발생했습니다.');
+    }
+  };
 
   // 미래 스케줄 초기화
   const handleResetFuture = async () => {
@@ -204,7 +231,11 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   const weeks = ['일', '월', '화', '수', '목', '금', '토'];
 
   return (
-    <div style={{ backgroundColor: '#1a1a1a', padding: 20, borderRadius: 8, border: '1px solid #333', position: 'relative' }}>
+    // ✅ 최상위 div에 ref 연결 (이 영역 전체가 찍힘)
+    <div 
+      ref={calendarRef}
+      style={{ backgroundColor: '#1a1a1a', padding: 20, borderRadius: 8, border: '1px solid #333', position: 'relative' }}
+    >
       
       {/* 헤더 + 기능 버튼들 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
@@ -215,6 +246,16 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
+          {/* ✅ 이미지 저장 버튼 추가 (삭제 모드가 아닐 때만 노출) */}
+          {!isDeleteMode && (
+            <button 
+              onClick={handleDownloadImage} 
+              style={{ ...btnStyle, background: 'dodgerblue', border: 'none', fontWeight: 'bold' }}
+            >
+              📷 이미지 저장
+            </button>
+          )}
+
           {isDeleteMode ? (
             <>
               <span style={{ color: 'salmon', alignSelf: 'center', fontSize: 14 }}>삭제할 항목 선택 중... ({selectedDeleteIds.length})</span>
@@ -300,7 +341,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         })}
       </div>
 
-      {/* 팝업 */}
+      {/* 팝업 (이미지 저장 시 얘는 캡쳐 안됨 - 보통 팝업이 닫혀있을 때 누르므로) */}
       {popupOpen && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
