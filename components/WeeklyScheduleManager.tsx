@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import type { SimpleEmployee } from './TemplateSection';
-import TimeSelector from './TimeSelector'; // ✅ 수정된 선택기
+import TimeSelector from './TimeSelector';
 
 type Props = {
   currentStoreId: string;
@@ -38,9 +38,18 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [timeRules, setTimeRules] = useState<Record<number, { start: string; end: string }>>({});
   const [lastInputTime, setLastInputTime] = useState({ start: '10:00', end: '16:00' });
-
-  // ✅ [부활] 시간 간격 설정 상태
   const [minuteInterval, setMinuteInterval] = useState(30);
+
+  const timeOptions = useMemo(() => {
+    const options = [];
+    for (let i = 0; i < 24 * 60; i += minuteInterval) {
+      const h = Math.floor(i / 60);
+      const m = i % 60;
+      const label = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      options.push(label);
+    }
+    return options;
+  }, [minuteInterval]);
 
   const loadData = useCallback(async () => {
     if (!currentStoreId) return;
@@ -67,7 +76,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
       });
       setAssignments(map);
     }
-    
     setLoading(false);
   }, [currentStoreId, supabase]);
 
@@ -106,9 +114,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
       store_id: currentStoreId,
       name: newPatternName,
       weekly_rules: timeRules,
-      start_time: '00:00',
-      end_time: '00:00',
-      color: '#4ECDC4'
+      start_time: '00:00', end_time: '00:00', color: '#4ECDC4'
     });
 
     if (error) alert('저장 실패: ' + error.message);
@@ -129,32 +135,23 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
 
   const toggleAssignment = async (templateId: string, empId: string) => {
     const currentAssignedTemplate = assignments[empId];
-
     if (currentAssignedTemplate === templateId) {
       await supabase.from('weekly_schedules').delete().match({ employee_id: empId });
-      setAssignments(prev => {
-        const next = { ...prev };
-        delete next[empId];
-        return next;
-      });
+      setAssignments(prev => { const next = { ...prev }; delete next[empId]; return next; });
     } else {
       const { error } = await supabase.from('weekly_schedules').upsert({
         store_id: currentStoreId,
         employee_id: empId,
         template_id: templateId
       }, { onConflict: 'employee_id' });
-
-      if (!error) {
-        setAssignments(prev => ({ ...prev, [empId]: templateId }));
-      }
+      if (!error) setAssignments(prev => ({ ...prev, [empId]: templateId }));
     }
   };
 
   const handleAutoGenerate = async () => {
     const year = new Date().getFullYear();
     const month = new Date().getMonth();
-    
-    if (!confirm(`${year}년 ${month + 1}월 스케줄을 자동 생성하시겠습니까?\n(설정된 패턴대로 달력에 채워집니다)`)) return;
+    if (!confirm(`${year}년 ${month + 1}월 스케줄을 자동 생성하시겠습니까?`)) return;
 
     setLoading(true);
     const lastDay = new Date(year, month + 1, 0).getDate();
@@ -168,16 +165,11 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
         const date = new Date(year, month, d);
         const dayOfWeek = date.getDay();
         const rule = pattern.weekly_rules[dayOfWeek];
-
         if (rule) {
           const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
           newSchedules.push({
-            store_id: currentStoreId,
-            employee_id: empId,
-            date: dateStr,
-            start_time: rule.start,
-            end_time: rule.end,
-            color: pattern.color || '#4ECDC4'
+            store_id: currentStoreId, employee_id: empId, date: dateStr,
+            start_time: rule.start, end_time: rule.end, color: pattern.color || '#4ECDC4'
           });
         }
       }
@@ -191,7 +183,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
 
     const { error } = await supabase.from('schedules').insert(newSchedules);
     setLoading(false);
-    
     if (error) alert('생성 실패: ' + error.message);
     else {
       alert('성공적으로 생성되었습니다! 달력을 확인하세요.');
@@ -199,12 +190,19 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     }
   };
 
-  // 요일 그룹화 (13:00 ~ 22:00 처럼 시간 포맷팅)
+  // ✅ [추가] 근무 시간 계산 함수 (익일 고려)
+  const calculateHours = (start: string, end: string) => {
+    const [sH, sM] = start.split(':').map(Number);
+    const [eH, eM] = end.split(':').map(Number);
+    let minutes = (eH * 60 + eM) - (sH * 60 + sM);
+    if (minutes < 0) minutes += 24 * 60; // 익일 처리
+    return (minutes / 60).toFixed(1); // 소수점 1자리 (예: 5.5시간)
+  };
+
   const groupRulesByTime = (rules: Record<number, { start: string; end: string }>) => {
     const groups: Record<string, number[]> = {};
     Object.entries(rules).forEach(([dayStr, time]) => {
       const day = Number(dayStr);
-      // 시간 포맷팅 (TimeSelector가 24시간제로 저장하므로 보기 좋게 변환은 선택사항)
       const timeKey = `${time.start} ~ ${time.end}`;
       if (!groups[timeKey]) groups[timeKey] = [];
       groups[timeKey].push(day);
@@ -212,7 +210,12 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     return Object.entries(groups).map(([timeRange, dayNums]) => {
       dayNums.sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b));
       const labels = dayNums.map(d => DAYS.find(day => day.num === d)?.label).join(', ');
-      return { timeRange, labels };
+      
+      // 시간 분리해서 근무 시간 계산
+      const [start, end] = timeRange.split(' ~ ');
+      const duration = calculateHours(start, end);
+
+      return { timeRange, labels, duration };
     });
   };
 
@@ -231,36 +234,15 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
           
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 4 }}>패턴 이름</label>
-            <input 
-              type="text" 
-              placeholder="예: 평일 오픈조, 주말 마감조" 
-              value={newPatternName}
-              onChange={(e) => setNewPatternName(e.target.value)}
-              style={inputStyle}
-            />
+            <input type="text" placeholder="예: 평일 오픈조, 주말 마감조" value={newPatternName} onChange={(e) => setNewPatternName(e.target.value)} style={inputStyle} />
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            {/* ✅ [부활] 시간 단위 선택 버튼 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <label style={{ fontSize: 13, color: '#aaa' }}>요일 및 시간 설정</label>
               <div style={{ display: 'flex', gap: 4 }}>
                 {[30, 10, 5].map((min) => (
-                  <button
-                    key={min}
-                    onClick={() => setMinuteInterval(min)}
-                    style={{
-                      padding: '2px 8px',
-                      fontSize: 11,
-                      borderRadius: 4,
-                      border: '1px solid #555',
-                      cursor: 'pointer',
-                      backgroundColor: minuteInterval === min ? 'dodgerblue' : '#333',
-                      color: minuteInterval === min ? '#fff' : '#aaa',
-                    }}
-                  >
-                    {min}분 단위
-                  </button>
+                  <button key={min} onClick={() => setMinuteInterval(min)} style={{ padding: '2px 8px', fontSize: 11, borderRadius: 4, border: '1px solid #555', cursor: 'pointer', backgroundColor: minuteInterval === min ? 'dodgerblue' : '#333', color: minuteInterval === min ? '#fff' : '#aaa' }}>{min}분</button>
                 ))}
               </div>
             </div>
@@ -274,38 +256,23 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                       <input type="checkbox" checked={isChecked} onChange={() => toggleDay(day.num)} />
                       <span style={{ color: isChecked ? 'dodgerblue' : '#aaa' }}>{day.label}</span>
                     </label>
-                    
-                    {/* ✅ TimeSelector에 interval 전달 */}
-                    <TimeSelector 
-                      value={timeRules[day.num]?.start || '10:00'}
-                      onChange={(val) => handleTimeChange(day.num, 'start', val)}
-                      interval={minuteInterval}
-                    />
+                    <TimeSelector value={timeRules[day.num]?.start || '10:00'} onChange={(val) => handleTimeChange(day.num, 'start', val)} interval={minuteInterval} />
                     <span>~</span>
-                    <TimeSelector 
-                      value={timeRules[day.num]?.end || '16:00'}
-                      onChange={(val) => handleTimeChange(day.num, 'end', val)}
-                      interval={minuteInterval}
-                    />
+                    <TimeSelector value={timeRules[day.num]?.end || '16:00'} onChange={(val) => handleTimeChange(day.num, 'end', val)} interval={minuteInterval} />
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <button onClick={handleAddPattern} style={addBtnStyle}>
-            이 패턴 생성하기
-          </button>
+          <button onClick={handleAddPattern} style={addBtnStyle}>이 패턴 생성하기</button>
         </div>
 
-        {/* 오른쪽: 생성된 패턴 목록 & 직원 배정 */}
+        {/* 오른쪽: 직원 배정 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <h4 style={{ marginTop: 0, marginBottom: 0, color: '#fff' }}>2. 직원 배정하기</h4>
-          
           {patterns.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#666', border: '1px dashed #444', borderRadius: 8 }}>
-              생성된 패턴이 없습니다.
-            </div>
+            <div style={{ padding: 40, textAlign: 'center', color: '#666', border: '1px dashed #444', borderRadius: 8 }}>생성된 패턴이 없습니다.</div>
           ) : (
             patterns.map(pattern => (
               <div key={pattern.id} style={{ backgroundColor: '#1f1f1f', border: '1px solid #444', borderRadius: 8, overflow: 'hidden' }}>
@@ -313,39 +280,24 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                   <strong style={{ color: '#fff' }}>{pattern.name}</strong>
                   <button onClick={() => handleDeletePattern(pattern.id)} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer' }}>삭제</button>
                 </div>
-
                 <div style={{ padding: '12px 16px', fontSize: 13, color: '#ccc', borderBottom: '1px solid #444' }}>
                   {groupRulesByTime(pattern.weekly_rules).map((group, idx) => (
                     <div key={idx} style={{ marginBottom: 4 }}>
                       <strong style={{ color: 'dodgerblue', marginRight: 6 }}>{group.labels}</strong> 
-                      {group.timeRange}
+                      {group.timeRange} 
+                      {/* ✅ [추가] 근무 시간 표시 (예: 6.0시간) */}
+                      <span style={{ marginLeft: 8, color: '#777', fontSize: 12 }}>({group.duration}시간)</span>
                     </div>
                   ))}
                 </div>
-
                 <div style={{ padding: '12px 16px' }}>
-                  <p style={{ fontSize: 12, color: '#888', margin: '0 0 8px 0' }}>이 패턴으로 근무할 직원 선택:</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {employees.map(emp => {
                       const assignedTmplId = assignments[emp.id];
                       const isAssignedHere = assignedTmplId === pattern.id;
                       const isAssignedElsewhere = assignedTmplId && !isAssignedHere;
-
                       return (
-                        <button
-                          key={emp.id}
-                          onClick={() => toggleAssignment(pattern.id, emp.id)}
-                          disabled={!!isAssignedElsewhere}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: 20,
-                            border: isAssignedHere ? '1px solid dodgerblue' : '1px solid #555',
-                            backgroundColor: isAssignedHere ? 'rgba(30, 144, 255, 0.2)' : 'transparent',
-                            color: isAssignedHere ? 'dodgerblue' : isAssignedElsewhere ? '#444' : '#aaa',
-                            cursor: isAssignedElsewhere ? 'not-allowed' : 'pointer',
-                            textDecoration: isAssignedElsewhere ? 'line-through' : 'none'
-                          }}
-                        >
+                        <button key={emp.id} onClick={() => toggleAssignment(pattern.id, emp.id)} disabled={!!isAssignedElsewhere} style={{ padding: '6px 12px', borderRadius: 20, border: isAssignedHere ? '1px solid dodgerblue' : '1px solid #555', backgroundColor: isAssignedHere ? 'rgba(30, 144, 255, 0.2)' : 'transparent', color: isAssignedHere ? 'dodgerblue' : isAssignedElsewhere ? '#444' : '#aaa', cursor: isAssignedElsewhere ? 'not-allowed' : 'pointer', textDecoration: isAssignedElsewhere ? 'line-through' : 'none' }}>
                           {emp.name} {isAssignedHere && '✓'}
                         </button>
                       );
@@ -359,13 +311,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
       </div>
 
       <div style={{ marginTop: 32, textAlign: 'right' }}>
-        <button 
-          onClick={handleAutoGenerate}
-          style={{ 
-            padding: '12px 24px', backgroundColor: 'seagreen', color: '#fff', 
-            border: 'none', borderRadius: 6, fontWeight: 'bold', fontSize: 16, cursor: 'pointer' 
-          }}
-        >
+        <button onClick={handleAutoGenerate} style={{ padding: '12px 24px', backgroundColor: 'seagreen', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', fontSize: 16, cursor: 'pointer' }}>
           이 설정대로 이번 달 스케줄 자동 생성하기
         </button>
       </div>

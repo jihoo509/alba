@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import ScheduleCalendar from '@/components/ScheduleCalendar';
-import ScheduleTemplateManager from '@/components/ScheduleTemplateManager';
-// ✅ [필수] 이 줄이 빠져서 에러가 났을 수 있습니다.
 import WeeklyScheduleManager from '@/components/WeeklyScheduleManager';
 
 type Props = {
@@ -19,7 +17,6 @@ export type ScheduleTemplate = {
   color: string;
 };
 
-// 직원 타입 (간략화)
 export type SimpleEmployee = {
   id: string;
   name: string;
@@ -27,17 +24,14 @@ export type SimpleEmployee = {
 
 export default function TemplateSection({ currentStoreId }: Props) {
   const supabase = createSupabaseBrowserClient();
-  
-  const [selectedTemplate, setSelectedTemplate] = useState<ScheduleTemplate | null>(null);
   const [employees, setEmployees] = useState<SimpleEmployee[]>([]);
 
-  // ✅ 직원 목록 불러오기 (달력에 넘겨주기 위함)
   const fetchEmployees = useCallback(async () => {
     const { data, error } = await supabase
       .from('employees')
       .select('id, name')
       .eq('store_id', currentStoreId)
-      .eq('is_active', true); // 퇴사자 제외
+      .eq('is_active', true);
 
     if (!error && data) {
       setEmployees(data);
@@ -50,53 +44,27 @@ export default function TemplateSection({ currentStoreId }: Props) {
 
   return (
     <div>
-      {/* 상단 안내 문구 */}
+      {/* 상단 안내 */}
       <div style={{ marginBottom: 16 }}>
         <p style={{ fontSize: 14, color: '#ccc', margin: 0 }}>
-          {selectedTemplate ? (
-            <span>
-              현재 선택된 템플릿: 
-              <strong style={{ color: selectedTemplate.color, marginLeft: 6 }}>
-                {selectedTemplate.name} ({selectedTemplate.start_time}~{selectedTemplate.end_time})
-              </strong>
-              <span style={{ marginLeft: 8, color: '#888' }}>→ 달력 날짜를 클릭하세요! (중복 배정 가능)</span>
-            </span>
-          ) : (
-            "오른쪽에서 템플릿을 선택하고, 달력 날짜를 클릭하여 배정하세요."
-          )}
+          월간 스케줄을 확인하고 관리합니다. 하단에서 <strong>[자동 생성 설정]</strong>을 할 수 있습니다.
         </p>
       </div>
 
-      {/* 2열 레이아웃 (왼쪽: 달력 / 오른쪽: 템플릿 관리) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 20, alignItems: 'start' }}>
-        
-        {/* 1. 달력 (직원 목록 employees 전달!) */}
-        <div>
-          <ScheduleCalendar 
-            currentStoreId={currentStoreId} 
-            selectedTemplate={selectedTemplate}
-            employees={employees} 
-          />
-        </div>
+      {/* ✅ [수정] 2열 레이아웃 삭제 -> 달력 단독 배치 (Full Width) */}
+      <div style={{ marginBottom: 40 }}>
+        <ScheduleCalendar 
+          currentStoreId={currentStoreId} 
+          selectedTemplate={null} // 이제 개별 찍기 모드는 안 쓰므로 null
+          employees={employees} 
+        />
+      </div>
 
-        {/* 2. 템플릿 관리 */}
-        <div>
-          <ScheduleTemplateManager 
-            currentStoreId={currentStoreId} 
-            selectedTemplate={selectedTemplate}
-            onSelectTemplate={setSelectedTemplate}
-          />
-        </div>
-
-      </div> 
-      {/* 👆 여기서 Grid 레이아웃(좌우 배치)은 끝납니다. */}
-
-      {/* ✅ [추가] 주간 스케줄 관리자 (Grid 밖, 하단에 배치) */}
+      {/* 하단: 주간 스케줄 관리자 */}
       <WeeklyScheduleManager 
         currentStoreId={currentStoreId} 
         employees={employees} 
       />
-
     </div>
   );
 }
