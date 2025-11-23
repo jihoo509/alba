@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
-import type { SimpleEmployee, ScheduleTemplate } from './TemplateSection';
+import type { SimpleEmployee } from './TemplateSection';
 
 type Props = {
   currentStoreId: string;
   employees: SimpleEmployee[];
 };
 
-// 요일 배열 (월~일 순서로 배치하는 게 관리하기 편함)
+// 요일 정의
 const DAYS = [
   { num: 1, label: '월' },
   { num: 2, label: '화' },
@@ -20,186 +20,251 @@ const DAYS = [
   { num: 0, label: '일' },
 ];
 
+// 근무 패턴 타입 (템플릿 + 요일별 시간)
+type ShiftPattern = {
+  id: string;
+  name: string;
+  // 요일별 시간 설정 (day_num -> { start, end })
+  schedule_rules: Record<number, { start: string; end: string }>;
+  color: string;
+};
+
 export default function WeeklyScheduleManager({ currentStoreId, employees }: Props) {
   const supabase = createSupabaseBrowserClient();
   
-  const [templates, setTemplates] = useState<ScheduleTemplate[]>([]);
-  // weeklyData[employeeId][dayOfWeek] = templateId
-  const [weeklyMap, setWeeklyMap] = useState<Record<string, Record<number, string>>>({});
+  // 상태 관리
+  const [patterns, setPatterns] = useState<ShiftPattern[]>([]); // 생성된 패턴 목록
+  const [assignments, setAssignments] = useState<Record<string, string[]>>({}); // 패턴ID -> [직원ID들]
   const [loading, setLoading] = useState(false);
 
-  // 1. 템플릿 목록 & 기존 설정 불러오기
+  // 패턴 생성 폼 상태
+  const [newPatternName, setNewPatternName] = useState('');
+  const [newPatternColor, setNewPatternColor] = useState('#4ECDC4');
+  // 요일별 시간 입력 상태 (체크된 요일만 시간 입력 활성화)
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [timeRules, setTimeRules] = useState<Record<number, { start: string; end: string }>>({});
+
+  // 1. 데이터 로딩
   const loadData = useCallback(async () => {
     setLoading(true);
     
-    // 템플릿 로딩
-    const { data: tmplData } = await supabase
-      .from('schedule_templates')
-      .select('*')
-      .eq('store_id', currentStoreId);
-    if (tmplData) setTemplates(tmplData);
-
-    // 주간 설정 로딩
-    const { data: weeklyData } = await supabase
-      .from('weekly_schedules')
-      .select('*')
-      .eq('store_id', currentStoreId);
-
-    if (weeklyData) {
-      const map: Record<string, Record<number, string>> = {};
-      weeklyData.forEach((item) => {
-        if (!map[item.employee_id]) map[item.employee_id] = {};
-        map[item.employee_id][item.day_of_week] = item.template_id;
-      });
-      setWeeklyMap(map);
-    }
+    // 1) 템플릿(패턴) 가져오기
+    // (기존 schedule_templates 테이블을 활용하되, '요일별 시간'은 name이나 별도 컬럼에 저장해야 완벽하지만
+    //  지금은 기존 구조를 활용해 '가상 패턴'을 만드는 방식으로 구현합니다.)
+    //  -> 사장님 요청에 맞춰 '요일별 시간'을 저장할 수 있도록 DB에 JSON 컬럼을 추가하는 게 베스트지만,
+    //     일단 기존 템플릿 테이블을 '패턴 헤더'로 쓰고, 세부 규칙을 로컬에서 관리하는 형태로 가겠습니다.
+    //     (더 완벽하게 하려면 schedule_templates 테이블에 `rules` jsonb 컬럼을 추가하는 SQL이 필요합니다.)
+    
+    // 일단 화면 UI 구성을 먼저 잡겠습니다.
     setLoading(false);
   }, [currentStoreId, supabase]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // 2. 설정 변경 시 바로 DB 저장 (자동 저장)
-  const handleChange = async (empId: string, day: number, templateId: string) => {
-    // 화면 먼저 업데이트 (Optimistic UI)
-    setWeeklyMap((prev) => ({
-      ...prev,
-      [empId]: {
-        ...prev[empId],
-        [day]: templateId
-      }
-    }));
-
-    if (templateId === '') {
-      // 선택 해제 시 삭제
-      await supabase.from('weekly_schedules').delete()
-        .match({ store_id: currentStoreId, employee_id: empId, day_of_week: day });
+  // 요일 체크 토글
+  const toggleDay = (day: number) => {
+    if (selectedDays.includes(day)) {
+      setSelectedDays(prev => prev.filter(d => d !== day));
+      const newRules = { ...timeRules };
+      delete newRules[day];
+      setTimeRules(newRules);
     } else {
-      // 선택 시 저장 (Upsert)
-      await supabase.from('weekly_schedules').upsert({
-        store_id: currentStoreId,
-        employee_id: empId,
-        day_of_week: day,
-        template_id: templateId
-      }, { onConflict: 'store_id, employee_id, day_of_week' });
+      setSelectedDays(prev => [...prev, day]);
+      // 기본 시간 세팅
+      setTimeRules(prev => ({ ...prev, [day]: { start: '10:00', end: '16:00' } }));
     }
   };
 
-  // 3. 스케줄 자동 생성 (이번 달 달력에 덮어쓰기)
-  const handleAutoGenerate = async () => {
-    const year = new Date().getFullYear();
-    const month = new Date().getMonth(); // 0~11 (현재 월)
-    
-    if (!confirm(`${year}년 ${month + 1}월 스케줄을 자동으로 생성하시겠습니까?\n(기존에 설정된 고정 스케줄이 해당 월 날짜에 일괄 등록됩니다)`)) return;
+  // 시간 변경
+  const handleTimeChange = (day: number, type: 'start' | 'end', value: string) => {
+    setTimeRules(prev => ({
+      ...prev,
+      [day]: { ...prev[day], [type]: value }
+    }));
+  };
 
-    setLoading(true);
+  // (임시) 패턴 목록에 추가 (DB 연동 전 UI 확인용)
+  const handleAddPattern = () => {
+    if (!newPatternName.trim()) return alert('패턴 이름을 입력해주세요.');
+    if (selectedDays.length === 0) return alert('요일을 하나 이상 선택해주세요.');
 
-    // 1일부터 말일까지 루프
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const newSchedules = [];
+    const newPattern: ShiftPattern = {
+      id: Math.random().toString(), // 임시 ID
+      name: newPatternName,
+      schedule_rules: timeRules,
+      color: newPatternColor
+    };
 
-    for (let d = 1; d <= lastDay; d++) {
-      const date = new Date(year, month, d);
-      const dayOfWeek = date.getDay(); // 0(일) ~ 6(토)
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    setPatterns([...patterns, newPattern]);
+    // 초기화
+    setNewPatternName('');
+    setSelectedDays([]);
+    setTimeRules({});
+  };
 
-      // 직원 루프
-      for (const emp of employees) {
-        const templateId = weeklyMap[emp.id]?.[dayOfWeek];
-        if (templateId) {
-          const tmpl = templates.find(t => t.id === templateId);
-          if (tmpl) {
-            newSchedules.push({
-              store_id: currentStoreId,
-              employee_id: emp.id,
-              date: dateStr,
-              start_time: tmpl.start_time,
-              end_time: tmpl.end_time,
-              color: tmpl.color
-            });
-          }
-        }
+  // 직원 배정 토글
+  const toggleAssignment = (patternId: string, empId: string) => {
+    setAssignments(prev => {
+      const currentList = prev[patternId] || [];
+      if (currentList.includes(empId)) {
+        return { ...prev, [patternId]: currentList.filter(id => id !== empId) };
+      } else {
+        return { ...prev, [patternId]: [...currentList, empId] };
       }
-    }
-
-    if (newSchedules.length === 0) {
-      alert('설정된 주간 스케줄이 없습니다.');
-      setLoading(false);
-      return;
-    }
-
-    // 일괄 삽입
-    const { error } = await supabase.from('schedules').insert(newSchedules);
-    
-    setLoading(false);
-    if (error) alert('생성 실패: ' + error.message);
-    else {
-      alert('성공적으로 생성되었습니다! 달력을 확인하세요.');
-      // 페이지 새로고침 혹은 부모 리로드 필요
-      window.location.reload(); 
-    }
+    });
   };
 
   return (
     <div style={{ marginTop: 32, borderTop: '1px solid #444', paddingTop: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ fontSize: 20, margin: 0 }}>📅 주간 고정 근무 설정</h3>
-        <button onClick={handleAutoGenerate} style={{ padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer' }}>
-          이번 달 스케줄 자동 생성하기
-        </button>
-      </div>
-      
-      <p style={{ color: '#aaa', marginBottom: 20, fontSize: 14 }}>
-        직원별로 요일마다 어떤 템플릿(근무조)으로 일하는지 설정해두면, 위 버튼 한 번으로 한 달 치 스케줄을 꽉 채워줍니다.
+      <h3 style={{ fontSize: 20, marginBottom: 16 }}>🔄 주간 반복 스케줄 설정 (패턴 배정)</h3>
+      <p style={{ color: '#aaa', marginBottom: 24, fontSize: 14 }}>
+        1. 근무 패턴(요일별 시간)을 만들고 → 2. 해당 패턴으로 근무할 직원을 체크하세요.
       </p>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 800 }}>
-          <thead>
-            <tr>
-              <th style={thStyle}>직원명</th>
-              {DAYS.map(day => (
-                <th key={day.num} style={thStyle}>{day.label}요일</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {employees.map(emp => (
-              <tr key={emp.id}>
-                <td style={{ ...tdStyle, fontWeight: 'bold', color: '#ddd' }}>{emp.name}</td>
-                {DAYS.map(day => {
-                  const currentTmplId = weeklyMap[emp.id]?.[day.num] || '';
-                  const currentTmpl = templates.find(t => t.id === currentTmplId);
-                  
-                  return (
-                    <td key={day.num} style={{ ...tdStyle, backgroundColor: currentTmpl ? currentTmpl.color + '33' : 'transparent' }}>
-                      <select
-                        value={currentTmplId}
-                        onChange={(e) => handleChange(emp.id, day.num, e.target.value)}
-                        style={{
-                          width: '100%', padding: 6, borderRadius: 4, border: '1px solid #555',
-                          backgroundColor: '#222', color: '#fff', fontSize: 12
-                        }}
-                      >
-                        <option value="">(휴무)</option>
-                        {templates.map(t => (
-                          <option key={t.id} value={t.id}>
-                            {t.name} ({t.start_time.slice(0,5)}~)
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+        
+        {/* 왼쪽: 패턴 생성기 */}
+        <div style={{ backgroundColor: '#222', padding: 20, borderRadius: 8, border: '1px solid #444' }}>
+          <h4 style={{ marginTop: 0, marginBottom: 12, color: '#fff' }}>1. 근무 패턴 만들기</h4>
+          
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 4 }}>패턴 이름</label>
+            <input 
+              type="text" 
+              placeholder="예: 평일 오픈조, 주말 마감조" 
+              value={newPatternName}
+              onChange={(e) => setNewPatternName(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>요일 및 시간 설정</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {DAYS.map(day => {
+                const isChecked = selectedDays.includes(day.num);
+                return (
+                  <div key={day.num} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: isChecked ? 1 : 0.5 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: 60, cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isChecked} 
+                        onChange={() => toggleDay(day.num)}
+                      />
+                      <span style={{ fontWeight: isChecked ? 'bold' : 'normal', color: isChecked ? 'dodgerblue' : '#aaa' }}>{day.label}</span>
+                    </label>
+                    
+                    <input 
+                      type="time" 
+                      disabled={!isChecked}
+                      value={timeRules[day.num]?.start || ''}
+                      onChange={(e) => handleTimeChange(day.num, 'start', e.target.value)}
+                      style={{ ...timeInputStyle, backgroundColor: isChecked ? '#333' : '#222' }}
+                    />
+                    <span>~</span>
+                    <input 
+                      type="time" 
+                      disabled={!isChecked}
+                      value={timeRules[day.num]?.end || ''}
+                      onChange={(e) => handleTimeChange(day.num, 'end', e.target.value)}
+                      style={{ ...timeInputStyle, backgroundColor: isChecked ? '#333' : '#222' }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button onClick={handleAddPattern} style={addBtnStyle}>
+            이 패턴 생성하기
+          </button>
+        </div>
+
+        {/* 오른쪽: 생성된 패턴 목록 & 직원 배정 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <h4 style={{ marginTop: 0, marginBottom: 0, color: '#fff' }}>2. 직원 배정하기</h4>
+          
+          {patterns.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#666', border: '1px dashed #444', borderRadius: 8 }}>
+              왼쪽에서 패턴을 먼저 생성해주세요.
+            </div>
+          ) : (
+            patterns.map(pattern => (
+              <div key={pattern.id} style={{ backgroundColor: '#1f1f1f', border: '1px solid #444', borderRadius: 8, overflow: 'hidden' }}>
+                {/* 패턴 헤더 */}
+                <div style={{ padding: '12px 16px', backgroundColor: '#333', borderBottom: '1px solid #444', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 'bold', color: '#fff' }}>{pattern.name}</span>
+                  <button style={{ background: 'transparent', border: 'none', color: '#aaa', fontSize: 12, cursor: 'pointer' }}>삭제</button>
+                </div>
+
+                {/* 패턴 내용 (요일/시간) */}
+                <div style={{ padding: '12px 16px', fontSize: 13, color: '#ccc', borderBottom: '1px solid #444' }}>
+                  {DAYS.map(d => {
+                    const rule = pattern.schedule_rules[d.num];
+                    if (!rule) return null;
+                    return (
+                      <span key={d.num} style={{ marginRight: 12, display: 'inline-block', marginBottom: 4 }}>
+                        <strong style={{ color: 'dodgerblue' }}>{d.label}</strong> {rule.start}~{rule.end}
+                      </span>
+                    );
+                  })}
+                </div>
+
+                {/* 직원 배정 영역 */}
+                <div style={{ padding: '12px 16px' }}>
+                  <p style={{ fontSize: 12, color: '#888', marginTop: 0, marginBottom: 8 }}>이 패턴으로 근무할 직원 선택:</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {employees.map(emp => {
+                      const isAssigned = (assignments[pattern.id] || []).includes(emp.id);
+                      return (
+                        <button
+                          key={emp.id}
+                          onClick={() => toggleAssignment(pattern.id, emp.id)}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: 20,
+                            border: isAssigned ? '1px solid dodgerblue' : '1px solid #555',
+                            backgroundColor: isAssigned ? 'rgba(30, 144, 255, 0.2)' : 'transparent',
+                            color: isAssigned ? 'dodgerblue' : '#aaa',
+                            fontSize: 13,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {emp.name} {isAssigned && '✓'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+      </div>
+
+      {/* 최종 저장/생성 버튼 */}
+      <div style={{ marginTop: 32, textAlign: 'right' }}>
+        <button 
+          onClick={() => alert('이 버튼을 누르면 위 설정대로 이번 달 스케줄이 쫙 생성됩니다! (구현 예정)')}
+          style={{ 
+            padding: '12px 24px', 
+            backgroundColor: 'seagreen', 
+            color: '#fff', 
+            border: 'none', 
+            borderRadius: 6, 
+            fontWeight: 'bold', 
+            fontSize: 16, 
+            cursor: 'pointer' 
+          }}
+        >
+          이 설정대로 이번 달 스케줄 자동 생성하기
+        </button>
       </div>
     </div>
   );
 }
 
-const thStyle = { padding: '12px', border: '1px solid #444', background: '#333', color: '#fff', textAlign: 'center' as const };
-const tdStyle = { padding: '8px', border: '1px solid #444', textAlign: 'center' as const };
+// 스타일
+const inputStyle = { width: '100%', padding: 10, backgroundColor: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, boxSizing: 'border-box' as const };
+const timeInputStyle = { padding: '6px', backgroundColor: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, width: 80 };
+const addBtnStyle = { width: '100%', padding: 12, backgroundColor: 'royalblue', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer', marginTop: 16 };
