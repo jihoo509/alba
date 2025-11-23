@@ -7,7 +7,7 @@ import {
 } from 'date-fns';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import type { ScheduleTemplate, SimpleEmployee } from './TemplateSection';
-import TimeSelector from './TimeSelector'; // 시간 선택기 재사용
+import TimeSelector from './TimeSelector';
 
 type Props = {
   currentStoreId: string | null;
@@ -23,10 +23,9 @@ type Schedule = {
   color: string;
   employee_id: string | null;
   employees?: { name: string };
-  exclude_holiday_pay?: boolean; // 주휴 제외 여부
+  exclude_holiday_pay?: boolean;
 };
 
-// 직원별 색상 매핑
 const getEmployeeColor = (empId: string | null, employees: SimpleEmployee[]) => {
   if (!empId) return '#444';
   const index = employees.findIndex(e => e.id === empId);
@@ -43,11 +42,12 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   const [currentDate, setCurrentDate] = useState(new Date());
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   
-  // 팝업용 상태
-  const [targetSchedule, setTargetSchedule] = useState<Schedule | null>(null);
-  // 수정용 임시 상태 (시간, 직원, 옵션)
-  const [editStartTime, setEditStartTime] = useState('');
-  const [editEndTime, setEditEndTime] = useState('');
+  // 팝업용 상태 (수정 및 신규 추가 공용)
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [targetScheduleId, setTargetScheduleId] = useState<string | null>(null); // null이면 신규 추가
+  const [editDate, setEditDate] = useState('');
+  const [editStartTime, setEditStartTime] = useState('09:00');
+  const [editEndTime, setEditEndTime] = useState('18:00');
   const [editEmpId, setEditEmpId] = useState<string | null>(null);
   const [editExcludePay, setEditExcludePay] = useState(false);
 
@@ -74,58 +74,76 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // 스케줄 클릭 시 팝업 열기 & 데이터 세팅
-  const openEditPopup = (sch: Schedule) => {
-    setTargetSchedule(sch);
+  // ✅ [수동 추가] 날짜 클릭 시 신규 등록 팝업 열기
+  const handleDateClick = (day: Date) => {
+    // 만약 템플릿 선택 모드라면? (기존 기능 유지할지, 수동 추가로 통일할지 고민)
+    // 사장님 요청대로 '수동 추가' 위주로 갑니다.
+    setTargetScheduleId(null); // 신규 모드
+    setEditDate(format(day, 'yyyy-MM-dd'));
+    setEditStartTime('09:00');
+    setEditEndTime('18:00');
+    setEditEmpId(null);
+    setEditExcludePay(false);
+    setPopupOpen(true);
+  };
+
+  // ✅ [수정] 기존 스케줄 클릭 시 수정 팝업 열기
+  const handleScheduleClick = (e: React.MouseEvent, sch: Schedule) => {
+    e.stopPropagation();
+    setTargetScheduleId(sch.id); // 수정 모드
+    setEditDate(sch.date);
     setEditStartTime(sch.start_time.slice(0, 5));
     setEditEndTime(sch.end_time.slice(0, 5));
     setEditEmpId(sch.employee_id);
     setEditExcludePay(sch.exclude_holiday_pay || false);
+    setPopupOpen(true);
   };
 
-  // 수정 사항 저장 (시간, 대타, 옵션 한방에)
-  const handleUpdateSchedule = async () => {
-    if (!targetSchedule) return;
+  // 저장 (신규 or 수정)
+  const handleSave = async () => {
+    if (!currentStoreId) return;
 
-    const { error } = await supabase
-      .from('schedules')
-      .update({
-        start_time: editStartTime,
-        end_time: editEndTime,
-        employee_id: editEmpId,
-        exclude_holiday_pay: editExcludePay
-      })
-      .eq('id', targetSchedule.id);
+    const payload = {
+      store_id: currentStoreId,
+      date: editDate,
+      start_time: editStartTime,
+      end_time: editEndTime,
+      employee_id: editEmpId,
+      exclude_holiday_pay: editExcludePay,
+      color: '#4ECDC4' // 기본 색상 (직원 배정 시 자동 색상으로 보임)
+    };
 
-    if (error) alert('수정 실패: ' + error.message);
+    let error;
+    if (targetScheduleId) {
+      // 수정
+      const { error: updateError } = await supabase
+        .from('schedules')
+        .update(payload)
+        .eq('id', targetScheduleId);
+      error = updateError;
+    } else {
+      // 신규
+      const { error: insertError } = await supabase
+        .from('schedules')
+        .insert(payload);
+      error = insertError;
+    }
+
+    if (error) alert('저장 실패: ' + error.message);
     else {
       fetchSchedules();
-      setTargetSchedule(null);
+      setPopupOpen(false);
     }
   };
 
-  const handleDeleteSchedule = async () => {
-    if (!targetSchedule || !confirm("정말 삭제하시겠습니까?")) return;
-    const { error } = await supabase.from('schedules').delete().eq('id', targetSchedule.id);
+  // 삭제
+  const handleDelete = async () => {
+    if (!targetScheduleId || !confirm("정말 삭제하시겠습니까?")) return;
+    const { error } = await supabase.from('schedules').delete().eq('id', targetScheduleId);
     if (!error) {
       fetchSchedules();
-      setTargetSchedule(null);
+      setPopupOpen(false);
     }
-  };
-
-  const handleDateClick = async (day: Date) => {
-    if (!currentStoreId || !selectedTemplate) return;
-    const dateStr = format(day, 'yyyy-MM-dd');
-    const { error } = await supabase.from('schedules').insert({
-      store_id: currentStoreId,
-      date: dateStr,
-      start_time: selectedTemplate.start_time,
-      end_time: selectedTemplate.end_time,
-      color: selectedTemplate.color,
-      employee_id: null 
-    });
-    if (error) alert('생성 실패: ' + error.message);
-    else fetchSchedules();
   };
 
   const monthStart = startOfMonth(currentDate);
@@ -137,7 +155,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
 
   return (
     <div style={{ backgroundColor: '#1a1a1a', padding: 20, borderRadius: 8, border: '1px solid #333', position: 'relative' }}>
-      
       {/* 헤더 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -169,12 +186,13 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
           return (
             <div 
               key={day.toString()} 
-              onClick={() => handleDateClick(day)}
+              onClick={() => handleDateClick(day)} // ✅ 클릭 시 추가 팝업
               style={{ 
-                minHeight: 130, padding: '4px 2px 12px 2px', borderRight: '1px solid #444', borderBottom: '1px solid #444',
+                minHeight: 130, padding: '4px 2px 20px 2px', // 하단 패딩 확보
+                borderRight: '1px solid #444', borderBottom: '1px solid #444',
                 backgroundColor: isCurrentMonth ? (isTodayDate ? '#222f3e' : 'transparent') : '#111',
-                opacity: isCurrentMonth ? 1 : 0.4, cursor: selectedTemplate ? 'cell' : 'default',
-                display: 'flex', flexDirection: 'column',
+                opacity: isCurrentMonth ? 1 : 0.4, cursor: 'pointer', // 손가락 커서
+                display: 'flex', flexDirection: 'column', position: 'relative'
               }}
             >
               <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14, color: isTodayDate ? 'dodgerblue' : '#fff', fontWeight: isTodayDate ? 'bold' : 'normal', paddingTop: 4 }}>
@@ -191,7 +209,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                   return (
                     <div 
                       key={sch.id}
-                      onClick={(e) => { e.stopPropagation(); openEditPopup(sch); }}
+                      onClick={(e) => handleScheduleClick(e, sch)} // ✅ 클릭 시 수정 팝업
                       style={{
                         backgroundColor: bgColor, color: '#fff', fontSize: 12, padding: '6px', borderRadius: 6,
                         cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
@@ -209,13 +227,16 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                   );
                 })}
               </div>
+              
+              {/* + 버튼 (호버 효과 등은 CSS로 처리하거나, 간단하게 텍스트로 표시) */}
+              <div style={{ position: 'absolute', bottom: 4, right: 4, color: '#555', fontSize: 18 }}>+</div>
             </div>
           );
         })}
       </div>
 
-      {/* ✅ [개선된] 스케줄 수정/배정 팝업 */}
-      {targetSchedule && (
+      {/* ✅ [통합] 스케줄 추가/수정 팝업 */}
+      {popupOpen && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
@@ -225,10 +246,9 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
             boxShadow: '0 10px 25px rgba(0,0,0,0.8)'
           }}>
             <h3 style={{ marginTop: 0, marginBottom: 20, color: '#fff', textAlign: 'center' }}>
-              스케줄 수정 ({targetSchedule.date})
+              {targetScheduleId ? '스케줄 수정' : '새 스케줄 추가'} ({editDate})
             </h3>
 
-            {/* 1. 시간 수정 */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>근무 시간</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -238,7 +258,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
               </div>
             </div>
 
-            {/* 2. 대타(직원) 선택 */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>근무자 (대타)</label>
               <select 
@@ -253,7 +272,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
               </select>
             </div>
 
-            {/* 3. 옵션 (주휴 제외) */}
             <div style={{ marginBottom: 24 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: '#fff', fontSize: 14 }}>
                 <input 
@@ -266,10 +284,16 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
               </label>
             </div>
 
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={handleDeleteSchedule} style={{ padding: '10px 16px', background: '#c0392b', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>삭제</button>
-              <button onClick={() => setTargetSchedule(null)} style={{ padding: '10px 16px', background: '#555', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>취소</button>
-              <button onClick={handleUpdateSchedule} style={{ padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>저장</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              {targetScheduleId ? (
+                <button onClick={handleDelete} style={{ padding: '10px 16px', background: '#c0392b', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold' }}>삭제</button>
+              ) : (
+                <div></div> // 빈 공간 채우기
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setPopupOpen(false)} style={{ padding: '10px 16px', background: '#555', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>취소</button>
+                <button onClick={handleSave} style={{ padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>저장</button>
+              </div>
             </div>
           </div>
         </div>
@@ -278,4 +302,4 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   );
 }
 
-const btnStyle = { padding: '6px 12px', background: '#333', border: '1px solid #555', color: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 14 };
+const btnStyle = { padding: '6px 12px', background: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, cursor: 'pointer' };

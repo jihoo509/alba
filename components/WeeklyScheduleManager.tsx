@@ -148,55 +148,76 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     }
   };
 
+  // ✅ [수정] 자동 생성 로직 강화 (내일부터 + 기존 스케줄 보호)
   const handleAutoGenerate = async () => {
-    const year = new Date().getFullYear();
-    const month = new Date().getMonth();
-    if (!confirm(`${year}년 ${month + 1}월 스케줄을 자동 생성하시겠습니까?`)) return;
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    
+    if (!confirm(`내일부터 말일까지의 스케줄을 자동 생성하시겠습니까?\n(이미 스케줄이 있는 날짜는 건너뜁니다)`)) return;
 
     setLoading(true);
+    
+    // 1. 이번 달 기존 스케줄 조회 (이미 있는 날짜 파악용)
+    const startDateStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const endDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${new Date(year, month + 1, 0).getDate()}`;
+    
+    const { data: existingData } = await supabase
+      .from('schedules')
+      .select('date, employee_id')
+      .eq('store_id', currentStoreId)
+      .gte('date', startDateStr)
+      .lte('date', endDateStr);
+
+    // "날짜_직원ID" 형태로 기존 스케줄 키 생성
+    const existingSet = new Set(existingData?.map(s => `${s.date}_${s.employee_id}`));
+
     const lastDay = new Date(year, month + 1, 0).getDate();
     const newSchedules = [];
 
-    for (const [empId, templateId] of Object.entries(assignments)) {
-      const pattern = patterns.find(p => p.id === templateId);
-      if (!pattern || !pattern.weekly_rules) continue;
+    // 내일부터 말일까지 루프
+    const startDay = today.getDate() + 1; // 내일
 
-      for (let d = 1; d <= lastDay; d++) {
-        const date = new Date(year, month, d);
-        const dayOfWeek = date.getDay();
+    for (let d = startDay; d <= lastDay; d++) {
+      const date = new Date(year, month, d);
+      const dayOfWeek = date.getDay();
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+      for (const [empId, templateId] of Object.entries(assignments)) {
+        // 이미 이 날짜에 이 직원의 스케줄이 있으면 건너뜀 (수동 수정 보호)
+        if (existingSet.has(`${dateStr}_${empId}`)) continue;
+
+        const pattern = patterns.find(p => p.id === templateId);
+        if (!pattern || !pattern.weekly_rules) continue;
+
         const rule = pattern.weekly_rules[dayOfWeek];
         if (rule) {
-          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
           newSchedules.push({
-            store_id: currentStoreId, employee_id: empId, date: dateStr,
-            start_time: rule.start, end_time: rule.end, color: pattern.color || '#4ECDC4'
+            store_id: currentStoreId,
+            employee_id: empId,
+            date: dateStr,
+            start_time: rule.start,
+            end_time: rule.end,
+            color: pattern.color || '#4ECDC4'
           });
         }
       }
     }
 
     if (newSchedules.length === 0) {
-      alert('배정된 직원이 없거나 패턴이 없습니다.');
+      alert('추가할 스케줄이 없거나, 이미 모든 스케줄이 등록되어 있습니다.');
       setLoading(false);
       return;
     }
 
     const { error } = await supabase.from('schedules').insert(newSchedules);
     setLoading(false);
+    
     if (error) alert('생성 실패: ' + error.message);
     else {
-      alert('성공적으로 생성되었습니다! 달력을 확인하세요.');
+      alert(`${newSchedules.length}개의 스케줄이 생성되었습니다!`);
       window.location.reload();
     }
-  };
-
-  // ✅ [추가] 근무 시간 계산 함수 (익일 고려)
-  const calculateHours = (start: string, end: string) => {
-    const [sH, sM] = start.split(':').map(Number);
-    const [eH, eM] = end.split(':').map(Number);
-    let minutes = (eH * 60 + eM) - (sH * 60 + sM);
-    if (minutes < 0) minutes += 24 * 60; // 익일 처리
-    return (minutes / 60).toFixed(1); // 소수점 1자리 (예: 5.5시간)
   };
 
   const groupRulesByTime = (rules: Record<number, { start: string; end: string }>) => {
@@ -210,12 +231,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     return Object.entries(groups).map(([timeRange, dayNums]) => {
       dayNums.sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b));
       const labels = dayNums.map(d => DAYS.find(day => day.num === d)?.label).join(', ');
-      
-      // 시간 분리해서 근무 시간 계산
-      const [start, end] = timeRange.split(' ~ ');
-      const duration = calculateHours(start, end);
-
-      return { timeRange, labels, duration };
+      return { timeRange, labels };
     });
   };
 
@@ -234,7 +250,13 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
           
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 4 }}>패턴 이름</label>
-            <input type="text" placeholder="예: 평일 오픈조, 주말 마감조" value={newPatternName} onChange={(e) => setNewPatternName(e.target.value)} style={inputStyle} />
+            <input 
+              type="text" 
+              placeholder="예: 평일 오픈조, 주말 마감조" 
+              value={newPatternName}
+              onChange={(e) => setNewPatternName(e.target.value)}
+              style={inputStyle}
+            />
           </div>
 
           <div style={{ marginBottom: 16 }}>
@@ -284,9 +306,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                   {groupRulesByTime(pattern.weekly_rules).map((group, idx) => (
                     <div key={idx} style={{ marginBottom: 4 }}>
                       <strong style={{ color: 'dodgerblue', marginRight: 6 }}>{group.labels}</strong> 
-                      {group.timeRange} 
-                      {/* ✅ [추가] 근무 시간 표시 (예: 6.0시간) */}
-                      <span style={{ marginLeft: 8, color: '#777', fontSize: 12 }}>({group.duration}시간)</span>
+                      {group.timeRange}
                     </div>
                   ))}
                 </div>
@@ -312,7 +332,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
 
       <div style={{ marginTop: 32, textAlign: 'right' }}>
         <button onClick={handleAutoGenerate} style={{ padding: '12px 24px', backgroundColor: 'seagreen', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', fontSize: 16, cursor: 'pointer' }}>
-          이 설정대로 이번 달 스케줄 자동 생성하기
+          이 설정대로 이번 달(내일부터) 스케줄 자동 생성하기
         </button>
       </div>
     </div>
