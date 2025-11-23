@@ -42,14 +42,20 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   const [currentDate, setCurrentDate] = useState(new Date());
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   
-  // 팝업용 상태 (수정 및 신규 추가 공용)
+  const [targetSchedule, setTargetSchedule] = useState<Schedule | null>(null);
   const [popupOpen, setPopupOpen] = useState(false);
-  const [targetScheduleId, setTargetScheduleId] = useState<string | null>(null); // null이면 신규 추가
+  const [isNew, setIsNew] = useState(false);
+
+  // 폼 상태
   const [editDate, setEditDate] = useState('');
   const [editStartTime, setEditStartTime] = useState('09:00');
   const [editEndTime, setEditEndTime] = useState('18:00');
   const [editEmpId, setEditEmpId] = useState<string | null>(null);
   const [editExcludePay, setEditExcludePay] = useState(false);
+
+  // ✅ [추가] 일괄 삭제 모드
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [selectedDeleteIds, setSelectedDeleteIds] = useState<string[]>([]);
 
   const fetchSchedules = useCallback(async () => {
     if (!currentStoreId) return;
@@ -74,32 +80,82 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // ✅ [수동 추가] 날짜 클릭 시 신규 등록 팝업 열기
+  // ✅ [추가] 미래 스케줄 초기화
+  const handleResetFuture = async () => {
+    if (!confirm('정말 내일부터의 모든 스케줄을 초기화(삭제)하시겠습니까?')) return;
+    
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateStr = tomorrow.toISOString().split('T')[0];
+
+    const { error } = await supabase
+      .from('schedules')
+      .delete()
+      .eq('store_id', currentStoreId)
+      .gte('date', dateStr);
+
+    if (error) alert('초기화 실패: ' + error.message);
+    else {
+      alert('초기화되었습니다.');
+      fetchSchedules();
+    }
+  };
+
+  // ✅ [추가] 일괄 삭제 실행
+  const handleBulkDelete = async () => {
+    if (selectedDeleteIds.length === 0) return;
+    if (!confirm(`선택한 ${selectedDeleteIds.length}개의 스케줄을 삭제하시겠습니까?`)) return;
+
+    const { error } = await supabase
+      .from('schedules')
+      .delete()
+      .in('id', selectedDeleteIds);
+
+    if (error) alert('삭제 실패');
+    else {
+      setSelectedDeleteIds([]);
+      setIsDeleteMode(false);
+      fetchSchedules();
+    }
+  };
+
+  // 스케줄 클릭 핸들러 (모드에 따라 동작 분기)
+  const handleScheduleClick = (e: React.MouseEvent, sch: Schedule) => {
+    e.stopPropagation();
+
+    if (isDeleteMode) {
+      // 삭제 모드일 땐 선택 토글
+      setSelectedDeleteIds(prev => 
+        prev.includes(sch.id) ? prev.filter(id => id !== sch.id) : [...prev, sch.id]
+      );
+    } else {
+      // 일반 모드일 땐 수정 팝업
+      setTargetSchedule(sch);
+      setEditDate(sch.date);
+      setEditStartTime(sch.start_time.slice(0, 5));
+      setEditEndTime(sch.end_time.slice(0, 5));
+      setEditEmpId(sch.employee_id);
+      setEditExcludePay(sch.exclude_holiday_pay || false);
+      setIsNew(false);
+      setPopupOpen(true);
+    }
+  };
+
+  // 날짜 클릭 (신규 추가)
   const handleDateClick = (day: Date) => {
-    // 만약 템플릿 선택 모드라면? (기존 기능 유지할지, 수동 추가로 통일할지 고민)
-    // 사장님 요청대로 '수동 추가' 위주로 갑니다.
-    setTargetScheduleId(null); // 신규 모드
+    if (isDeleteMode) return; // 삭제 모드에선 신규 추가 막음
+    
+    setTargetSchedule(null);
     setEditDate(format(day, 'yyyy-MM-dd'));
     setEditStartTime('09:00');
     setEditEndTime('18:00');
     setEditEmpId(null);
     setEditExcludePay(false);
+    setIsNew(true);
     setPopupOpen(true);
   };
 
-  // ✅ [수정] 기존 스케줄 클릭 시 수정 팝업 열기
-  const handleScheduleClick = (e: React.MouseEvent, sch: Schedule) => {
-    e.stopPropagation();
-    setTargetScheduleId(sch.id); // 수정 모드
-    setEditDate(sch.date);
-    setEditStartTime(sch.start_time.slice(0, 5));
-    setEditEndTime(sch.end_time.slice(0, 5));
-    setEditEmpId(sch.employee_id);
-    setEditExcludePay(sch.exclude_holiday_pay || false);
-    setPopupOpen(true);
-  };
-
-  // 저장 (신규 or 수정)
+  // 저장 (신규/수정)
   const handleSave = async () => {
     if (!currentStoreId) return;
 
@@ -110,36 +166,29 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
       end_time: editEndTime,
       employee_id: editEmpId,
       exclude_holiday_pay: editExcludePay,
-      color: '#4ECDC4' // 기본 색상 (직원 배정 시 자동 색상으로 보임)
+      color: '#4ECDC4'
     };
 
     let error;
-    if (targetScheduleId) {
-      // 수정
-      const { error: updateError } = await supabase
-        .from('schedules')
-        .update(payload)
-        .eq('id', targetScheduleId);
-      error = updateError;
-    } else {
-      // 신규
-      const { error: insertError } = await supabase
-        .from('schedules')
-        .insert(payload);
+    if (isNew) {
+      const { error: insertError } = await supabase.from('schedules').insert(payload);
       error = insertError;
+    } else if (targetSchedule) {
+      const { error: updateError } = await supabase.from('schedules').update(payload).eq('id', targetSchedule.id);
+      error = updateError;
     }
 
-    if (error) alert('저장 실패: ' + error.message);
+    if (error) alert('저장 실패');
     else {
       fetchSchedules();
       setPopupOpen(false);
     }
   };
 
-  // 삭제
+  // 단건 삭제
   const handleDelete = async () => {
-    if (!targetScheduleId || !confirm("정말 삭제하시겠습니까?")) return;
-    const { error } = await supabase.from('schedules').delete().eq('id', targetScheduleId);
+    if (!targetSchedule) return;
+    const { error } = await supabase.from('schedules').delete().eq('id', targetSchedule.id);
     if (!error) {
       fetchSchedules();
       setPopupOpen(false);
@@ -155,15 +204,29 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
 
   return (
     <div style={{ backgroundColor: '#1a1a1a', padding: 20, borderRadius: 8, border: '1px solid #333', position: 'relative' }}>
-      {/* 헤더 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      
+      {/* 헤더 + 기능 버튼들 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} style={btnStyle}>&lt; 이전</button>
-          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} style={btnStyle}>다음 &gt;</button>
-          <button onClick={() => setCurrentDate(new Date())} style={{ ...btnStyle, background: '#444' }}>오늘</button>
+          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} style={btnStyle}>&lt;</button>
+          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} style={btnStyle}>&gt;</button>
+          <span style={{ fontSize: 20, fontWeight: 'bold', color: '#fff', alignSelf: 'center', marginLeft: 8 }}>{format(currentDate, 'yyyy년 MM월')}</span>
         </div>
-        <h2 style={{ margin: 0, fontSize: 24, color: '#fff' }}>{format(currentDate, 'yyyy년 MM월')}</h2>
-        <div style={{ width: 100 }}></div> 
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isDeleteMode ? (
+            <>
+              <span style={{ color: 'salmon', alignSelf: 'center', fontSize: 14 }}>삭제할 항목 선택 중... ({selectedDeleteIds.length})</span>
+              <button onClick={handleBulkDelete} style={{ ...btnStyle, background: 'darkred', color: '#fff' }}>선택 삭제</button>
+              <button onClick={() => { setIsDeleteMode(false); setSelectedDeleteIds([]); }} style={btnStyle}>취소</button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setIsDeleteMode(true)} style={{ ...btnStyle, background: '#444', color: '#ddd' }}>🗑️ 일괄 삭제</button>
+              <button onClick={handleResetFuture} style={{ ...btnStyle, background: '#444', color: '#ddd' }}>🔄 미래 초기화</button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* 요일 */}
@@ -186,12 +249,12 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
           return (
             <div 
               key={day.toString()} 
-              onClick={() => handleDateClick(day)} // ✅ 클릭 시 추가 팝업
+              onClick={() => handleDateClick(day)}
               style={{ 
-                minHeight: 130, padding: '4px 2px 20px 2px', // 하단 패딩 확보
+                minHeight: 130, padding: '4px 2px 20px 2px', 
                 borderRight: '1px solid #444', borderBottom: '1px solid #444',
                 backgroundColor: isCurrentMonth ? (isTodayDate ? '#222f3e' : 'transparent') : '#111',
-                opacity: isCurrentMonth ? 1 : 0.4, cursor: 'pointer', // 손가락 커서
+                opacity: isCurrentMonth ? 1 : 0.4, cursor: isDeleteMode ? 'default' : 'pointer',
                 display: 'flex', flexDirection: 'column', position: 'relative'
               }}
             >
@@ -205,16 +268,22 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                   const end = sch.end_time.slice(0, 5);
                   const empName = sch.employees?.name;
                   const bgColor = getEmployeeColor(sch.employee_id, employees); 
+                  
+                  // 삭제 모드일 때 선택 여부 시각화
+                  const isSelectedForDelete = selectedDeleteIds.includes(sch.id);
 
                   return (
                     <div 
                       key={sch.id}
-                      onClick={(e) => handleScheduleClick(e, sch)} // ✅ 클릭 시 수정 팝업
+                      onClick={(e) => handleScheduleClick(e, sch)}
                       style={{
-                        backgroundColor: bgColor, color: '#fff', fontSize: 12, padding: '6px', borderRadius: 6,
-                        cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                        border: sch.employee_id ? 'none' : '2px dashed #777',
-                        textAlign: 'center', opacity: empName ? 1 : 0.7,
+                        backgroundColor: isDeleteMode ? (isSelectedForDelete ? 'darkred' : '#333') : bgColor,
+                        color: '#fff', fontSize: 12, padding: '6px', borderRadius: 6,
+                        cursor: 'pointer', 
+                        border: isDeleteMode 
+                          ? (isSelectedForDelete ? '2px solid red' : '1px solid #555') 
+                          : (sch.employee_id ? 'none' : '2px dashed #777'),
+                        textAlign: 'center', opacity: isDeleteMode && !isSelectedForDelete ? 0.5 : 1,
                         display: 'flex', flexDirection: 'column', justifyContent: 'center'
                       }}
                     >
@@ -227,15 +296,12 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                   );
                 })}
               </div>
-              
-              {/* + 버튼 (호버 효과 등은 CSS로 처리하거나, 간단하게 텍스트로 표시) */}
-              <div style={{ position: 'absolute', bottom: 4, right: 4, color: '#555', fontSize: 18 }}>+</div>
             </div>
           );
         })}
       </div>
 
-      {/* ✅ [통합] 스케줄 추가/수정 팝업 */}
+      {/* 팝업 (수정/추가) */}
       {popupOpen && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -246,7 +312,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
             boxShadow: '0 10px 25px rgba(0,0,0,0.8)'
           }}>
             <h3 style={{ marginTop: 0, marginBottom: 20, color: '#fff', textAlign: 'center' }}>
-              {targetScheduleId ? '스케줄 수정' : '새 스케줄 추가'} ({editDate})
+              {isNew ? '새 스케줄 추가' : '스케줄 수정'} ({editDate})
             </h3>
 
             <div style={{ marginBottom: 20 }}>
@@ -285,11 +351,9 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              {targetScheduleId ? (
+              {!isNew ? (
                 <button onClick={handleDelete} style={{ padding: '10px 16px', background: '#c0392b', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold' }}>삭제</button>
-              ) : (
-                <div></div> // 빈 공간 채우기
-              )}
+              ) : <div></div>}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setPopupOpen(false)} style={{ padding: '10px 16px', background: '#555', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>취소</button>
                 <button onClick={handleSave} style={{ padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>저장</button>
@@ -302,4 +366,4 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   );
 }
 
-const btnStyle = { padding: '6px 12px', background: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, cursor: 'pointer' };
+const btnStyle = { padding: '6px 12px', background: '#333', border: '1px solid #555', color: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 13 };
