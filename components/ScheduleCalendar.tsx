@@ -24,27 +24,33 @@ type Schedule = {
   employees?: { name: string };
 };
 
-// ✅ [추가] 직원 이름으로 고유 색상을 만드는 함수 (해시값 기반)
-// 매번 똑같은 사람에게는 똑같은 색이 나옵니다.
-const getEmployeeColor = (name: string | undefined) => {
-  if (!name) return '#555'; // 미배정은 회색
-  const colors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#9B59B6', 
-    '#3498DB', '#F1C40F', '#E67E22', '#2ECC71', '#E74C3C',
-    '#8E44AD', '#1ABC9C'
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-};
+// ✅ [수정] 색상 팔레트 (진하고 선명한 색상 위주)
+const PALETTE = [
+  '#E74C3C', // 빨강
+  '#3498DB', // 파랑
+  '#F1C40F', // 노랑
+  '#2ECC71', // 초록
+  '#9B59B6', // 보라
+  '#E67E22', // 주황
+  '#1ABC9C', // 청록
+  '#34495E', // 네이비
+  '#D35400', // 짙은주황
+  '#7F8C8D', // 회색
+];
 
 export default function ScheduleCalendar({ currentStoreId, selectedTemplate, employees }: Props) {
   const supabase = createSupabaseBrowserClient();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [targetSchedule, setTargetSchedule] = useState<Schedule | null>(null);
+
+  // ✅ [추가] 직원별 색상 매핑 함수 (순서대로 배정)
+  const getEmployeeColor = (empId: string | null) => {
+    if (!empId) return '#444'; // 미배정은 어두운 회색
+    const index = employees.findIndex(e => e.id === empId);
+    if (index === -1) return '#666';
+    return PALETTE[index % PALETTE.length]; // 직원 순서대로 색상 반복
+  };
 
   const fetchSchedules = useCallback(async () => {
     if (!currentStoreId) return;
@@ -93,7 +99,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
 
   const handleDateClick = async (day: Date) => {
     if (!currentStoreId || !selectedTemplate) return;
-    // (스케줄 생성 로직 - 기존과 동일)
     const dateStr = format(day, 'yyyy-MM-dd');
     const { error } = await supabase.from('schedules').insert({
       store_id: currentStoreId,
@@ -142,7 +147,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
           const isCurrentMonth = isSameMonth(day, monthStart);
           const isTodayDate = isToday(day);
           
-          // 시간순 정렬
           const daySchedules = schedules
             .filter(s => s.date === dateStr)
             .sort((a, b) => a.start_time.localeCompare(b.start_time));
@@ -150,20 +154,19 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
           return (
             <div 
               key={day.toString()} 
-              onClick={() => handleDateClick(day)} // 템플릿 있으면 클릭 시 생성
+              onClick={() => handleDateClick(day)}
               style={{ 
-                minHeight: 130, // ✅ 높이 더 키움
-                padding: '4px 4px 12px 4px', 
+                minHeight: 130, 
+                padding: '4px 2px 12px 2px', // 좌우 패딩 줄임 (넓게 쓰기 위해)
                 borderRight: '1px solid #444', 
                 borderBottom: '1px solid #444',
                 backgroundColor: isCurrentMonth ? (isTodayDate ? '#222f3e' : 'transparent') : '#111',
                 opacity: isCurrentMonth ? 1 : 0.4,
-                cursor: selectedTemplate ? 'cell' : 'default', // 템플릿 선택 시 커서 변경
+                cursor: selectedTemplate ? 'cell' : 'default',
                 display: 'flex',
                 flexDirection: 'column',
               }}
             >
-              {/* 날짜 숫자 */}
               <div style={{ 
                 textAlign: 'center', marginBottom: 6, fontSize: 14, 
                 color: isTodayDate ? 'dodgerblue' : '#fff', 
@@ -173,16 +176,16 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                 {format(day, 'd')}
               </div>
 
-              {/* 스케줄 바 영역 (꽉 차게) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+              {/* 스케줄 바 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
                 {daySchedules.map(sch => {
+                  // 초 단위 절삭
                   const start = sch.start_time.slice(0, 5);
                   const end = sch.end_time.slice(0, 5);
-                  const isNextDay = sch.start_time > sch.end_time;
                   const empName = sch.employees?.name;
                   
-                  // ✅ 직원별 색상 적용
-                  const bgColor = empName ? getEmployeeColor(empName) : '#444'; 
+                  // ✅ [수정] 직원 고유 색상 적용
+                  const bgColor = getEmployeeColor(sch.employee_id);
 
                   return (
                     <div 
@@ -195,21 +198,23 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                         backgroundColor: bgColor,
                         color: '#fff', 
                         fontSize: 12, 
-                        padding: '6px', // 패딩 늘림
-                        borderRadius: 6,
+                        padding: '4px 2px',
+                        borderRadius: 4,
                         cursor: 'pointer', 
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                        border: sch.employee_id ? 'none' : '2px dashed #777', // 미배정은 점선 테두리
-                        textAlign: 'center', // ✅ 가운데 정렬
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                        border: sch.employee_id ? 'none' : '2px dashed #777',
+                        textAlign: 'center',
                         opacity: empName ? 1 : 0.7,
                         display: 'flex', flexDirection: 'column', justifyContent: 'center'
                       }}
                     >
-                      <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 2 }}>
+                      {/* 이름 강조 */}
+                      <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 1, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
                         {empName || '❓ 미배정'}
                       </div>
+                      {/* ✅ [수정] +1 제거, 시간만 심플하게 */}
                       <div style={{ fontSize: 11, opacity: 0.9 }}>
-                        {start} ~ {end} {isNextDay && <span style={{ color: '#ffcccc', fontWeight: 'bold' }}>+1</span>}
+                        {start}~{end}
                       </div>
                     </div>
                   );
@@ -220,7 +225,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         })}
       </div>
 
-      {/* 배정 팝업 */}
+      {/* 배정 팝업 (동일) */}
       {targetSchedule && (
         <div style={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -271,4 +276,4 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   );
 }
 
-const btnStyle = { padding: '8px 16px', background: '#333', border: '1px solid #555', color: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 14 };
+const btnStyle = { padding: '6px 12px', background: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, cursor: 'pointer' };
