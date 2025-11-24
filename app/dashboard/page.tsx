@@ -134,23 +134,28 @@ function DashboardContent() {
 
   }, [supabase]);
 
-  // -------- 직원 추가 --------
+  // -------- 직원 추가 (수정됨) --------
   const handleCreateEmployee = useCallback(async (payload: any) => {
     if (!currentStoreId) return;
     
-    // ✅ [수정 포인트] payload의 값을 DB 컬럼명에 맞춰서 매핑
     const { error } = await supabase.from('employees').insert({
       store_id: currentStoreId,
       name: payload.name,
-      hourly_wage: payload.hourlyWage,        // 👈 여기가 핵심 (hourlyWage -> hourly_wage)
-      employment_type: payload.employmentType, // 👈 여기도 (employmentType -> employment_type)
-      hire_date: payload.hireDate || null,     // 👈 여기도 (hireDate -> hire_date)
+      // ✅ [수정] payload.hourlyWage (화면에서 보낸 이름) -> hourly_wage (DB 컬럼 이름)
+      hourly_wage: payload.hourlyWage, 
+      
+      // ✅ [수정] payload.employmentType -> employment_type
+      employment_type: payload.employmentType, 
+      
+      // ✅ [수정] payload.hireDate -> hire_date
+      hire_date: payload.hireDate || null,
+      
       is_active: true,
     });
 
     if (error) {
-      console.error('create employee error:', error); // 에러 내용 확인용 로그
-      alert('직원 추가 실패: ' + error.message); 
+      console.error('create employee error:', error);
+      alert('추가 실패: ' + error.message);
     } else {
       await loadEmployees(currentStoreId);
     }
