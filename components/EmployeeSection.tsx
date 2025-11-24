@@ -50,12 +50,12 @@ export function EmployeeSection({
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
     if (!wage) return alert('시급을 입력해주세요.');
 
-    await onCreateEmployee({
-      name: newEmpName,
-      hourlyWage: wage,
-      employmentType: newEmpType,
-      hireDate: newEmpHireDate || undefined,
-    });
+await onCreateEmployee({
+  name: newEmpName,
+  hourly_wage: wage,            // ✅ DB 컬럼명과 동일하게 (hourly_wage)
+  employment_type: newEmpType,  // ✅ DB 컬럼명과 동일하게 (employment_type)
+  hire_date: newEmpHireDate || undefined, // ✅ (hire_date)
+});
 
     setNewEmpName('');
     setNewEmpWage('');

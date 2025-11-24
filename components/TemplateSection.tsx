@@ -4,13 +4,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import ScheduleCalendar from '@/components/ScheduleCalendar';
 import WeeklyScheduleManager from '@/components/WeeklyScheduleManager';
-import type { Employee } from '@/app/dashboard/page'; // ✅ 타입 가져오기 위치 수정
+import type { Employee } from '@/app/dashboard/page';
 
 type Props = {
   currentStoreId: string;
 };
 
-// 템플릿 타입 정의
 export type ScheduleTemplate = {
   id: string;
   name: string;
@@ -19,22 +18,19 @@ export type ScheduleTemplate = {
   color: string;
 };
 
-// (SimpleEmployee 타입 삭제 -> Employee로 통일)
-
 export default function TemplateSection({ currentStoreId }: Props) {
   const supabase = createSupabaseBrowserClient();
-  const [employees, setEmployees] = useState<Employee[]>([]); // ✅ Employee 타입 사용
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
-  // ✅ 직원 목록 불러오기 (모든 정보 포함)
   const fetchEmployees = useCallback(async () => {
     const { data, error } = await supabase
       .from('employees')
-      .select('*') // ✅ id, name 뿐만 아니라 end_date 등 모든 정보 가져오기
+      .select('*')
       .eq('store_id', currentStoreId)
       .eq('is_active', true);
 
     if (!error && data) {
-      // DB 데이터 타입 매핑 (필요시)
+      // 데이터 매핑 (필요시)
       const mappedData: Employee[] = data.map((row: any) => ({
         id: String(row.id),
         name: row.name,
@@ -42,8 +38,11 @@ export default function TemplateSection({ currentStoreId }: Props) {
         employment_type: row.employment_type,
         is_active: row.is_active,
         hire_date: row.hire_date,
-        end_date: row.end_date, // 퇴사일 포함
-        // 나머지 필드도 필요하면 매핑
+        end_date: row.end_date,
+        phone_number: row.phone_number,
+        birth_date: row.birth_date,
+        bank_name: row.bank_name,
+        account_number: row.account_number,
       }));
       setEmployees(mappedData);
     }
@@ -57,20 +56,22 @@ export default function TemplateSection({ currentStoreId }: Props) {
     <div>
       <div style={{ marginBottom: 16 }}>
         <p style={{ fontSize: 14, color: '#ccc', margin: 0 }}>
-          월간 스케줄을 확인하고 관리합니다. 하단에서 <strong>[자동 생성 설정]</strong>을 할 수 있습니다.
+          월간 스케줄을 확인하고 관리합니다.
         </p>
       </div>
 
+      {/* ✅ [위치 변경] 주간 스케줄 설정 (위로 올림) */}
       <div style={{ marginBottom: 40 }}>
-        <ScheduleCalendar 
+        <WeeklyScheduleManager 
           currentStoreId={currentStoreId} 
-          selectedTemplate={null} 
           employees={employees} 
         />
       </div>
 
-      <WeeklyScheduleManager 
+      {/* ✅ [위치 변경] 캘린더 (아래로 내림) */}
+      <ScheduleCalendar 
         currentStoreId={currentStoreId} 
+        selectedTemplate={null} 
         employees={employees} 
       />
     </div>
