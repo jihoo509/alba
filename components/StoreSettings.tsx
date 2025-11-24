@@ -17,13 +17,15 @@ export default function StoreSettings({ storeId }: Props) {
   const [payNight, setPayNight] = useState(false);
   const [payHoliday, setPayHoliday] = useState(false);
   const [payOvertime, setPayOvertime] = useState(false);
+  // ✅ [추가] 휴게시간 자동 차감
+  const [autoDeductBreak, setAutoDeductBreak] = useState(true);
 
-  // 1. 처음 로딩 시 DB에서 설정 가져오기
+  // 1. 설정 가져오기
   useEffect(() => {
     const loadSettings = async () => {
       const { data, error } = await supabase
         .from('stores')
-        .select('is_five_plus, pay_weekly, pay_night, pay_holiday, pay_overtime')
+        .select('*') // 모든 컬럼 가져옴
         .eq('id', storeId)
         .single();
 
@@ -33,12 +35,14 @@ export default function StoreSettings({ storeId }: Props) {
         setPayNight(data.pay_night);
         setPayHoliday(data.pay_holiday);
         setPayOvertime(data.pay_overtime);
+        // ✅ DB 값 적용 (없으면 true)
+        setAutoDeductBreak(data.auto_deduct_break ?? true);
       }
     };
     loadSettings();
   }, [storeId, supabase]);
 
-  // 2. 저장하기 버튼 클릭
+  // 2. 저장하기
   const handleSave = async () => {
     setLoading(true);
     const { error } = await supabase
@@ -49,29 +53,23 @@ export default function StoreSettings({ storeId }: Props) {
         pay_night: payNight,
         pay_holiday: payHoliday,
         pay_overtime: payOvertime,
+        auto_deduct_break: autoDeductBreak, // ✅ 저장
       })
       .eq('id', storeId);
 
     setLoading(false);
-    if (error) {
-      alert('설정 저장 실패: ' + error.message);
-    } else {
-      alert('매장 급여 설정이 저장되었습니다!');
-    }
+    if (error) alert('저장 실패: ' + error.message);
+    else alert('설정이 저장되었습니다!');
   };
 
-  // 3. "5인 이상" 체크 시 자동 세팅 로직
   const handleFivePlusChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
     setIsFivePlus(checked);
-
     if (checked) {
-      // 5인 이상이면 법적으로 줘야 할 것들 자동 체크 (편의 기능)
       setPayNight(true);
       setPayHoliday(true);
       setPayOvertime(true);
     } else {
-      // 5인 미만으로 바꾸면 일단 꺼줌 (원하면 다시 켤 수 있음)
       setPayNight(false);
       setPayHoliday(false);
       setPayOvertime(false);
@@ -82,25 +80,31 @@ export default function StoreSettings({ storeId }: Props) {
     <div style={{ marginTop: 20, padding: 24, border: '1px solid #444', borderRadius: 8, background: '#1a1a1a' }}>
       <h3 style={{ marginTop: 0, marginBottom: 16 }}>매장 급여/수당 설정</h3>
       
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, fontWeight: 'bold', cursor: 'pointer' }}>
+      <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px dashed #444' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 'bold', cursor: 'pointer' }}>
           <input
             type="checkbox"
             checked={isFivePlus}
             onChange={handleFivePlusChange}
-            style={{ width: 20, height: 20 }}
+            style={{ width: 18, height: 18 }}
           />
           5인 이상 사업장입니다.
         </label>
         <p style={{ margin: '4px 0 0 28px', fontSize: 13, color: '#888' }}>
-          체크 시 야간/휴일/연장 수당이 자동으로 선택됩니다. (근로기준법 기준)
+          체크 시 가산수당(야간/휴일/연장 1.5배)이 자동으로 선택됩니다.
         </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
           <input type="checkbox" checked={payWeekly} onChange={(e) => setPayWeekly(e.target.checked)} />
-          주휴수당 지급
+          주휴수당 지급 (주 15시간↑)
+        </label>
+
+        {/* ✅ [추가] 휴게시간 설정 */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <input type="checkbox" checked={autoDeductBreak} onChange={(e) => setAutoDeductBreak(e.target.checked)} />
+          휴게시간 자동 차감 (4시간/30분, 8시간/1시간)
         </label>
 
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
@@ -130,7 +134,7 @@ export default function StoreSettings({ storeId }: Props) {
             border: 'none',
             borderRadius: 4,
             cursor: 'pointer',
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: 'bold'
           }}
         >
