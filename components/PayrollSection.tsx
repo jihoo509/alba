@@ -30,7 +30,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
     const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
     setStoreSettings(storeData);
 
-    // 직원 정보 가져올 때 생년월일, 전화번호 등 다 가져옴
+    // 직원 정보 (생년월일, 전화번호 등 포함)
     const { data: employees } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
 
     const startStr = `${year}-${String(month - 1).padStart(2,'0')}-20`;
@@ -54,12 +54,12 @@ export default function PayrollSection({ currentStoreId }: Props) {
     loadAndCalculate();
   }, [loadAndCalculate]);
 
-  // ✅ [수정] 엑셀 다운로드 (포맷팅 및 컬럼 순서 적용)
+  // 엑셀 다운로드
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
 
-    // 천 단위 콤마 찍는 함수
-    const fmt = (num: number) => num.toLocaleString();
+    // 천 단위 콤마 함수
+    const fmt = (num: number) => num ? num.toLocaleString() : '0';
 
     const excelRows = payrollData.map(p => ({
       '이름': p.name,
@@ -79,7 +79,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
     const ws = XLSX.utils.json_to_sheet(excelRows);
     
-    // 컬럼 너비 자동 조정 (대략적으로)
+    // 컬럼 너비 설정
     ws['!cols'] = [
       { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 20 },
       { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, 
@@ -93,7 +93,9 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   return (
     <div>
-      <StoreSettings storeId={currentStoreId} />
+      {/* ✅ [수정됨] onUpdate를 연결해야 저장 후 자동 계산됩니다! */}
+      <StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} />
+      
       <hr style={{ margin: '32px 0', borderColor: '#333' }} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -153,6 +155,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
           </table>
         </div>
       )}
+      
       <p style={{ fontSize: 13, color: '#777', marginTop: 12 }}>
         * 4대보험은 표준 요율(2024/25) 기준으로 자동 계산되었습니다.
       </p>
