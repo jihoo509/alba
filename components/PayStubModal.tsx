@@ -14,37 +14,35 @@ type Props = {
 export default function PayStubModal({ data, isOpen, onClose, year, month }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
 
-  // 옵션 상태
   const [useWeekly, setUseWeekly] = useState(true);
   const [useNight, setUseNight] = useState(true);
-  const [useOvertime, setUseOvertime] = useState(true); // ✅ 연장수당 토글
-  const [useBreakDeduct, setUseBreakDeduct] = useState(true); // ✅ 휴게시간 차감 여부
+  const [useOvertime, setUseOvertime] = useState(true);
+  const [useHolidayWork, setUseHolidayWork] = useState(true); // ✅ 휴일수당 토글
+  const [useBreakDeduct, setUseBreakDeduct] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
       setUseWeekly(true);
       setUseNight(true);
       setUseOvertime(true);
+      setUseHolidayWork(true); // 초기값 true
       setUseBreakDeduct(true);
     }
   }, [isOpen, data]);
 
   if (!isOpen || !data) return null;
 
-  // 🔄 실시간 재계산 로직
   let newBasePay = 0;
   let newNightPay = 0;
   let newOvertimePay = 0;
+  let newHolidayWorkPay = 0;
   let newWeeklyPay = 0;
 
-  // 장부(Ledger) 다시 훑으면서 옵션 적용
   const filteredLedger = data.ledger.map((row: any) => {
     if (row.type === 'WORK') {
       let rowBase = row.basePay;
       
-      // 휴게시간 차감 해제 시 (즉, 휴게시간도 돈으로 줄 때)
       if (!useBreakDeduct && row.breakMins > 0) {
-        // 차감했던 분(min) 만큼 급여 추가
         const addedPay = Math.floor((row.breakMins / 60) * data.wage);
         rowBase += addedPay;
       }
@@ -52,10 +50,11 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
       newBasePay += rowBase;
       if (useNight) newNightPay += row.nightPay;
       if (useOvertime) newOvertimePay += row.overtimePay;
+      if (useHolidayWork) newHolidayWorkPay += row.holidayWorkPay; // ✅ 합산
 
       return { 
         ...row, 
-        displayBase: rowBase, // 화면 표시용
+        displayBase: rowBase, 
         displayHours: row.hours + (useBreakDeduct && row.breakMins > 0 ? ` (휴게-${row.breakMins}분)` : '')
       };
     } 
@@ -66,9 +65,8 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
     return row;
   });
 
-  const currentTotal = newBasePay + newWeeklyPay + newNightPay + newOvertimePay;
+  const currentTotal = newBasePay + newWeeklyPay + newNightPay + newOvertimePay + newHolidayWorkPay;
   
-  // 세금 재계산
   let currentTax = 0;
   if (data.type.includes('four')) {
      const originalRate = data.taxDetails.total / data.totalPay; 
@@ -76,6 +74,7 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
   } else {
      currentTax = Math.floor(currentTotal * 0.033 / 10) * 10;
   }
+  
   const currentFinalPay = currentTotal - currentTax;
 
   const handleSaveImage = async () => {
@@ -93,34 +92,24 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000
     }}>
-      <div style={{ backgroundColor: '#222', color: '#fff', borderRadius: 8, maxWidth: 700, width: '95%', maxHeight: '95vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ backgroundColor: '#222', color: '#fff', borderRadius: 8, maxWidth: 750, width: '95%', maxHeight: '95vh', display: 'flex', flexDirection: 'column' }}>
         
-        {/* 옵션 조절 패널 */}
         <div style={{ padding: 16, borderBottom: '1px solid #444', backgroundColor: '#333' }}>
           <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 지급 옵션 (체크 해제 시 제외)</h3>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} /> 주휴수당
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} /> 야간수당
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} /> 연장수당
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'orange' }}>
-              <input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게시간 차감 적용
-            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} /> 주휴수당</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} /> 야간수당</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} /> 연장수당</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#ff6b6b', fontWeight: 'bold' }}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} /> 휴일(특근)수당</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'orange' }}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게시간 차감</label>
           </div>
         </div>
 
-        {/* 🟢 명세서 영역 */}
         <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff' }}>
           <div ref={printRef} style={{ padding: 30, backgroundColor: '#fff', color: '#000', minHeight: 400 }}>
             <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24 }}>
               {year}년 {month}월 급여 명세서
             </h2>
-            
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 16 }}>
               <span>성명: <strong>{data.name}</strong></span>
               <span>지급일: {year}.{month}.{new Date().getDate()}</span>
@@ -135,6 +124,7 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
                   <th style={thStyle}>기본급</th>
                   <th style={thStyle}>야간</th>
                   <th style={thStyle}>연장</th>
+                  <th style={{...thStyle, color: 'red'}}>휴일</th>
                 </tr>
               </thead>
               <tbody>
@@ -143,13 +133,9 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
                     if (!useWeekly) return null;
                     return (
                       <tr key={idx} style={{ backgroundColor: '#fff8c4', borderBottom: '1px solid #ddd' }}>
-                        <td colSpan={3} style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold', color: '#d68910' }}>
-                          ⭐ {row.dayLabel} ({row.note})
-                        </td>
+                        <td colSpan={3} style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold', color: '#d68910' }}>⭐ {row.dayLabel} ({row.note})</td>
                         <td style={tdStyle}>-</td>
-                        <td colSpan={2} style={{ ...tdStyle, textAlign: 'right', fontWeight: 'bold', color: '#d68910' }}>
-                          {row.weeklyPay.toLocaleString()}
-                        </td>
+                        <td colSpan={3} style={{ ...tdStyle, textAlign: 'right', fontWeight: 'bold', color: '#d68910' }}>{row.weeklyPay.toLocaleString()}</td>
                       </tr>
                     );
                   }
@@ -159,12 +145,9 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
                       <td style={tdStyle}>{row.timeRange}</td>
                       <td style={tdStyle}>{row.displayHours}</td>
                       <td style={{ ...tdStyle, textAlign: 'right' }}>{row.displayBase.toLocaleString()}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', color: useNight && row.nightPay > 0 ? 'red' : '#ccc' }}>
-                          {useNight ? row.nightPay.toLocaleString() : 0}
-                      </td>
-                      <td style={{ ...tdStyle, textAlign: 'right', color: useOvertime && row.overtimePay > 0 ? 'blue' : '#ccc' }}>
-                          {useOvertime ? row.overtimePay.toLocaleString() : 0}
-                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'right', color: useNight && row.nightPay > 0 ? 'red' : '#ccc' }}>{useNight ? row.nightPay.toLocaleString() : 0}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', color: useOvertime && row.overtimePay > 0 ? 'blue' : '#ccc' }}>{useOvertime ? row.overtimePay.toLocaleString() : 0}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', color: useHolidayWork && row.holidayWorkPay > 0 ? 'red' : '#ccc', fontWeight: 'bold' }}>{useHolidayWork ? row.holidayWorkPay.toLocaleString() : 0}</td>
                     </tr>
                   );
                 })}
@@ -176,6 +159,7 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
               <div style={rowStyle}><span style={{color: useWeekly?'#000':'#ccc'}}>+ 주휴수당</span> <span style={{color: useWeekly?'#000':'#ccc'}}>{newWeeklyPay.toLocaleString()}원</span></div>
               <div style={rowStyle}><span style={{color: useNight?'#000':'#ccc'}}>+ 야간수당</span> <span style={{color: useNight?'#000':'#ccc'}}>{newNightPay.toLocaleString()}원</span></div>
               <div style={rowStyle}><span style={{color: useOvertime?'#000':'#ccc'}}>+ 연장수당</span> <span style={{color: useOvertime?'#000':'#ccc'}}>{newOvertimePay.toLocaleString()}원</span></div>
+              <div style={rowStyle}><span style={{color: useHolidayWork?'red':'#ccc'}}>+ 휴일근로수당</span> <span style={{color: useHolidayWork?'red':'#ccc'}}>{newHolidayWorkPay.toLocaleString()}원</span></div>
               
               <hr style={{ margin: '12px 0', borderTop: '1px dashed #aaa' }} />
               <div style={rowStyle}><span style={{fontWeight: 'bold'}}>세전 총액</span> <span style={{fontWeight: 'bold'}}>{currentTotal.toLocaleString()}원</span></div>
@@ -186,7 +170,6 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
               </div>
             </div>
             
-            {/* 공제 상세 (생략 없이) */}
             <div style={{ marginTop: 25, borderTop: '1px solid #eee', paddingTop: 15 }}>
                <p style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 8, color: '#333' }}>[참고] 공제 내역 상세 (원단위 절사)</p>
                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px', fontSize: 11, color: '#666' }}>

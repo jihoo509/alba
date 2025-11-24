@@ -30,7 +30,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
     const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
     setStoreSettings(storeData);
 
-    // 직원 정보 (생년월일, 전화번호 등 포함)
     const { data: employees } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
 
     const startStr = `${year}-${String(month - 1).padStart(2,'0')}-20`;
@@ -54,11 +53,8 @@ export default function PayrollSection({ currentStoreId }: Props) {
     loadAndCalculate();
   }, [loadAndCalculate]);
 
-  // 엑셀 다운로드
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
-
-    // 천 단위 콤마 함수
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
 
     const excelRows = payrollData.map(p => ({
@@ -69,6 +65,11 @@ export default function PayrollSection({ currentStoreId }: Props) {
       '계좌번호': p.details.account || '-',
       '총지급급여': fmt(p.totalPay),
       '세후지급급여': fmt(p.finalPay),
+      '기본급': fmt(p.basePay),
+      '주휴수당': fmt(p.weeklyHolidayPay),
+      '야간수당': fmt(p.nightPay),
+      '연장수당': fmt(p.overtimePay),
+      '휴일수당': fmt(p.holidayWorkPay), // ✅ 추가됨
       '소득세': fmt(p.taxDetails.incomeTax),
       '지방소득세': fmt(p.taxDetails.localTax),
       '국민연금': fmt(p.taxDetails.pension),
@@ -78,14 +79,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelRows);
-    
-    // 컬럼 너비 설정
-    ws['!cols'] = [
-      { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 20 },
-      { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, 
-      { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }
-    ];
-
+    ws['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "급여대장");
     XLSX.writeFile(wb, `${year}년_${month}월_세무용_급여대장.xlsx`);
@@ -93,9 +87,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   return (
     <div>
-      {/* ✅ [수정됨] onUpdate를 연결해야 저장 후 자동 계산됩니다! */}
       <StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} />
-      
       <hr style={{ margin: '32px 0', borderColor: '#333' }} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -111,9 +103,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
         </div>
       </div>
 
-      {loading ? (
-        <p>계산 중...</p>
-      ) : (
+      {loading ? <p>계산 중...</p> : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1200 }}>
             <thead>
@@ -136,18 +126,14 @@ export default function PayrollSection({ currentStoreId }: Props) {
                   <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.name}</td>
                   <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.totalPay.toLocaleString()}</td>
                   <td style={{ ...tdStyle, color: '#ffeaa7', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
-                  
                   <td style={{...tdStyle, color: '#aaa'}}>{p.taxDetails.incomeTax > 0 ? p.taxDetails.incomeTax.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#aaa'}}>{p.taxDetails.localTax > 0 ? p.taxDetails.localTax.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.pension > 0 ? p.taxDetails.pension.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.health > 0 ? p.taxDetails.health.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.care > 0 ? p.taxDetails.care.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.employment > 0 ? p.taxDetails.employment.toLocaleString() : '-'}</td>
-
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
-                    <button onClick={() => setSelectedPayStub(p)} style={{ padding: '4px 8px', fontSize: 12, cursor: 'pointer', borderRadius: 4, border: '1px solid #777', background: 'transparent', color: '#fff' }}>
-                      명세서 보기
-                    </button>
+                    <button onClick={() => setSelectedPayStub(p)} style={{ padding: '4px 8px', fontSize: 12, cursor: 'pointer', borderRadius: 4, border: '1px solid #777', background: 'transparent', color: '#fff' }}>명세서 보기</button>
                   </td>
                 </tr>
               ))}
@@ -155,18 +141,11 @@ export default function PayrollSection({ currentStoreId }: Props) {
           </table>
         </div>
       )}
-      
       <p style={{ fontSize: 13, color: '#777', marginTop: 12 }}>
         * 4대보험은 표준 요율(2024/25) 기준으로 자동 계산되었습니다.
       </p>
 
-      <PayStubModal 
-        isOpen={!!selectedPayStub} 
-        onClose={() => setSelectedPayStub(null)} 
-        data={selectedPayStub}
-        year={year}
-        month={month}
-      />
+      <PayStubModal isOpen={!!selectedPayStub} onClose={() => setSelectedPayStub(null)} data={selectedPayStub} year={year} month={month} />
     </div>
   );
 }

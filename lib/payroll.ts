@@ -1,13 +1,10 @@
 import { startOfWeek, endOfWeek, addDays, format, isSameMonth } from 'date-fns';
 
-// 4대보험 요율
 const RATES = {
   pension: 0.045, health: 0.03545, care: 0.1295, employment: 0.009, incomeTax: 0.03, localTax: 0.1
 };
-
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-// 야간 시간(22:00~06:00) 계산
 function calculateNightMinutes(start: string, end: string) {
   const [sH, sM] = start.split(':').map(Number);
   const [eH, eM] = end.split(':').map(Number);
@@ -30,7 +27,8 @@ export function calculateMonthlyPayroll(
     
     let totalBasePay = 0;
     let totalNightPay = 0;
-    let totalOvertimePay = 0; // ✅ 연장수당 합계 추가
+    let totalOvertimePay = 0;
+    let totalHolidayWorkPay = 0; // ✅ 휴일근로수당 합계
     let totalWeeklyPay = 0;
     
     let ledger: any[] = []; 
@@ -47,7 +45,6 @@ export function calculateMonthlyPayroll(
       processedWeeks.add(weekStartStr);
 
       const weekSunday = addDays(current, 6);
-      
       const weekSchedules = empSchedules.filter((s: any) => {
         const d = new Date(s.date);
         return d >= current && d <= weekSunday;
@@ -55,7 +52,6 @@ export function calculateMonthlyPayroll(
 
       let weekMinutes = 0;
 
-      // 1. 일별 근무 처리
       weekSchedules.forEach((s: any) => {
         const d = new Date(s.date);
         const isThisMonth = d.getMonth() === month - 1;
@@ -65,7 +61,6 @@ export function calculateMonthlyPayroll(
         let rawMins = (eH * 60 + eM) - (sH * 60 + sM);
         if (rawMins < 0) rawMins += 24 * 60;
 
-        // 휴게시간 차감 계산
         let actualMins = rawMins;
         let breakMins = 0;
         if (storeSettings.auto_deduct_break !== false) {
@@ -74,23 +69,26 @@ export function calculateMonthlyPayroll(
           actualMins = rawMins - breakMins;
         }
 
-        // 기본급 (실제 근무시간 * 시급)
         const basePay = Math.floor((actualMins / 60) * emp.hourly_wage);
         
-        // ✅ 야간수당 (0.5배)
         let nightPay = 0;
         if (storeSettings.is_five_plus && storeSettings.pay_night) {
              const nightMins = calculateNightMinutes(s.start_time, s.end_time);
              nightPay = Math.floor((nightMins / 60) * emp.hourly_wage * 0.5);
         }
 
-        // ✅ 연장수당 (0.5배) - 8시간 초과분
         let overtimePay = 0;
         if (storeSettings.is_five_plus && storeSettings.pay_overtime) {
-            if (actualMins > 480) { // 8시간 초과 시
+            if (actualMins > 480) { 
                 const overMins = actualMins - 480;
                 overtimePay = Math.floor((overMins / 60) * emp.hourly_wage * 0.5);
             }
+        }
+
+        // ✅ [추가] 휴일근로수당 (0.5배 가산)
+        let holidayWorkPay = 0;
+        if (storeSettings.is_five_plus && storeSettings.pay_holiday && s.is_holiday_work) {
+            holidayWorkPay = Math.floor((actualMins / 60) * emp.hourly_wage * 0.5);
         }
 
         if (isThisMonth) {
@@ -99,17 +97,19 @@ export function calculateMonthlyPayroll(
                 date: s.date,
                 dayLabel: DAYS[d.getDay()],
                 timeRange: `${s.start_time.slice(0,5)}~${s.end_time.slice(0,5)}`,
-                hours: (actualMins / 60).toFixed(1),
-                breakMins: breakMins, // ✅ 휴게시간 정보 저장 (토글용)
+                hours: (actualMins / 60).toFixed(1) + (breakMins > 0 ? ` (휴게 -${breakMins}분)` : ''),
+                breakMins: breakMins,
                 basePay: basePay,
-                nightPay: nightPay,       // 야간 분리
-                overtimePay: overtimePay, // 연장 분리
-                note: ''
+                nightPay: nightPay,      
+                overtimePay: overtimePay, 
+                holidayWorkPay: holidayWorkPay, // ✅ 장부 기록
+                note: s.is_holiday_work ? '특근' : ''
             });
 
             totalBasePay += basePay;
             totalNightPay += nightPay;
             totalOvertimePay += overtimePay;
+            totalHolidayWorkPay += holidayWorkPay; // ✅ 합계 누적
         }
 
         if (!s.exclude_holiday_pay) {
@@ -117,23 +117,15 @@ export function calculateMonthlyPayroll(
         }
       });
 
-      // 2. 주휴수당 처리
       if (isSameMonth(weekSunday, monthStart)) {
         if (weekMinutes >= 900 && storeSettings.pay_weekly) { 
           const cappedWeekMinutes = Math.min(weekMinutes, 40 * 60); 
           const holidayPay = Math.floor((cappedWeekMinutes / 40 / 60) * 8 * emp.hourly_wage);
-          
           totalWeeklyPay += holidayPay;
-
           ledger.push({
               type: 'WEEKLY',
-              date: '',
-              dayLabel: '주휴',
-              timeRange: '-',
-              hours: '-',
-              basePay: 0,
-              nightPay: 0,
-              overtimePay: 0,
+              date: '', dayLabel: '주휴', timeRange: '-', hours: '-',
+              basePay: 0, nightPay: 0, overtimePay: 0, holidayWorkPay: 0,
               weeklyPay: holidayPay,
               note: `1주 ${Math.floor(weekMinutes/60)}시간 근무`
           });
@@ -142,10 +134,8 @@ export function calculateMonthlyPayroll(
       current = addDays(current, 7);
     }
 
-    // 합계
-    const totalPay = totalBasePay + totalNightPay + totalOvertimePay + totalWeeklyPay;
+    const totalPay = totalBasePay + totalNightPay + totalOvertimePay + totalHolidayWorkPay + totalWeeklyPay;
 
-    // 세금
     let taxDetails = {
         pension: 0, health: 0, care: 0, employment: 0, incomeTax: 0, localTax: 0, total: 0
     };
@@ -167,17 +157,16 @@ export function calculateMonthlyPayroll(
       name: emp.name,
       wage: emp.hourly_wage,
       type: emp.employment_type,
+      totalHours: (1), // 여기서는 안씀
       basePay: totalBasePay,
       nightPay: totalNightPay,
-      overtimePay: totalOvertimePay, // ✅ 연장수당 추가
+      overtimePay: totalOvertimePay,
+      holidayWorkPay: totalHolidayWorkPay, // ✅ 반환
       weeklyHolidayPay: totalWeeklyPay,
       totalPay: totalPay,
       taxDetails: taxDetails,
       finalPay: totalPay - taxDetails.total,
-      details: {
-        bank: emp.bank_name,
-        account: emp.account_number,
-      },
+      details: { bank: emp.bank_name, account: emp.account_number },
       birthDate: emp.birth_date,
       phoneNumber: emp.phone_number,
       ledger: ledger
