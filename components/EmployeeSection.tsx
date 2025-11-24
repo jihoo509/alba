@@ -52,9 +52,9 @@ export function EmployeeSection({
 
 await onCreateEmployee({
   name: newEmpName,
-  hourly_wage: wage,            // ✅ DB 컬럼명과 동일하게 (hourly_wage)
-  employment_type: newEmpType,  // ✅ DB 컬럼명과 동일하게 (employment_type)
-  hire_date: newEmpHireDate || undefined, // ✅ (hire_date)
+  hourly_wage: wage,             // ✅ hourly_wage로 변경
+  employment_type: newEmpType,   // ✅ employment_type로 변경
+  hire_date: newEmpHireDate || null, // ✅ hire_date로 변경
 });
 
     setNewEmpName('');
