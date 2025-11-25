@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import StoreSettings from './StoreSettings';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
@@ -30,6 +30,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
     const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
     setStoreSettings(storeData);
 
+    // 직원 정보
     const { data: employees } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
 
     const startStr = `${year}-${String(month - 1).padStart(2,'0')}-20`;
@@ -53,6 +54,12 @@ export default function PayrollSection({ currentStoreId }: Props) {
     loadAndCalculate();
   }, [loadAndCalculate]);
 
+  // ✅ [추가] 이번 달 총 지출액 계산 (세전 총액 기준)
+  const totalMonthlyCost = useMemo(() => {
+    return payrollData.reduce((acc, curr) => acc + curr.totalPay, 0);
+  }, [payrollData]);
+
+  // 엑셀 다운로드
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
@@ -69,7 +76,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
       '주휴수당': fmt(p.weeklyHolidayPay),
       '야간수당': fmt(p.nightPay),
       '연장수당': fmt(p.overtimePay),
-      '휴일수당': fmt(p.holidayWorkPay), // ✅ 추가됨
+      '휴일수당': fmt(p.holidayWorkPay),
       '소득세': fmt(p.taxDetails.incomeTax),
       '지방소득세': fmt(p.taxDetails.localTax),
       '국민연금': fmt(p.taxDetails.pension),
@@ -90,8 +97,15 @@ export default function PayrollSection({ currentStoreId }: Props) {
       <StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} />
       <hr style={{ margin: '32px 0', borderColor: '#333' }} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2 style={{ fontSize: 22, margin: 0 }}>💰 {year}년 {month}월 급여 대장</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          <h2 style={{ fontSize: 24, margin: 0 }}>💰 {year}년 {month}월 급여 대장</h2>
+          {/* ✅ [추가] 총 지출액 표시 */}
+          <span style={{ fontSize: 16, color: '#aaa' }}>
+            총 지급액: <strong style={{ color: '#ffeaa7', fontSize: 20 }}>{totalMonthlyCost.toLocaleString()}원</strong>
+          </span>
+        </div>
+
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setMonth(m => m === 1 ? 12 : m - 1)} style={btnStyle}>◀ 전월</button>
           <span style={{ fontSize: 18, fontWeight: 'bold', alignSelf: 'center', minWidth: 60, textAlign: 'center' }}>{month}월</span>
@@ -105,9 +119,10 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
       {loading ? <p>계산 중...</p> : (
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1200 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
             <thead>
-              <tr style={{ background: '#333', color: '#fff' }}>
+              {/* ✅ 헤더 스타일 수정: fontSize 15px */}
+              <tr style={{ background: '#333', color: '#fff', fontSize: '15px' }}>
                 <th style={thStyle}>이름</th>
                 <th style={thStyle}>총 지급</th>
                 <th style={thStyle}>세후 지급</th>
@@ -122,7 +137,8 @@ export default function PayrollSection({ currentStoreId }: Props) {
             </thead>
             <tbody>
               {payrollData.map(p => (
-                <tr key={p.empId} style={{ borderBottom: '1px solid #444' }}>
+                // ✅ 본문 스타일 수정: fontSize 15px
+                <tr key={p.empId} style={{ borderBottom: '1px solid #444', fontSize: '15px' }}>
                   <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.name}</td>
                   <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.totalPay.toLocaleString()}</td>
                   <td style={{ ...tdStyle, color: '#ffeaa7', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
@@ -132,8 +148,8 @@ export default function PayrollSection({ currentStoreId }: Props) {
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.health > 0 ? p.taxDetails.health.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.care > 0 ? p.taxDetails.care.toLocaleString() : '-'}</td>
                   <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.employment > 0 ? p.taxDetails.employment.toLocaleString() : '-'}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>
-                    <button onClick={() => setSelectedPayStub(p)} style={{ padding: '4px 8px', fontSize: 12, cursor: 'pointer', borderRadius: 4, border: '1px solid #777', background: 'transparent', color: '#fff' }}>명세서 보기</button>
+                  <td style={{ ...tdStyle }}>
+                    <button onClick={() => setSelectedPayStub(p)} style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, border: '1px solid #777', background: 'transparent', color: '#fff' }}>명세서 보기</button>
                   </td>
                 </tr>
               ))}
@@ -151,5 +167,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
 }
 
 const btnStyle = { padding: '8px 12px', background: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, cursor: 'pointer' };
-const thStyle = { padding: '10px', border: '1px solid #555', textAlign: 'right' as const, whiteSpace: 'nowrap' as const };
-const tdStyle = { padding: '10px', border: '1px solid #555', textAlign: 'right' as const };
+// ✅ [수정] 가운데 정렬(center) 및 패딩 확대
+const thStyle = { padding: '14px 10px', border: '1px solid #555', textAlign: 'center' as const, whiteSpace: 'nowrap' as const, fontWeight: 'bold' };
+const tdStyle = { padding: '14px 10px', border: '1px solid #555', textAlign: 'center' as const };
