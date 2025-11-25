@@ -1,10 +1,18 @@
 import { startOfWeek, endOfWeek, addDays, format, isSameMonth } from 'date-fns';
 
+// 2024/2025 기준 4대보험 요율
 const RATES = {
-  pension: 0.045, health: 0.03545, care: 0.1295, employment: 0.009, incomeTax: 0.03, localTax: 0.1
+  pension: 0.045,        // 국민연금
+  health: 0.03545,       // 건강보험
+  care: 0.1295,          // 장기요양
+  employment: 0.009,     // 고용보험
+  incomeTax: 0.03,       // 소득세 (3.3%)
+  localTax: 0.1,         // 지방세
 };
+
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+// 야간 시간(22:00~06:00) 계산
 function calculateNightMinutes(start: string, end: string) {
   const [sH, sM] = start.split(':').map(Number);
   const [eH, eM] = end.split(':').map(Number);
@@ -28,33 +36,42 @@ export function calculateMonthlyPayroll(
     let totalBasePay = 0;
     let totalNightPay = 0;
     let totalOvertimePay = 0;
-    let totalHolidayWorkPay = 0; // ✅ 휴일근로수당 합계
+    let totalHolidayWorkPay = 0;
     let totalWeeklyPay = 0;
     
     let ledger: any[] = []; 
 
+    // 월의 시작/끝 계산 (날짜 객체 사용)
     const monthStart = new Date(year, month - 1, 1);
     const monthEnd = new Date(year, month, 0);
+    
+    // 루프 시작일: 해당 월 1일이 포함된 주의 월요일
     let current = startOfWeek(monthStart, { weekStartsOn: 1 }); 
     const endLoop = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    
     const processedWeeks = new Set();
 
     while (current <= endLoop) {
+      // 주간 범위 문자열 생성 (YYYY-MM-DD)
       const weekStartStr = format(current, 'yyyy-MM-dd');
+      const weekSunday = addDays(current, 6);
+      const weekEndStr = format(weekSunday, 'yyyy-MM-dd');
+
       if (processedWeeks.has(weekStartStr)) { current = addDays(current, 7); continue; }
       processedWeeks.add(weekStartStr);
 
-      const weekSunday = addDays(current, 6);
+      // ✅ [핵심 수정] 문자열로 날짜 비교 (시간대 오류 방지)
       const weekSchedules = empSchedules.filter((s: any) => {
-        const d = new Date(s.date);
-        return d >= current && d <= weekSunday;
+        return s.date >= weekStartStr && s.date <= weekEndStr;
       }).sort((a: any, b: any) => a.date.localeCompare(b.date));
 
       let weekMinutes = 0;
 
       weekSchedules.forEach((s: any) => {
-        const d = new Date(s.date);
-        const isThisMonth = d.getMonth() === month - 1;
+        // 날짜 파싱 (문자열 쪼개기)
+        const [y, m, d] = s.date.split('-').map(Number);
+        const scheduleDate = new Date(y, m - 1, d);
+        const isThisMonth = m === month && y === year;
 
         const [sH, sM] = s.start_time.split(':').map(Number);
         const [eH, eM] = s.end_time.split(':').map(Number);
@@ -85,7 +102,6 @@ export function calculateMonthlyPayroll(
             }
         }
 
-        // ✅ [추가] 휴일근로수당 (0.5배 가산)
         let holidayWorkPay = 0;
         if (storeSettings.is_five_plus && storeSettings.pay_holiday && s.is_holiday_work) {
             holidayWorkPay = Math.floor((actualMins / 60) * emp.hourly_wage * 0.5);
@@ -95,21 +111,21 @@ export function calculateMonthlyPayroll(
             ledger.push({
                 type: 'WORK',
                 date: s.date,
-                dayLabel: DAYS[d.getDay()],
+                dayLabel: DAYS[scheduleDate.getDay()], // 요일 정확히 표시
                 timeRange: `${s.start_time.slice(0,5)}~${s.end_time.slice(0,5)}`,
                 hours: (actualMins / 60).toFixed(1) + (breakMins > 0 ? ` (휴게 -${breakMins}분)` : ''),
                 breakMins: breakMins,
                 basePay: basePay,
                 nightPay: nightPay,      
                 overtimePay: overtimePay, 
-                holidayWorkPay: holidayWorkPay, // ✅ 장부 기록
+                holidayWorkPay: holidayWorkPay,
                 note: s.is_holiday_work ? '특근' : ''
             });
 
             totalBasePay += basePay;
             totalNightPay += nightPay;
             totalOvertimePay += overtimePay;
-            totalHolidayWorkPay += holidayWorkPay; // ✅ 합계 누적
+            totalHolidayWorkPay += holidayWorkPay;
         }
 
         if (!s.exclude_holiday_pay) {
@@ -121,11 +137,19 @@ export function calculateMonthlyPayroll(
         if (weekMinutes >= 900 && storeSettings.pay_weekly) { 
           const cappedWeekMinutes = Math.min(weekMinutes, 40 * 60); 
           const holidayPay = Math.floor((cappedWeekMinutes / 40 / 60) * 8 * emp.hourly_wage);
+          
           totalWeeklyPay += holidayPay;
+
           ledger.push({
               type: 'WEEKLY',
-              date: '', dayLabel: '주휴', timeRange: '-', hours: '-',
-              basePay: 0, nightPay: 0, overtimePay: 0, holidayWorkPay: 0,
+              date: '',
+              dayLabel: '주휴',
+              timeRange: '-',
+              hours: '-',
+              basePay: 0,
+              nightPay: 0,
+              overtimePay: 0,
+              holidayWorkPay: 0,
               weeklyPay: holidayPay,
               note: `1주 ${Math.floor(weekMinutes/60)}시간 근무`
           });
@@ -157,16 +181,19 @@ export function calculateMonthlyPayroll(
       name: emp.name,
       wage: emp.hourly_wage,
       type: emp.employment_type,
-      totalHours: (1), // 여기서는 안씀
+      totalHours: (1), 
       basePay: totalBasePay,
       nightPay: totalNightPay,
       overtimePay: totalOvertimePay,
-      holidayWorkPay: totalHolidayWorkPay, // ✅ 반환
+      holidayWorkPay: totalHolidayWorkPay,
       weeklyHolidayPay: totalWeeklyPay,
       totalPay: totalPay,
       taxDetails: taxDetails,
       finalPay: totalPay - taxDetails.total,
-      details: { bank: emp.bank_name, account: emp.account_number },
+      details: {
+        bank: emp.bank_name,
+        account: emp.account_number,
+      },
       birthDate: emp.birth_date,
       phoneNumber: emp.phone_number,
       ledger: ledger
