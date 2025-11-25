@@ -8,8 +8,7 @@ import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
 import TemplateSection from '@/components/TemplateSection';
 import PayrollSection from '@/components/PayrollSection';
-import { format, startOfMonth, endOfMonth } from 'date-fns'; // 날짜 헬퍼 추가
-// ✅ [추가] 급여 계산 엔진 가져오기
+import { format } from 'date-fns';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
 
 type Store = { id: string; name: string; };
@@ -37,26 +36,58 @@ function DashboardContent() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
 
+  // 탭 초기값
   const [currentTab, setCurrentTab] = useState<TabKey>(
     (searchParams.get('tab') as TabKey) || 'home'
   );
 
   // 홈 화면용 상태
   const [todayWorkers, setTodayWorkers] = useState<any[]>([]);
-  const [monthlyEstPay, setMonthlyEstPay] = useState<number>(0); // ✅ 이번 달 예상 급여
+  const [monthlyEstPay, setMonthlyEstPay] = useState<number>(0);
 
-  const handleTabChange = (tab: TabKey) => {
-    setCurrentTab(tab);
-    router.replace(`${pathname}?tab=${tab}`);
+  // ✅ [수정] URL 업데이트 헬퍼 (탭 & 매장ID 유지)
+  const updateUrl = (tab: TabKey, storeId: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab) params.set('tab', tab);
+    if (storeId) params.set('storeId', storeId);
+    router.replace(`${pathname}?${params.toString()}`);
   };
 
+  // ✅ [수정] 탭 변경 시 URL 업데이트
+  const handleTabChange = (tab: TabKey) => {
+    setCurrentTab(tab);
+    updateUrl(tab, currentStoreId);
+  };
+
+  // ✅ [수정] 매장 변경 시 URL 업데이트
+  const handleStoreChange = (storeId: string) => {
+    setCurrentStoreId(storeId);
+    setCurrentTab('home'); // 매장 바꾸면 홈으로 이동 (기존 로직 유지)
+    updateUrl('home', storeId);
+  };
+
+  // ✅ [수정] 매장 로딩 (URL 파라미터 우선 적용)
   const loadStores = useCallback(async (userId: string) => {
     const { data, error } = await supabase.from('stores').select('*').eq('owner_id', userId);
     if (error) { setErrorMsg('매장 로딩 실패'); return; }
+    
     const list = (data ?? []).map((row: any) => ({ id: String(row.id), name: row.name }));
     setStores(list);
-    if (list.length > 0 && !currentStoreId) setCurrentStoreId(list[0].id);
-  }, [supabase, currentStoreId]);
+
+    // 1. URL에 있는 storeId 확인
+    const urlStoreId = searchParams.get('storeId');
+    const targetStore = list.find(s => s.id === urlStoreId);
+
+    if (targetStore) {
+      // URL에 있는 매장이 내 매장 목록에 있으면 선택
+      setCurrentStoreId(targetStore.id);
+    } else if (list.length > 0 && !currentStoreId) {
+      // 없으면 첫 번째 매장 선택 (기존 로직)
+      setCurrentStoreId(list[0].id);
+      // URL도 업데이트 (선택된 매장 반영)
+      // 주의: 여기서 updateUrl을 바로 부르면 무한 루프 위험이 있어 상태만 변경하거나, useEffect에서 처리
+    }
+  }, [supabase, currentStoreId, searchParams]);
 
   const handleDeleteStore = useCallback(async (storeId: string) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
@@ -81,12 +112,10 @@ function DashboardContent() {
     setLoadingEmployees(false);
   }, [supabase]);
 
-  // ✅ [수정] 홈 화면 데이터 통합 로딩 (오늘 근무자 + 이번 달 급여)
   const loadHomeStats = useCallback(async (storeId: string) => {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
 
-    // 1. 오늘 근무자 조회
     const { data: todayData } = await supabase
       .from('schedules')
       .select('*, employees(name, phone_number)')
@@ -97,17 +126,9 @@ function DashboardContent() {
     if (todayData) setTodayWorkers(todayData);
     else setTodayWorkers([]);
 
-    // 2. 이번 달 예상 급여 계산
-    // (매장 설정 + 직원 목록 + 이번 달 전체 스케줄 필요)
     const { data: storeSettings } = await supabase.from('stores').select('*').eq('id', storeId).single();
     const { data: allEmployees } = await supabase.from('employees').select('*').eq('store_id', storeId);
     
-    const startOfMonthStr = format(startOfMonth(today), 'yyyy-MM-dd');
-    const endOfMonthStr = format(endOfMonth(today), 'yyyy-MM-dd');
-
-    // 넉넉하게 전월 20일 ~ 익월 10일까지 가져와서 계산기에 넣음 (주휴수당 정확도 위해)
-    // 하지만 홈 화면에서는 '대략적인 예상'이므로 이번 달 1일~말일 데이터만 있어도 충분히 유의미함.
-    // 계산기 엔진(calculateMonthlyPayroll)을 재활용하기 위해 데이터를 맞춰줌.
     const fetchStart = format(new Date(today.getFullYear(), today.getMonth() - 1, 20), 'yyyy-MM-dd');
     const fetchEnd = format(new Date(today.getFullYear(), today.getMonth() + 1, 10), 'yyyy-MM-dd');
 
@@ -120,38 +141,29 @@ function DashboardContent() {
 
     if (storeSettings && allEmployees && monthSchedules) {
       const payrollResult = calculateMonthlyPayroll(
-        today.getFullYear(), 
-        today.getMonth() + 1, 
-        allEmployees, 
-        monthSchedules, 
-        storeSettings
+        today.getFullYear(), today.getMonth() + 1, allEmployees, monthSchedules, storeSettings
       );
-      
-      // 총 지급액(세전) 합계
       const totalEst = payrollResult.reduce((acc, p) => acc + p.totalPay, 0);
       setMonthlyEstPay(totalEst);
     }
 
   }, [supabase]);
 
-// [수정 후] - 이제 payload 안에 이미 올바른 이름이 들어있다고 가정합니다.
-const handleCreateEmployee = useCallback(async (payload: any) => {
+  const handleCreateEmployee = useCallback(async (payload: any) => {
     if (!currentStoreId) return;
-    
     const { error } = await supabase.from('employees').insert({
       store_id: currentStoreId,
       name: payload.name,
-      hourly_wage: payload.hourly_wage,        // ✅ 그대로 사용
-      employment_type: payload.employment_type, // ✅ 그대로 사용
-      hire_date: payload.hire_date,             // ✅ 그대로 사용
+      hourly_wage: payload.hourlyWage,         
+      employment_type: payload.employmentType, 
+      hire_date: payload.hireDate || null,     
       is_active: true,
     });
-
     if (error) {
-      console.error('create employee error:', error);
-      alert('직원 추가 실패: ' + error.message);
+        console.error(error);
+        alert('추가 실패: ' + error.message);
     } else {
-      await loadEmployees(currentStoreId);
+        await loadEmployees(currentStoreId);
     }
   }, [currentStoreId, supabase, loadEmployees]);
 
@@ -173,10 +185,10 @@ const handleCreateEmployee = useCallback(async (payload: any) => {
     if (data) {
       const newStore = { id: String(data.id), name: data.name };
       setStores(prev => [...prev, newStore]);
-      setCurrentStoreId(newStore.id);
-      handleTabChange('employees');
+      // 생성 후 바로 이동
+      handleStoreChange(String(data.id));
     }
-  }, [supabase]);
+  }, [supabase]); // handleStoreChange는 아래서 정의되거나 컴포넌트 내 함수라 호출 가능
 
   useEffect(() => {
     async function init() {
@@ -192,7 +204,7 @@ const handleCreateEmployee = useCallback(async (payload: any) => {
   useEffect(() => {
     if (currentStoreId) {
       loadEmployees(currentStoreId);
-      loadHomeStats(currentStoreId); // ✅ 홈 데이터 로딩
+      loadHomeStats(currentStoreId);
     }
   }, [currentStoreId, loadEmployees, loadHomeStats]);
 
@@ -202,7 +214,6 @@ const handleCreateEmployee = useCallback(async (payload: any) => {
     if (currentTab === 'home') {
       return (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          {/* 왼쪽: 오늘 근무자 */}
           <div style={cardStyle}>
             <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #444', paddingBottom: 8 }}>
               📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
@@ -225,38 +236,19 @@ const handleCreateEmployee = useCallback(async (payload: any) => {
               </ul>
             )}
           </div>
-
-          {/* 오른쪽: 요약 및 공지 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            
-            {/* ✅ [추가] 이번 달 예상 급여 카드 */}
-            <div style={cardStyle}>
-              <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#aaa' }}>
-                💰 11월 예상 급여 지출 (세전)
-              </h3>
-              <div style={{ fontSize: 32, fontWeight: 'bold', color: '#fff' }}>
-                {monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span>
-              </div>
-              <p style={{ margin: '8px 0 0 0', fontSize: 13, color: '#666' }}>
-                * 현재까지 확정된 스케줄 기준 (주휴/야간 포함)
-              </p>
-            </div>
-
-            {/* 공지사항 */}
-            <div style={cardStyle}>
-              <h3 style={{ marginTop: 0, marginBottom: 12, borderBottom: '1px solid #444', paddingBottom: 8 }}>
-                📢 시스템 공지사항
-              </h3>
-              <ul style={{ paddingLeft: 20, color: '#ccc', lineHeight: 1.6, fontSize: 14, margin: 0 }}>
-                <li>[Tip] 급여 탭에서 <strong>명세서 이미지 저장</strong>이 가능합니다.</li>
-                <li>[안내] <strong>주간 스케줄 자동 생성</strong> 기능이 추가되었습니다.</li>
-              </ul>
-            </div>
+          <div style={cardStyle}>
+            <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #444', paddingBottom: 8 }}>
+              📢 시스템 공지사항
+            </h3>
+            <ul style={{ paddingLeft: 20, color: '#ccc', lineHeight: 1.6 }}>
+              <li>[업데이트] 급여 명세서 이미지 저장 기능 추가</li>
+              <li>[안내] 주간 스케줄 자동 생성 기능 사용법</li>
+              <li>[공지] 5인 이상 사업장 수당 계산 관련</li>
+            </ul>
           </div>
         </div>
       );
     }
-
     if (currentTab === 'employees') {
       return (
         <EmployeeSection
@@ -297,7 +289,8 @@ const handleCreateEmployee = useCallback(async (payload: any) => {
         <StoreSelector
           stores={stores}
           currentStoreId={currentStoreId}
-          onChangeStore={(id) => { setCurrentStoreId(id); handleTabChange('home'); }}
+          // ✅ [수정] 매장 변경 시 URL도 업데이트
+          onChangeStore={handleStoreChange}
           creatingStore={creatingStore}
           onCreateStore={handleCreateStore}
           onDeleteStore={handleDeleteStore}
