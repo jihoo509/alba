@@ -49,12 +49,12 @@ export function EmployeeSection({
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
     if (!wage) return alert('시급을 입력해주세요.');
 
-    // ✅ DB 컬럼명과 일치하는 key 이름으로 전송
+    // ✅ 변수명 통일 (카멜케이스로 보냄 -> page.tsx에서 받아서 처리)
     await onCreateEmployee({
       name: newEmpName,
-      hourly_wage: wage,           
-      employment_type: newEmpType, 
-      hire_date: newEmpHireDate || null,
+      hourlyWage: wage,           
+      employmentType: newEmpType, 
+      hireDate: newEmpHireDate || undefined,
     });
 
     setNewEmpName('');
@@ -74,24 +74,24 @@ export function EmployeeSection({
     <ul style={{ listStyle: 'none', padding: 0 }}>
       {list.map((emp) => (
         <li key={emp.id} style={{ padding: '12px 0', borderBottom: '1px solid #333', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: isRetired ? 0.6 : 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <strong style={{ fontSize: 16 }}>{emp.name}</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <strong style={{ fontSize: 16, minWidth: 60 }}>{emp.name}</strong>
             <span style={{ color: '#ccc' }}>{emp.hourly_wage?.toLocaleString()}원</span>
             
-            <span style={{ 
-              fontSize: 12, 
-              padding: '2px 6px', 
-              borderRadius: 4, 
-              backgroundColor: isFreelancer(emp.employment_type) ? '#112a45' : '#133a1b', 
-              color: isFreelancer(emp.employment_type) ? '#40a9ff' : '#73d13d', 
-              border: `1px solid ${isFreelancer(emp.employment_type) ? '#1890ff' : '#52c41a'}` 
-            }}>
+            <span style={{ fontSize: 12, padding: '2px 6px', borderRadius: 4, backgroundColor: isFreelancer(emp.employment_type) ? '#112a45' : '#133a1b', color: isFreelancer(emp.employment_type) ? '#40a9ff' : '#73d13d', border: `1px solid ${isFreelancer(emp.employment_type) ? '#1890ff' : '#52c41a'}` }}>
               {getEmploymentLabel(emp.employment_type)}
             </span>
 
+            {/* 전화번호 표시 */}
+            {emp.phone_number && (
+               <span style={{ fontSize: 13, color: '#ddd', fontFamily: 'monospace' }}>
+                 📞 {emp.phone_number}
+               </span>
+            )}
+
             {emp.hire_date && (
               <span style={{ fontSize: 12, color: '#888' }}>
-                {emp.hire_date} ~ {emp.end_date ? emp.end_date : '재직 중'}
+                (입사: {emp.hire_date})
               </span>
             )}
           </div>
@@ -106,76 +106,38 @@ export function EmployeeSection({
 
   return (
     <section>
-      {/* ✅ section-box 디자인 적용 (박스 디자인 통일) */}
-      <div className="section-box">
+      {/* 직원 등록 폼 (박스 스타일 복구) */}
+      <div style={{ marginBottom: 32, padding: 20, backgroundColor: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
         <h3 style={{ fontSize: 16, marginBottom: 12, color: '#ddd', marginTop: 0 }}>새 직원 등록</h3>
-        
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 12, color: '#aaa' }}>이름</label>
-              <input 
-                type="text" 
-                value={newEmpName} 
-                onChange={(e) => setNewEmpName(e.target.value)} 
-                style={{ ...inputStyle, width: 100 }} 
-              />
+              <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} style={{ ...inputStyle, width: 100 }} />
             </div>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 12, color: '#aaa' }}>시급 (원)</label>
-              <input 
-                type="number" 
-                value={newEmpWage} 
-                onChange={(e) => setNewEmpWage(e.target.value)} 
-                style={{ ...inputStyle, width: 100 }} 
-              />
+              <input type="number" value={newEmpWage} onChange={(e) => setNewEmpWage(e.target.value)} style={{ ...inputStyle, width: 100 }} />
             </div>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 12, color: '#aaa' }}>고용 형태</label>
-              <select 
-                value={newEmpType} 
-                onChange={(e) => setNewEmpType(e.target.value as any)} 
-                style={{ ...inputStyle, width: 140 }}
-              >
+              <select value={newEmpType} onChange={(e) => setNewEmpType(e.target.value as any)} style={{ ...inputStyle, width: 140 }}>
                 <option value="freelancer_33">3.3% 프리랜서</option>
                 <option value="four_insurance">4대 보험</option>
               </select>
             </div>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 12, color: '#aaa' }}>입사일</label>
               <div style={{ minWidth: 240 }}>
-                <DateSelector 
-                  value={newEmpHireDate} 
-                  onChange={setNewEmpHireDate} 
-                />
+                <DateSelector value={newEmpHireDate} onChange={setNewEmpHireDate} />
               </div>
             </div>
-
-            <button 
-              type="submit" 
-              style={{ 
-                padding: '10px 20px', 
-                background: 'dodgerblue', 
-                color: '#fff', 
-                border: 0, 
-                cursor: 'pointer', 
-                borderRadius: 4, 
-                fontWeight: 'bold',
-                height: 38, 
-                marginBottom: 1
-              }}
-            >
-              + 추가
-            </button>
+            <button type="submit" style={{ padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 0, cursor: 'pointer', borderRadius: 4, fontWeight: 'bold', height: 38, marginBottom: 1 }}>+ 추가</button>
           </div>
         </form>
       </div>
 
-      <div className="section-box">
+      <div style={{ marginBottom: 40 }}>
         <h3 style={{ fontSize: 20, marginBottom: 10, borderBottom: '2px solid #fff', paddingBottom: 8 }}>
           근무 중인 직원 <span style={{ fontSize: 14, color: 'dodgerblue', marginLeft: 4 }}>{activeEmployees.length}명</span>
         </h3>
@@ -183,7 +145,7 @@ export function EmployeeSection({
       </div>
 
       {retiredEmployees.length > 0 && (
-        <div className="section-box">
+        <div>
           <h3 style={{ fontSize: 18, marginBottom: 10, color: '#aaa', borderBottom: '1px solid #555', paddingBottom: 8 }}>
             퇴사한 직원 <span style={{ fontSize: 14, marginLeft: 4 }}>{retiredEmployees.length}명</span>
           </h3>
@@ -192,23 +154,10 @@ export function EmployeeSection({
       )}
 
       {selectedEmployee && (
-        <EmployeeEditModal
-          isOpen={isEditOpen}
-          onClose={() => setIsEditOpen(false)}
-          employee={selectedEmployee}
-          onUpdate={onUpdateEmployee}
-        />
+        <EmployeeEditModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} employee={selectedEmployee} onUpdate={onUpdateEmployee} />
       )}
     </section>
   );
 }
 
-const inputStyle = {
-  padding: '10px', 
-  color: '#fff', 
-  borderRadius: 4, 
-  border: '1px solid #555', 
-  backgroundColor: '#333',
-  fontSize: '14px',
-  outline: 'none'
-};
+const inputStyle = { padding: '10px', color: '#fff', borderRadius: 4, border: '1px solid #555', backgroundColor: '#333', fontSize: '14px', outline: 'none' };
