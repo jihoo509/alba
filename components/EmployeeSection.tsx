@@ -14,11 +14,10 @@ type Props = {
   onUpdateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
 };
 
-// ✅ [수정] 영어 코드를 한글로 완벽 변환 (과거 데이터 호환)
 function getEmploymentLabel(type: string) {
   if (type === 'four_insurance' || type === 'employee' || type === 'insured') return '4대 보험';
   if (type === 'freelancer_33' || type === 'freelancer') return '3.3% 프리랜서';
-  return type; // 그 외는 그대로 출력
+  return type;
 }
 
 export function EmployeeSection({
@@ -50,12 +49,13 @@ export function EmployeeSection({
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
     if (!wage) return alert('시급을 입력해주세요.');
 
-await onCreateEmployee({
-  name: newEmpName,
-  hourly_wage: wage,             // ✅ hourly_wage로 변경
-  employment_type: newEmpType,   // ✅ employment_type로 변경
-  hire_date: newEmpHireDate || null, // ✅ hire_date로 변경
-});
+    // ✅ DB 컬럼명과 일치하는 key 이름으로 전송
+    await onCreateEmployee({
+      name: newEmpName,
+      hourly_wage: wage,           
+      employment_type: newEmpType, 
+      hire_date: newEmpHireDate || null,
+    });
 
     setNewEmpName('');
     setNewEmpWage('');
@@ -68,7 +68,6 @@ await onCreateEmployee({
     setIsEditOpen(true);
   };
 
-  // ✅ [수정] 뱃지 색상 로직 강화 (영어 코드 포함)
   const isFreelancer = (type: string) => type.includes('free'); 
 
   const renderList = (list: Employee[], isRetired = false) => (
@@ -79,12 +78,10 @@ await onCreateEmployee({
             <strong style={{ fontSize: 16 }}>{emp.name}</strong>
             <span style={{ color: '#ccc' }}>{emp.hourly_wage?.toLocaleString()}원</span>
             
-            {/* 고용 형태 뱃지 */}
             <span style={{ 
               fontSize: 12, 
               padding: '2px 6px', 
               borderRadius: 4, 
-              // 프리랜서 계열이면 파란색, 아니면(4대보험) 초록색
               backgroundColor: isFreelancer(emp.employment_type) ? '#112a45' : '#133a1b', 
               color: isFreelancer(emp.employment_type) ? '#40a9ff' : '#73d13d', 
               border: `1px solid ${isFreelancer(emp.employment_type) ? '#1890ff' : '#52c41a'}` 
@@ -109,14 +106,13 @@ await onCreateEmployee({
 
   return (
     <section>
-      {/* 직원 등록 폼 */}
-      <div style={{ marginBottom: 32, padding: 20, backgroundColor: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
+      {/* ✅ section-box 디자인 적용 (박스 디자인 통일) */}
+      <div className="section-box">
         <h3 style={{ fontSize: 16, marginBottom: 12, color: '#ddd', marginTop: 0 }}>새 직원 등록</h3>
         
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             
-            {/* 이름 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 12, color: '#aaa' }}>이름</label>
               <input 
@@ -127,7 +123,6 @@ await onCreateEmployee({
               />
             </div>
 
-            {/* 시급 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 12, color: '#aaa' }}>시급 (원)</label>
               <input 
@@ -138,7 +133,6 @@ await onCreateEmployee({
               />
             </div>
 
-            {/* 고용 형태 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 12, color: '#aaa' }}>고용 형태</label>
               <select 
@@ -151,7 +145,6 @@ await onCreateEmployee({
               </select>
             </div>
 
-            {/* 입사일 (DateSelector 적용) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 12, color: '#aaa' }}>입사일</label>
               <div style={{ minWidth: 240 }}>
@@ -162,7 +155,6 @@ await onCreateEmployee({
               </div>
             </div>
 
-            {/* 추가 버튼 */}
             <button 
               type="submit" 
               style={{ 
@@ -183,17 +175,15 @@ await onCreateEmployee({
         </form>
       </div>
 
-      {/* 근무 중인 직원 */}
-      <div style={{ marginBottom: 40 }}>
+      <div className="section-box">
         <h3 style={{ fontSize: 20, marginBottom: 10, borderBottom: '2px solid #fff', paddingBottom: 8 }}>
           근무 중인 직원 <span style={{ fontSize: 14, color: 'dodgerblue', marginLeft: 4 }}>{activeEmployees.length}명</span>
         </h3>
         {loadingEmployees ? <p>로딩 중...</p> : activeEmployees.length === 0 ? <p style={{ color: '#666' }}>근무 중인 직원이 없습니다.</p> : renderList(activeEmployees)}
       </div>
 
-      {/* 퇴사한 직원 */}
       {retiredEmployees.length > 0 && (
-        <div>
+        <div className="section-box">
           <h3 style={{ fontSize: 18, marginBottom: 10, color: '#aaa', borderBottom: '1px solid #555', paddingBottom: 8 }}>
             퇴사한 직원 <span style={{ fontSize: 14, marginLeft: 4 }}>{retiredEmployees.length}명</span>
           </h3>

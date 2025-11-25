@@ -45,7 +45,7 @@ function DashboardContent() {
   const [todayWorkers, setTodayWorkers] = useState<any[]>([]);
   const [monthlyEstPay, setMonthlyEstPay] = useState<number>(0);
 
-  // ✅ [수정] URL 업데이트 헬퍼 (탭 & 매장ID 유지)
+  // URL 업데이트 헬퍼
   const updateUrl = (tab: TabKey, storeId: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
     if (tab) params.set('tab', tab);
@@ -53,20 +53,20 @@ function DashboardContent() {
     router.replace(`${pathname}?${params.toString()}`);
   };
 
-  // ✅ [수정] 탭 변경 시 URL 업데이트
+  // 탭 변경
   const handleTabChange = (tab: TabKey) => {
     setCurrentTab(tab);
     updateUrl(tab, currentStoreId);
   };
 
-  // ✅ [수정] 매장 변경 시 URL 업데이트
+  // 매장 변경
   const handleStoreChange = (storeId: string) => {
     setCurrentStoreId(storeId);
-    setCurrentTab('home'); // 매장 바꾸면 홈으로 이동 (기존 로직 유지)
+    setCurrentTab('home'); 
     updateUrl('home', storeId);
   };
 
-  // ✅ [수정] 매장 로딩 (URL 파라미터 우선 적용)
+  // 매장 로딩
   const loadStores = useCallback(async (userId: string) => {
     const { data, error } = await supabase.from('stores').select('*').eq('owner_id', userId);
     if (error) { setErrorMsg('매장 로딩 실패'); return; }
@@ -74,18 +74,13 @@ function DashboardContent() {
     const list = (data ?? []).map((row: any) => ({ id: String(row.id), name: row.name }));
     setStores(list);
 
-    // 1. URL에 있는 storeId 확인
     const urlStoreId = searchParams.get('storeId');
     const targetStore = list.find(s => s.id === urlStoreId);
 
     if (targetStore) {
-      // URL에 있는 매장이 내 매장 목록에 있으면 선택
       setCurrentStoreId(targetStore.id);
     } else if (list.length > 0 && !currentStoreId) {
-      // 없으면 첫 번째 매장 선택 (기존 로직)
       setCurrentStoreId(list[0].id);
-      // URL도 업데이트 (선택된 매장 반영)
-      // 주의: 여기서 updateUrl을 바로 부르면 무한 루프 위험이 있어 상태만 변경하거나, useEffect에서 처리
     }
   }, [supabase, currentStoreId, searchParams]);
 
@@ -149,14 +144,15 @@ function DashboardContent() {
 
   }, [supabase]);
 
+  // ✅ [수정 완료] payload에서 값을 꺼낼 때 DB 컬럼명과 일치시킴 (hourlyWage -> hourly_wage)
   const handleCreateEmployee = useCallback(async (payload: any) => {
     if (!currentStoreId) return;
     const { error } = await supabase.from('employees').insert({
       store_id: currentStoreId,
       name: payload.name,
-      hourly_wage: payload.hourlyWage,         
-      employment_type: payload.employmentType, 
-      hire_date: payload.hireDate || null,     
+      hourly_wage: payload.hourly_wage,        // ✅ 여기가 핵심 수정 사항!
+      employment_type: payload.employment_type, // ✅ 여기도 수정 (일관성)
+      hire_date: payload.hire_date || null,     // ✅ 여기도 수정 (일관성)
       is_active: true,
     });
     if (error) {
@@ -185,10 +181,9 @@ function DashboardContent() {
     if (data) {
       const newStore = { id: String(data.id), name: data.name };
       setStores(prev => [...prev, newStore]);
-      // 생성 후 바로 이동
       handleStoreChange(String(data.id));
     }
-  }, [supabase]); // handleStoreChange는 아래서 정의되거나 컴포넌트 내 함수라 호출 가능
+  }, [supabase]);
 
   useEffect(() => {
     async function init() {
@@ -211,10 +206,11 @@ function DashboardContent() {
   const renderTabContent = () => {
     if (!currentStoreId) return <p style={{ color: '#aaa', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
 
+    // ✅ 각 탭 컨텐츠를 'section-box'로 감싸서 디자인 통일
     if (currentTab === 'home') {
       return (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          <div style={cardStyle}>
+          <div className="section-box">
             <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #444', paddingBottom: 8 }}>
               📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
             </h3>
@@ -236,7 +232,7 @@ function DashboardContent() {
               </ul>
             )}
           </div>
-          <div style={cardStyle}>
+          <div className="section-box">
             <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #444', paddingBottom: 8 }}>
               📢 시스템 공지사항
             </h3>
@@ -277,7 +273,8 @@ function DashboardContent() {
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
   return (
-    <main style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
+    // ✅ main-container 클래스 적용 (전체 너비 통일)
+    <main className="main-container">
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontSize: 24 }}>사장님 대시보드</h1>
         <UserBar email={userEmail} />
@@ -289,7 +286,6 @@ function DashboardContent() {
         <StoreSelector
           stores={stores}
           currentStoreId={currentStoreId}
-          // ✅ [수정] 매장 변경 시 URL도 업데이트
           onChangeStore={handleStoreChange}
           creatingStore={creatingStore}
           onCreateStore={handleCreateStore}
@@ -330,14 +326,6 @@ function DashboardContent() {
     </main>
   );
 }
-
-const cardStyle = {
-  backgroundColor: '#1f1f1f',
-  borderRadius: 8,
-  padding: 24,
-  border: '1px solid #333',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-};
 
 export default function DashboardPage() {
   return (
