@@ -257,7 +257,7 @@ function DashboardContent() {
   return (
     // ✅ [수정] 전체 너비를 1000px로 통일하여 아담하고 꽉 찬 느낌 복구
     // 이전의 1200px 설정과 width:100% 강제 설정을 제거했습니다.
-    <main style={{ padding: '40px 20px', maxWidth: 1000, margin: '0 auto' }}>
+    <main style={{ padding: '40px 20px', maxWidth: 800, margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h1 style={{ 
           fontSize: 36,         
