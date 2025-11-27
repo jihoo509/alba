@@ -82,12 +82,18 @@ export function EmployeeSection({
               {getEmploymentLabel(emp.employment_type)}
             </span>
 
-            {/* 전화번호 표시 */}
-            {emp.phone_number && (
-               <span style={{ fontSize: 13, color: '#ddd', fontFamily: 'monospace' }}>
-                 📞 {emp.phone_number}
-               </span>
-            )}
+          {/* 전화번호 표시 */}
+          {emp.phone_number && (
+              <span style={{ 
+                  fontSize: 15,           // 크기: 14 -> 15 (가독성 상향)
+                  color: '#ffffff',       // 색상: #ddd -> #ffffff (이름처럼 선명하게)
+                  marginLeft: 10,         // 간격: 앞쪽 태그와 거리 두기
+                  fontWeight: 500,        // 굵기: 약간 두껍게 하여 잘 보이게 함
+                  letterSpacing: '0.5px'  // 자간: 번호 사이 간격 살짝 넓힘
+              }}>
+                 {emp.phone_number}
+              </span>
+          )}
 
             {emp.hire_date && (
               <span style={{ fontSize: 12, color: '#888' }}>

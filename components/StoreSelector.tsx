@@ -95,7 +95,7 @@ export function StoreSelector({
             border: 'none',
             cursor: 'pointer',
             borderRadius: 6,
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: 'bold'
           }}
         >
@@ -105,8 +105,8 @@ export function StoreSelector({
 
       {/* 4. 현재 매장 표시 텍스트 (한 줄에 배치) */}
       {currentStoreId && !showCreateForm && (
-        <div style={{ fontSize: 18, color: '#ddd', marginLeft: 4, fontWeight: 'bold' }}>
-           현재: <span style={{ color: '#000000ff' }}>{currentStoreName}</span>
+        <div style={{ fontSize: 20, color: '#ddd', marginLeft: 4, fontWeight: 'bold' }}>
+           현재: <span style={{ color: '#ff0303ff' }}>{currentStoreName}</span>
         </div>
       )}
 
