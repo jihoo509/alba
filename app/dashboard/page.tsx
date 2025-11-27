@@ -255,7 +255,8 @@ function DashboardContent() {
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
   return (
-    <main style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
+    // ✅ [수정] 레이아웃 고정을 위해 width: 100%와 boxSizing: border-box 추가
+    <main style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ 
           fontSize: 36,         
@@ -284,22 +285,22 @@ function DashboardContent() {
 
         {stores.length > 0 && currentStoreId && (
           <div>
-            {/* ✅ [수정] 탭 메뉴: 가운데 정렬, 여백 추가, 이모티콘, 모바일 줄바꿈(wrap) */}
+            {/* ✅ [수정] 위쪽 여백(marginTop)을 40 -> 20으로 줄여 간격 조정 */}
             <div style={{ 
               display: 'flex', 
-              justifyContent: 'center', // 가운데 정렬
-              flexWrap: 'wrap',         // 모바일 등 공간 부족 시 줄바꿈
-              gap: 20,                  // 버튼 사이 간격 늘림
-              marginTop: 40,            // 위쪽 여백 넉넉하게
-              marginBottom: 40,         // 아래쪽 여백 넉넉하게
+              justifyContent: 'center', 
+              flexWrap: 'wrap',         
+              gap: 20,                  
+              marginTop: 20,            // 수정됨: 40 -> 20
+              marginBottom: 40,         
               borderBottom: '1px solid rgba(255,255,255,0.2)', 
-              paddingBottom: 20         // 구분선과 버튼 사이 간격
+              paddingBottom: 20         
             }}>
               {[
                 { key: 'home', label: '🏠 홈' },
-                { key: 'employees', label: '👥 직원 관리' },     // 이모티콘 추가
-                { key: 'schedules', label: '🗓️ 스케줄 관리' },   // 이모티콘 추가
-                { key: 'payroll', label: '💰 급여 / 정산' }      // 이모티콘 추가
+                { key: 'employees', label: '👥 직원 관리' },     
+                { key: 'schedules', label: '🗓️ 스케줄 관리' },   
+                { key: 'payroll', label: '💰 급여 / 정산' }      
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -309,19 +310,23 @@ function DashboardContent() {
                     border: 'none',
                     borderBottom: currentTab === tab.key ? '3px solid dodgerblue' : '3px solid transparent',
                     background: 'transparent',
-                    color: currentTab === tab.key ? '#fff' : '#aaa', // 활성 흰색, 비활성 회색
+                    color: currentTab === tab.key ? '#fff' : '#aaa', 
                     cursor: 'pointer',
-                    fontSize: 16, // 글자 크기 적절히
+                    fontSize: 16, 
                     fontWeight: currentTab === tab.key ? 'bold' : 'normal',
                     transition: 'all 0.2s',
-                    whiteSpace: 'nowrap' // 텍스트 줄바꿈 방지
+                    whiteSpace: 'nowrap' 
                   }}
                 >
                   {tab.label}
                 </button>
               ))}
             </div>
-            <div>{renderTabContent()}</div>
+            
+            {/* ✅ [수정] 하단 콘텐츠가 상단 레이아웃을 밀어내지 않도록 너비 제한 wrapper 추가 */}
+            <div style={{ width: '100%', maxWidth: '100%' }}>
+                {renderTabContent()}
+            </div>
           </div>
         )}
       </section>

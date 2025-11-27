@@ -30,7 +30,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
     const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
     setStoreSettings(storeData);
 
-    // 직원 정보
     const { data: employees } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
 
     const startStr = `${year}-${String(month - 1).padStart(2,'0')}-20`;
@@ -54,12 +53,10 @@ export default function PayrollSection({ currentStoreId }: Props) {
     loadAndCalculate();
   }, [loadAndCalculate]);
 
-  // 이번 달 총 지출액 계산 (세전 총액 기준)
   const totalMonthlyCost = useMemo(() => {
     return payrollData.reduce((acc, curr) => acc + curr.totalPay, 0);
   }, [payrollData]);
 
-  // 엑셀 다운로드
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
@@ -93,14 +90,14 @@ export default function PayrollSection({ currentStoreId }: Props) {
   };
 
   return (
-    <div>
-      {/* 1. 상단 설정 박스 (흰색 카드 적용) */}
+    // ✅ [수정] 전체 너비를 1000px로 제한하여 컴팩트하게 만듦
+    <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+      
+      {/* 설정 박스 (너비 제한에 맞춰 자동으로 줄어듦) */}
       <div style={cardStyle}>
-          {/* StoreSettings 내부도 수정이 필요할 수 있지만, 일단 흰색 박스로 감쌉니다 */}
           <StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} />
       </div>
 
-      {/* 2. 하단 급여 대장 박스 (흰색 카드 적용) */}
       <div style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
@@ -122,30 +119,38 @@ export default function PayrollSection({ currentStoreId }: Props) {
         </div>
 
         {loading ? <p style={{color:'#333'}}>계산 중...</p> : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
+          // ✅ [수정] 테이블 컨테이너에 가로 스크롤 적용
+          <div style={{ overflowX: 'auto', position: 'relative' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200, tableLayout: 'fixed' }}>
               <thead>
-                {/* 헤더: 밝은 회색 배경, 검은 글씨 */}
-                <tr style={{ background: '#f5f5f5', color: '#333', fontSize: '15px', borderBottom: '2px solid #ddd' }}>
-                  <th style={thStyle}>이름</th>
-                  <th style={thStyle}>총 지급</th>
-                  <th style={thStyle}>세후 지급</th>
-                  {/* 구분감을 위해 배경색 미세하게 조정 */}
-                  <th style={{...thStyle, background: '#f0f0f0'}}>소득세</th>
-                  <th style={{...thStyle, background: '#f0f0f0'}}>지방세</th>
-                  <th style={{...thStyle, background: '#e9e9e9'}}>국민</th>
-                  <th style={{...thStyle, background: '#e9e9e9'}}>건강</th>
-                  <th style={{...thStyle, background: '#e9e9e9'}}>요양</th>
-                  <th style={{...thStyle, background: '#e9e9e9'}}>고용</th>
-                  <th style={thStyle}>상세보기</th>
+                <tr style={{ background: '#f5f5f5', color: '#333', fontSize: '15px', borderBottom: '2px solid #ddd', height: 50 }}>
+                  {/* ✅ 고정 열: 이름 (Left 0) */}
+                  <th style={{ ...thStyle, ...stickyLeftStyle, left: 0, width: 80, zIndex: 10 }}>이름</th>
+                  {/* ✅ 고정 열: 총 지급 (Left 80) */}
+                  <th style={{ ...thStyle, ...stickyLeftStyle, left: 80, width: 100, zIndex: 10, borderRight: '2px solid #ddd' }}>총 지급</th>
+                  
+                  <th style={{ ...thStyle, width: 100 }}>세후 지급</th>
+                  <th style={{ ...thStyle, background: '#f0f0f0', width: 80 }}>소득세</th>
+                  <th style={{ ...thStyle, background: '#f0f0f0', width: 80 }}>지방세</th>
+                  <th style={{ ...thStyle, background: '#e9e9e9', width: 80 }}>국민</th>
+                  <th style={{ ...thStyle, background: '#e9e9e9', width: 80 }}>건강</th>
+                  <th style={{ ...thStyle, background: '#e9e9e9', width: 80 }}>요양</th>
+                  <th style={{ ...thStyle, background: '#e9e9e9', width: 80 }}>고용</th>
+                  <th style={{ ...thStyle, width: 90 }}>기본급</th>
+                  <th style={{ ...thStyle, width: 90 }}>주휴수당</th>
+                  
+                  {/* ✅ 고정 열: 상세보기 (Right 0) */}
+                  <th style={{ ...thStyle, ...stickyRightStyle, right: 0, width: 100, zIndex: 10, borderLeft: '2px solid #ddd' }}>상세보기</th>
                 </tr>
               </thead>
               <tbody>
                 {payrollData.map(p => (
-                  // 본문: 흰 배경, 검은 글씨, 연한 테두리
-                  <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '15px', backgroundColor: '#fff' }}>
-                    <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.name}</td>
-                    <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.totalPay.toLocaleString()}</td>
+                  <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '15px', backgroundColor: '#fff', height: 50 }}>
+                    {/* ✅ 고정 셀: 이름 */}
+                    <td style={{ ...tdStyle, ...stickyLeftStyle, left: 0, fontWeight: 'bold', zIndex: 5 }}>{p.name}</td>
+                    {/* ✅ 고정 셀: 총 지급 */}
+                    <td style={{ ...tdStyle, ...stickyLeftStyle, left: 80, fontWeight: 'bold', zIndex: 5, borderRight: '2px solid #eee' }}>{p.totalPay.toLocaleString()}</td>
+                    
                     <td style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
                     <td style={{...tdStyle, color: '#666'}}>{p.taxDetails.incomeTax > 0 ? p.taxDetails.incomeTax.toLocaleString() : '-'}</td>
                     <td style={{...tdStyle, color: '#666'}}>{p.taxDetails.localTax > 0 ? p.taxDetails.localTax.toLocaleString() : '-'}</td>
@@ -153,8 +158,12 @@ export default function PayrollSection({ currentStoreId }: Props) {
                     <td style={{...tdStyle, color: '#888'}}>{p.taxDetails.health > 0 ? p.taxDetails.health.toLocaleString() : '-'}</td>
                     <td style={{...tdStyle, color: '#888'}}>{p.taxDetails.care > 0 ? p.taxDetails.care.toLocaleString() : '-'}</td>
                     <td style={{...tdStyle, color: '#888'}}>{p.taxDetails.employment > 0 ? p.taxDetails.employment.toLocaleString() : '-'}</td>
-                    <td style={{ ...tdStyle }}>
-                      <button onClick={() => setSelectedPayStub(p)} style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', background: '#fff', color: '#333' }}>명세서 보기</button>
+                    <td style={{...tdStyle, color: '#aaa'}}>{p.basePay.toLocaleString()}</td>
+                    <td style={{...tdStyle, color: '#aaa'}}>{p.weeklyHolidayPay.toLocaleString()}</td>
+
+                    {/* ✅ 고정 셀: 상세보기 */}
+                    <td style={{ ...tdStyle, ...stickyRightStyle, right: 0, zIndex: 5, borderLeft: '2px solid #eee' }}>
+                      <button onClick={() => setSelectedPayStub(p)} style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', background: '#fff', color: '#333', whiteSpace: 'nowrap' }}>명세서</button>
                     </td>
                   </tr>
                 ))}
@@ -172,14 +181,13 @@ export default function PayrollSection({ currentStoreId }: Props) {
   );
 }
 
-// ✅ 스타일 정의: 흰색 카드, 검은 글씨 테마
 const cardStyle = {
   backgroundColor: '#ffffff',
   borderRadius: '12px',
   padding: '24px',
   border: '1px solid #ddd',
   boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-  marginBottom: '24px' // 카드 간 간격
+  marginBottom: '24px'
 };
 
 const btnStyle = { 
@@ -194,15 +202,30 @@ const btnStyle = {
 };
 
 const thStyle = { 
-  padding: '14px 10px', 
+  padding: '0 10px', 
   textAlign: 'center' as const, 
   whiteSpace: 'nowrap' as const, 
   fontWeight: 'bold',
-  color: '#333'
+  color: '#333',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis'
 };
 
 const tdStyle = { 
-  padding: '14px 10px', 
+  padding: '0 10px', 
   textAlign: 'center' as const,
-  color: '#333'
+  color: '#333',
+  whiteSpace: 'nowrap' as const
+};
+
+// ✅ 고정 열 스타일 (왼쪽)
+const stickyLeftStyle = {
+  position: 'sticky' as const,
+  backgroundColor: '#fff', // 스크롤 시 뒤 내용 가림
+};
+
+// ✅ 고정 열 스타일 (오른쪽)
+const stickyRightStyle = {
+  position: 'sticky' as const,
+  backgroundColor: '#fff',
 };
