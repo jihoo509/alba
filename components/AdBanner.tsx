@@ -10,24 +10,25 @@ export default function AdBanner({ position }: Props) {
   return (
     <div 
       style={{
-        width: '160px', // 배너 고정 너비
-        height: '100vh',
+        width: '160px',          // 너비 고정
+        height: '100vh',         // 높이 화면 전체 꽉 채움
         position: 'fixed',
         top: 0,
-        [position]: 0, // left:0 or right:0
-        backgroundColor: '#000', // 배경색 (이미지 없을 때 대비)
+        [position]: 0,           // left: 0 또는 right: 0
+        backgroundColor: '#000', // 광고 없을 때 보일 배경색 (이미지 로딩 전)
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        paddingTop: '100px', // 상단 여백
+        justifyContent: 'center',
         zIndex: 50,
-        // 경계선 제거 (원하면 추가 가능)
+        borderLeft: position === 'right' ? '1px solid #222' : 'none',
+        borderRight: position === 'left' ? '1px solid #222' : 'none',
+        color: '#333',
+        fontSize: '14px',
+        fontWeight: 'bold'
       }}
     >
-      {/* 여기에 실제 광고 코드나 이미지를 넣으면 꽉 차게 나옵니다 */}
-      <div style={{ width: '100%', height: '600px', background: '#222', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
-        광고 영역<br/>(160x600)
-      </div>
+      {/* 내부 박스 없이 전체가 광고 영역 */}
+      광고 영역 ({position === 'left' ? '좌' : '우'})
     </div>
   );
 }

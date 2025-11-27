@@ -99,14 +99,14 @@ export function StoreSelector({
             fontWeight: 'bold'
           }}
         >
-          삭제
+          매장 삭제
         </button>
       )}
 
       {/* 4. 현재 매장 표시 텍스트 (한 줄에 배치) */}
       {currentStoreId && !showCreateForm && (
-        <div style={{ fontSize: 15, color: '#ddd', marginLeft: 4, fontWeight: 'bold' }}>
-           현재: <span style={{ color: 'dodgerblue' }}>{currentStoreName}</span>
+        <div style={{ fontSize: 18, color: '#ddd', marginLeft: 4, fontWeight: 'bold' }}>
+           현재: <span style={{ color: '#000000ff' }}>{currentStoreName}</span>
         </div>
       )}
 

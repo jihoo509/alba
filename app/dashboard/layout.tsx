@@ -13,30 +13,29 @@ export default function DashboardLayout({
       {/* 1. 팝업 광고 */}
       <AdPopup />
 
-      {/* 2. PC용 왼쪽 광고 */}
+      {/* 2. PC용 왼쪽 광고 (꽉 찬 배너) */}
       <div className="pc-only">
         <AdBanner position="left" />
       </div>
 
-      {/* 3. 중앙 콘텐츠 영역 (배경 이미지 적용) */}
+      {/* 3. 중앙 콘텐츠 영역 */}
       <div className="dashboard-content" style={{
-        backgroundImage: "url('/dashboard-bg.jpg')", // ✅ 배경 이미지
+        backgroundImage: "url('/dashboard-bg.jpg')", // 배경 이미지
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        backgroundAttachment: 'fixed', // 스크롤 해도 배경 고정
+        backgroundAttachment: 'fixed',
         minHeight: '100vh',
         position: 'relative'
       }}>
-        {/* 배경 어둡게 (가독성 확보) */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 0 }}></div>
+        {/* ❌ 기존에 있던 어두운 오버레이(div) 삭제함 -> 원본 밝기 그대로 나옴 */}
         
-        {/* 실제 내용은 z-index로 위로 올림 */}
+        {/* 실제 내용 */}
         <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>
           {children}
         </div>
       </div>
 
-      {/* 4. PC용 오른쪽 광고 */}
+      {/* 4. PC용 오른쪽 광고 (꽉 찬 배너) */}
       <div className="pc-only">
         <AdBanner position="right" />
       </div>
