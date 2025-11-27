@@ -10,7 +10,7 @@ export default function DashboardLayout({
 }) {
   return (
     // ✅ 전체 컨테이너: 글자색은 기본적으로 검정(가독성 위함)으로 설정
-    <div style={{ minHeight: '100vh', backgroundColor: '#000', color: '#333' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#ffffffff', color: '#292929ff' }}>
       <AdPopup />
 
       <div className="pc-only">
