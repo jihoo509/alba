@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
-import type { ScheduleTemplate } from './TemplateSection'; // 타입 가져오기
+import type { ScheduleTemplate } from './TemplateSection'; 
 
 type Props = {
   currentStoreId: string | null;
@@ -62,30 +62,40 @@ export default function ScheduleTemplateManager({ currentStoreId, selectedTempla
   };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // 부모 클릭 이벤트 전파 방지 (선택 방지)
+    e.stopPropagation(); 
     if (!confirm('삭제하시겠습니까?')) return;
     const { error } = await supabase.from('schedule_templates').delete().eq('id', id);
     if (!error) {
       loadTemplates();
-      if (selectedTemplate?.id === id) onSelectTemplate(null); // 선택된 거 삭제하면 선택 해제
+      if (selectedTemplate?.id === id) onSelectTemplate(null); 
     }
   };
 
   return (
-    <div style={{ backgroundColor: '#222', padding: 20, borderRadius: 8, border: '1px solid #333' }}>
-      <h3 style={{ marginTop: 0, marginBottom: 16, color: '#fff' }}>📌 근무 템플릿</h3>
+    // ✅ 흰색 카드 스타일
+    <div style={{ backgroundColor: '#ffffff', padding: 20, borderRadius: 12, border: '1px solid #ddd', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+      <h3 style={{ marginTop: 0, marginBottom: 16, color: '#333' }}>📌 근무 템플릿</h3>
       
-      {/* 입력 폼 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24, padding: 12, backgroundColor: '#333', borderRadius: 6 }}>
+      {/* 입력 폼 (밝은 회색 배경) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 8, border: '1px solid #eee' }}>
         <input placeholder="이름 (예: 오픈, 마감)" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
         <div style={{ display: 'flex', gap: 8 }}>
           <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle} />
-          <span style={{ color: '#aaa', alignSelf: 'center' }}>~</span>
+          <span style={{ color: '#666', alignSelf: 'center' }}>~</span>
           <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle} />
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {COLORS.map(c => (
-            <div key={c} onClick={() => setSelectedColor(c)} style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: c, cursor: 'pointer', border: selectedColor === c ? '2px solid white' : '2px solid transparent' }} />
+            <div 
+                key={c} 
+                onClick={() => setSelectedColor(c)} 
+                style={{ 
+                    width: 24, height: 24, borderRadius: '50%', backgroundColor: c, cursor: 'pointer', 
+                    // 선택된 컬러는 진한 테두리
+                    border: selectedColor === c ? '2px solid #333' : '2px solid transparent',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }} 
+            />
           ))}
         </div>
         <button onClick={handleAdd} style={btnStyle}>+ 템플릿 추가</button>
@@ -98,20 +108,23 @@ export default function ScheduleTemplateManager({ currentStoreId, selectedTempla
           return (
             <div 
               key={t.id} 
-              onClick={() => onSelectTemplate(isSelected ? null : t)} // 클릭 시 선택/해제 토글
+              onClick={() => onSelectTemplate(isSelected ? null : t)} 
               style={{ 
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '10px', borderRadius: 6, backgroundColor: isSelected ? '#444' : '#333', 
-                borderLeft: `4px solid ${t.color || '#ccc'}`,
-                border: isSelected ? `1px solid ${t.color}` : '1px solid transparent', // 선택 시 테두리 강조
-                cursor: 'pointer', transition: 'all 0.2s'
+                padding: '12px', borderRadius: 8, 
+                // ✅ 선택 시 아주 연한 파랑 배경, 아니면 흰색
+                backgroundColor: isSelected ? '#f0f9ff' : '#ffffff', 
+                borderLeft: `5px solid ${t.color || '#ccc'}`,
+                border: isSelected ? `1px solid ${t.color}` : '1px solid #eee', 
+                cursor: 'pointer', transition: 'all 0.2s',
+                boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.05)' : 'none'
               }}
             >
               <div>
-                <div style={{ fontWeight: 'bold', color: '#fff' }}>{t.name}</div>
-                <div style={{ fontSize: 12, color: '#aaa' }}>{t.start_time} ~ {t.end_time}</div>
+                <div style={{ fontWeight: 'bold', color: '#333' }}>{t.name}</div>
+                <div style={{ fontSize: 12, color: '#666' }}>{t.start_time.slice(0,5)} ~ {t.end_time.slice(0,5)}</div>
               </div>
-              <button onClick={(e) => handleDelete(e, t.id)} style={{ background: 'transparent', border: 'none', color: '#aaa', cursor: 'pointer' }}>x</button>
+              <button onClick={(e) => handleDelete(e, t.id)} style={{ background: 'transparent', border: 'none', color: '#999', cursor: 'pointer', fontSize: 16 }}>×</button>
             </div>
           );
         })}
@@ -120,5 +133,6 @@ export default function ScheduleTemplateManager({ currentStoreId, selectedTempla
   );
 }
 
-const inputStyle = { padding: 8, borderRadius: 4, border: '1px solid #555', background: '#222', color: '#fff', flex: 1 };
-const btnStyle = { padding: 10, borderRadius: 4, border: 'none', background: 'royalblue', color: '#fff', fontWeight: 'bold', cursor: 'pointer', marginTop: 4 };
+// ✅ 입력 필드 스타일: 흰색 배경, 회색 테두리
+const inputStyle = { padding: 10, borderRadius: 6, border: '1px solid #ccc', background: '#fff', color: '#333', flex: 1, outline: 'none' };
+const btnStyle = { padding: 10, borderRadius: 6, border: 'none', background: 'dodgerblue', color: '#fff', fontWeight: 'bold', cursor: 'pointer', marginTop: 4 };
