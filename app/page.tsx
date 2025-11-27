@@ -1,11 +1,9 @@
-// app/page.tsx
 'use client';
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 
-// 우리가 화면에서 쓸 소셜 로그인 문자열 타입
 type OAuthProvider = 'google' | 'kakao' | 'naver';
 
 export default function AuthPage() {
@@ -16,86 +14,58 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // ✅ [추가] 로그인/회원가입 모드 전환용 상태
+  const [isSignUpMode, setIsSignUpMode] = useState(false);
 
-  // 이메일 + 비밀번호 로그인
-  async function handleLogin() {
+  // 통합 인증 핸들러 (로그인/회원가입 분기 처리)
+  async function handleAuth() {
     try {
       setMsg(null);
       setLoading(true);
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      setLoading(false);
-
-      if (error) {
-        setMsg(error.message);
-        alert('로그인 실패: ' + error.message);
-        return;
+      if (isSignUpMode) {
+        // 회원가입 로직
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (error) throw error;
+        if (!data.session) {
+          setMsg('가입 확인 메일을 보냈습니다. 이메일을 확인해주세요.');
+          alert('가입 확인 메일을 보냈습니다. 확인 후 로그인해주세요.');
+          setIsSignUpMode(false); // 가입 후 로그인 모드로 전환
+        }
+      } else {
+        // 로그인 로직
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        router.push('/dashboard');
       }
-
-      router.push('/dashboard');
     } catch (e: any) {
-      setLoading(false);
       setMsg(e?.message || String(e));
-      alert('오류: ' + (e?.message || String(e)));
+    } finally {
+      setLoading(false);
     }
   }
 
-  // 이메일 + 비밀번호 회원가입
-  async function handleSignup() {
-    try {
-      setMsg(null);
-      setLoading(true);
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      setLoading(false);
-
-      if (error) {
-        setMsg(error.message);
-        alert('회원가입 실패: ' + error.message);
-        return;
-      }
-
-      // 개발용: 이메일 인증 끈 상태라면 바로 로그인 가능
-      if (!data.session) {
-        setMsg('회원가입이 완료되었습니다. 이제 로그인 버튼으로 접속하세요.');
-        alert('가입 완료! 이제 이메일/비밀번호로 로그인해주세요.');
-      }
-    } catch (e: any) {
-      setLoading(false);
-      setMsg(e?.message || String(e));
-      alert('오류: ' + (e?.message || String(e)));
-    }
-  }
-
-  // Google / Kakao / Naver OAuth 로그인
+  // 소셜 로그인 핸들러
   async function handleOAuthLogin(provider: OAuthProvider) {
     try {
       setMsg(null);
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: provider as any,
-      options: {
-        // ✅ [수정] 헷갈리지 않게 실제 배포 주소를 직접 입력하세요.
-        redirectTo: 'https://ez-alba.ba-damda.com/auth/callback',
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: provider as any,
+        options: {
+          // ✅ 자동 주소 감지 (localhost, 도메인 모두 작동)
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
-
-      if (error) {
-        setMsg(error.message);
-        alert('소셜 로그인 실패: ' + error.message);
-      }
-      // 성공 시에는 Supabase가 자동으로 리다이렉트
+      if (error) throw error;
     } catch (e: any) {
       setMsg(e?.message || String(e));
-      alert('오류: ' + (e?.message || String(e)));
     }
   }
 
@@ -103,153 +73,139 @@ export default function AuthPage() {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#111',
-        color: '#fff',
+        width: '100%',
+        backgroundImage: "url('/login-bg.jpg')", // public 폴더의 이미지 사용
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
         display: 'flex',
         justifyContent: 'center',
-        paddingTop: 80,
+        alignItems: 'center',
+        fontFamily: 'sans-serif',
       }}
     >
-      <div style={{ maxWidth: 420, width: '100%' }}>
-        <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 24 }}>
-          알바 관리 – 로그인
-        </h1>
+      {/* 배경 어둡게 (오버레이) */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' }}></div>
 
-        {/* 이메일 */}
-        <input
-          style={{
-            width: '100%',
-            padding: 10,
-            marginTop: 12,
-            color: '#000',
-          }}
-          placeholder="이메일"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          type="email"
-        />
+      {/* 로그인 카드 */}
+      <div
+        style={{
+          position: 'relative',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          padding: '40px 32px',
+          borderRadius: '16px',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+          width: '100%',
+          maxWidth: '400px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+          <h3 style={{ margin: 0, color: '#666', fontSize: '14px', fontWeight: 'normal' }}>직원 관리가 쉬워진다</h3>
+          <h1 style={{ margin: '4px 0 0 0', color: '#0052cc', fontSize: '32px', fontWeight: '800', letterSpacing: '-1px' }}>
+            Easy Alba
+          </h1>
+        </div>
 
-        {/* 비밀번호 */}
-        <input
-          style={{
-            width: '100%',
-            padding: 10,
-            marginTop: 12,
-            color: '#000',
-          }}
-          placeholder="비밀번호(6자 이상)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          type="password"
-        />
+        {/* 입력 폼 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input
+            type="email"
+            placeholder="이메일"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={inputStyle}
+          />
+          <input
+            type="password"
+            placeholder="비밀번호 (6자 이상)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
+            style={inputStyle}
+          />
+        </div>
 
-        {/* 에러/메시지 */}
-        {msg && (
-          <div style={{ marginTop: 12, color: 'salmon', fontSize: 14 }}>
-            {msg}
-          </div>
-        )}
+        {msg && <div style={{ color: 'salmon', fontSize: '13px', textAlign: 'center' }}>{msg}</div>}
 
-        {/* 이메일 로그인 / 회원가입 버튼 */}
+        {/* 메인 버튼 (로그인/가입 겸용) */}
         <button
-          type="button"
-          onClick={handleLogin}
+          onClick={handleAuth}
           disabled={loading}
           style={{
-            width: '100%',
-            padding: 12,
-            marginTop: 12,
-            background: 'royalblue',
+            padding: '14px',
+            backgroundColor: '#0052cc',
             color: '#fff',
-            border: 0,
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: 'bold',
             cursor: 'pointer',
+            marginTop: '4px',
+            transition: 'background 0.2s',
           }}
         >
-          {loading ? '처리 중...' : '로그인'}
+          {loading ? '처리 중...' : (isSignUpMode ? '회원가입' : '로그인')}
         </button>
 
-        <button
-          type="button"
-          onClick={handleSignup}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: 12,
-            marginTop: 8,
-            background: 'seagreen',
-            color: '#fff',
-            border: 0,
-            cursor: 'pointer',
-          }}
-        >
-          회원가입
-        </button>
+        {/* 모드 전환 (로그인 <-> 회원가입) */}
+        <div style={{ textAlign: 'center', fontSize: '13px', color: '#666' }}>
+          {isSignUpMode ? '이미 계정이 있으신가요?' : '아직 계정이 없으신가요?'}
+          <span 
+            onClick={() => { setIsSignUpMode(!isSignUpMode); setMsg(null); }}
+            style={{ color: '#0052cc', fontWeight: 'bold', cursor: 'pointer', marginLeft: '6px', textDecoration: 'underline' }}
+          >
+            {isSignUpMode ? '로그인하기' : '회원가입하기'}
+          </span>
+        </div>
 
-        {/* 구분선 */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            marginTop: 24,
-            marginBottom: 12,
-            color: '#aaa',
-            fontSize: 13,
-          }}
-        >
-          <div style={{ flex: 1, height: 1, backgroundColor: '#444' }} />
-          <span style={{ padding: '0 8px' }}>또는 소셜 계정으로 로그인</span>
-          <div style={{ flex: 1, height: 1, backgroundColor: '#444' }} />
+        <div style={{ display: 'flex', alignItems: 'center', margin: '12px 0' }}>
+          <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
+          <span style={{ padding: '0 10px', color: '#999', fontSize: '12px' }}>간편 로그인</span>
+          <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
         </div>
 
         {/* 소셜 로그인 버튼들 */}
-        <button
-          type="button"
-          onClick={() => handleOAuthLogin('google')}
-          style={{
-            width: '100%',
-            padding: 10,
-            marginTop: 4,
-            background: '#fff',
-            color: '#222',
-            border: '1px solid #ddd',
-            cursor: 'pointer',
-          }}
-        >
-          Google 계정으로 로그인
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button onClick={() => handleOAuthLogin('google')} style={{ ...socialBtnStyle, background: '#fff', border: '1px solid #ddd', color: '#333' }}>
+            <span style={{ marginRight: '8px', fontWeight: 'bold' }}>G</span> Google 계정으로 계속
+          </button>
+          <button onClick={() => handleOAuthLogin('kakao')} style={{ ...socialBtnStyle, background: '#FEE500', color: '#333' }}>
+            <span style={{ marginRight: '8px', fontWeight: 'bold' }}>K</span> Kakao 계정으로 계속
+          </button>
+          <button onClick={() => handleOAuthLogin('naver')} style={{ ...socialBtnStyle, background: '#03C75A', color: '#fff' }}>
+            <span style={{ marginRight: '8px', fontWeight: 'bold' }}>N</span> Naver 계정으로 계속
+          </button>
+        </div>
+      </div>
 
-        <button
-          type="button"
-          onClick={() => handleOAuthLogin('kakao')}
-          style={{
-            width: '100%',
-            padding: 10,
-            marginTop: 8,
-            background: '#FEE500',
-            color: '#222',
-            border: 0,
-            cursor: 'pointer',
-          }}
-        >
-          Kakao 계정으로 로그인
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleOAuthLogin('naver')}
-          style={{
-            width: '100%',
-            padding: 10,
-            marginTop: 8,
-            background: '#03C75A',
-            color: '#fff',
-            border: 0,
-            cursor: 'pointer',
-          }}
-        >
-          Naver 계정으로 로그인
-        </button>
+      <div style={{ position: 'absolute', bottom: '20px', color: 'rgba(255,255,255,0.6)', fontSize: '12px' }}>
+        © 2025 Easy Alba. All rights reserved.
       </div>
     </div>
   );
 }
+
+const inputStyle = {
+  padding: '14px',
+  borderRadius: '8px',
+  border: '1px solid #ddd',
+  fontSize: '15px',
+  outline: 'none',
+  backgroundColor: '#f9f9f9',
+  color: '#333'
+};
+
+const socialBtnStyle = {
+  padding: '12px',
+  borderRadius: '8px',
+  border: 'none',
+  fontSize: '14px',
+  fontWeight: '600' as const,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
