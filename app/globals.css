@@ -2,8 +2,8 @@
 
 /* 1. 기본 설정 */
 body {
-  background-color: #000;
-  color: #fff;
+  background-color: #fcfcfc;
+  color: #000000;
   margin: 0;
   padding: 0;
   overflow-x: hidden; 
@@ -64,7 +64,7 @@ body {
 
 /* 6. 박스 디자인 통일 */
 .section-box {
-  background-color: #4e4e4e;
+  background-color: #ffffff;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
