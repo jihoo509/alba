@@ -255,10 +255,16 @@ function DashboardContent() {
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
   return (
-    // ✅ [수정] 전체 너비를 1000px로 통일하여 아담하고 꽉 찬 느낌 복구
-    // 이전의 1200px 설정과 width:100% 강제 설정을 제거했습니다.
-    <main style={{ padding: '40px 20px', maxWidth: 800, margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+    <main style={{ padding: '40px 20px', maxWidth: 1000, margin: '0 auto' }}>
+      {/* ✅ [수정] 헤더 영역만 850px로 좁게 고정하여 모아줌 */}
+      <header style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: 20,
+        maxWidth: 850,
+        margin: '0 auto 20px auto'
+      }}>
         <h1 style={{ 
           fontSize: 36,         
           color: '#fff',        
@@ -275,18 +281,21 @@ function DashboardContent() {
       {errorMsg && <div style={{ marginBottom: 16, color: 'salmon' }}>{errorMsg}</div>}
 
       <section>
-        <StoreSelector
-          stores={stores}
-          currentStoreId={currentStoreId}
-          onChangeStore={handleStoreChange}
-          creatingStore={creatingStore}
-          onCreateStore={handleCreateStore}
-          onDeleteStore={handleDeleteStore}
-        />
+        {/* ✅ [수정] 매장 선택기 영역도 850px로 모아줌 */}
+        <div style={{ maxWidth: 850, margin: '0 auto' }}>
+          <StoreSelector
+            stores={stores}
+            currentStoreId={currentStoreId}
+            onChangeStore={handleStoreChange}
+            creatingStore={creatingStore}
+            onCreateStore={handleCreateStore}
+            onDeleteStore={handleDeleteStore}
+          />
+        </div>
 
         {stores.length > 0 && currentStoreId && (
           <div>
-            {/* 탭 메뉴: 가운데 정렬, 여백 */}
+            {/* ✅ [수정] 탭 메뉴도 850px로 모아줌 */}
             <div style={{ 
               display: 'flex', 
               justifyContent: 'center', 
@@ -295,7 +304,9 @@ function DashboardContent() {
               marginTop: 20,            
               marginBottom: 40,         
               borderBottom: '1px solid rgba(255,255,255,0.2)', 
-              paddingBottom: 20         
+              paddingBottom: 20,
+              maxWidth: 850,
+              margin: '20px auto 40px auto'
             }}>
               {[
                 { key: 'home', label: '🏠 홈' },
@@ -324,7 +335,7 @@ function DashboardContent() {
               ))}
             </div>
             
-            {/* 콘텐츠 영역: 전체 너비 1000px를 따름 */}
+            {/* ✅ 아래 콘텐츠 영역은 main의 1000px을 따라가서 넓게 유지 */}
             <div>{renderTabContent()}</div>
           </div>
         )}
