@@ -257,11 +257,23 @@ function DashboardContent() {
   return (
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
       
-      {/* 🔴 [헤더 & 메뉴 영역] 750px로 고정! 절대 안 퍼짐 */}
-      <div style={{ maxWidth: 750, margin: '0 auto', padding: '40px 20px 0 20px', boxSizing: 'border-box' }}>
+      {/* 🔴 [헤더 & 메뉴 영역] 
+          - 최대 너비 750px 고정 
+          - 화면이 750px보다 작으면 100%로 줄어듬 (width: 100%)
+          - 중앙 정렬 (margin: 0 auto)
+      */}
+      <div style={{ 
+        maxWidth: '750px', 
+        width: '100%', 
+        margin: '0 auto', 
+        padding: '40px 20px 0 20px', 
+        boxSizing: 'border-box' 
+      }}>
+        
+        {/* 로고 & 유저바 */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h1 style={{ 
-            fontSize: 36,         
+            fontSize: 36,        
             color: '#fff',        
             fontWeight: '900',    
             letterSpacing: '-1px',
@@ -275,6 +287,7 @@ function DashboardContent() {
 
         {errorMsg && <div style={{ marginBottom: 16, color: 'salmon' }}>{errorMsg}</div>}
 
+        {/* 매장 선택기 */}
         <StoreSelector
           stores={stores}
           currentStoreId={currentStoreId}
@@ -284,10 +297,11 @@ function DashboardContent() {
           onDeleteStore={handleDeleteStore}
         />
 
+        {/* 탭 메뉴 (여기도 750px 안에 포함되어 좁게 유지됨) */}
         {stores.length > 0 && currentStoreId && (
           <div style={{ 
             display: 'flex', 
-            justifyContent: 'center', 
+            justifyContent: 'center', // 메뉴 가운데 정렬
             flexWrap: 'wrap',         
             gap: 20,                  
             marginTop: 20,            
@@ -324,8 +338,18 @@ function DashboardContent() {
         )}
       </div>
 
-      {/* 🔵 [콘텐츠 영역] 여기는 1000px까지 유동적으로 늘어남 */}
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 20px', width: '100%', boxSizing: 'border-box' }}>
+      {/* 🔵 [콘텐츠 영역] 
+          - 최대 너비 1000px
+          - 위쪽 헤더보다 더 넓게 퍼질 수 있음
+          - 화면이 작아지면 자동으로 줄어듬 (fluid)
+      */}
+      <div style={{ 
+        maxWidth: '1000px', 
+        width: '100%', 
+        margin: '0 auto', 
+        padding: '0 20px', 
+        boxSizing: 'border-box' 
+      }}>
         {stores.length > 0 && currentStoreId && (
           <div>{renderTabContent()}</div>
         )}
