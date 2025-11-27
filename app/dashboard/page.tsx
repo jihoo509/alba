@@ -255,91 +255,83 @@ function DashboardContent() {
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
   return (
-    <main style={{ padding: '40px 20px', maxWidth: 1000, margin: '0 auto' }}>
-      {/* ✅ [수정] 헤더 영역만 850px로 좁게 고정하여 모아줌 */}
-      <header style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: 20,
-        maxWidth: 850,
-        margin: '0 auto 20px auto'
-      }}>
-        <h1 style={{ 
-          fontSize: 36,         
-          color: '#fff',        
-          fontWeight: '900',    
-          letterSpacing: '-1px',
-          margin: 0,
-          fontFamily: 'sans-serif' 
-        }}>
-          Easy Alba
-        </h1>
-        <UserBar email={userEmail} />
-      </header>
+    // 전체 페이지 컨테이너: 너비 100%
+    <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
+      
+      {/* 🔴 [헤더 & 메뉴] 여기는 800px로 좁게 고정! */}
+      <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 20px 0 20px' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h1 style={{ 
+            fontSize: 36,         
+            color: '#fff',        
+            fontWeight: '900',    
+            letterSpacing: '-1px',
+            margin: 0,
+            fontFamily: 'sans-serif' 
+          }}>
+            Easy Alba
+          </h1>
+          <UserBar email={userEmail} />
+        </header>
 
-      {errorMsg && <div style={{ marginBottom: 16, color: 'salmon' }}>{errorMsg}</div>}
+        {errorMsg && <div style={{ marginBottom: 16, color: 'salmon' }}>{errorMsg}</div>}
 
-      <section>
-        {/* ✅ [수정] 매장 선택기 영역도 850px로 모아줌 */}
-        <div style={{ maxWidth: 850, margin: '0 auto' }}>
-          <StoreSelector
-            stores={stores}
-            currentStoreId={currentStoreId}
-            onChangeStore={handleStoreChange}
-            creatingStore={creatingStore}
-            onCreateStore={handleCreateStore}
-            onDeleteStore={handleDeleteStore}
-          />
-        </div>
+        <StoreSelector
+          stores={stores}
+          currentStoreId={currentStoreId}
+          onChangeStore={handleStoreChange}
+          creatingStore={creatingStore}
+          onCreateStore={handleCreateStore}
+          onDeleteStore={handleDeleteStore}
+        />
 
         {stores.length > 0 && currentStoreId && (
-          <div>
-            {/* ✅ [수정] 탭 메뉴도 850px로 모아줌 */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              flexWrap: 'wrap',         
-              gap: 20,                  
-              marginTop: 20,            
-              marginBottom: 40,         
-              borderBottom: '1px solid rgba(255,255,255,0.2)', 
-              paddingBottom: 20,
-              maxWidth: 850,
-              margin: '20px auto 40px auto'
-            }}>
-              {[
-                { key: 'home', label: '🏠 홈' },
-                { key: 'employees', label: '👥 직원 관리' },     
-                { key: 'schedules', label: '🗓️ 스케줄 관리' },   
-                { key: 'payroll', label: '💰 급여 / 정산' }      
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => handleTabChange(tab.key as TabKey)}
-                  style={{
-                    padding: '12px 24px', 
-                    border: 'none',
-                    borderBottom: currentTab === tab.key ? '3px solid dodgerblue' : '3px solid transparent',
-                    background: 'transparent',
-                    color: currentTab === tab.key ? '#fff' : '#aaa', 
-                    cursor: 'pointer',
-                    fontSize: 16, 
-                    fontWeight: currentTab === tab.key ? 'bold' : 'normal',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap' 
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            
-            {/* ✅ 아래 콘텐츠 영역은 main의 1000px을 따라가서 넓게 유지 */}
-            <div>{renderTabContent()}</div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            flexWrap: 'wrap',         
+            gap: 20,                  
+            marginTop: 20,            
+            marginBottom: 40,         
+            borderBottom: '1px solid rgba(255,255,255,0.2)', 
+            paddingBottom: 20         
+          }}>
+            {[
+              { key: 'home', label: '🏠 홈' },
+              { key: 'employees', label: '👥 직원 관리' },     
+              { key: 'schedules', label: '🗓️ 스케줄 관리' },   
+              { key: 'payroll', label: '💰 급여 / 정산' }      
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => handleTabChange(tab.key as TabKey)}
+                style={{
+                  padding: '12px 24px', 
+                  border: 'none',
+                  borderBottom: currentTab === tab.key ? '3px solid dodgerblue' : '3px solid transparent',
+                  background: 'transparent',
+                  color: currentTab === tab.key ? '#fff' : '#aaa', 
+                  cursor: 'pointer',
+                  fontSize: 16, 
+                  fontWeight: currentTab === tab.key ? 'bold' : 'normal',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap' 
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         )}
-      </section>
+      </div>
+
+      {/* 🔵 [하단 콘텐츠] 여기는 1000px로 조금 더 넓게! (스케줄표 등등) */}
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 20px' }}>
+        {stores.length > 0 && currentStoreId && (
+          <div>{renderTabContent()}</div>
+        )}
+      </div>
+
     </main>
   );
 }
