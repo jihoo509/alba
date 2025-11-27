@@ -257,29 +257,17 @@ function DashboardContent() {
   return (
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
       
-      {/* 🔴 [헤더 & 메뉴 영역] 
-          - 최대 너비 750px 고정 
-          - 화면이 750px보다 작으면 100%로 줄어듬 (width: 100%)
-          - 중앙 정렬 (margin: 0 auto)
-      */}
+      {/* 🔴 [헤더 & 메뉴 영역] 550px 고정 (화면 작으면 100%로 축소) */}
       <div style={{ 
-        maxWidth: '750px', 
-        width: '100%', 
-        margin: '0 auto', 
+        width: '100%',           // 기본적으로 꽉 참
+        maxWidth: '550px',       // 단, 550px은 넘지 않음
+        margin: '0 auto',        // 중앙 정렬
         padding: '40px 20px 0 20px', 
         boxSizing: 'border-box' 
       }}>
-        
-        {/* 로고 & 유저바 */}
+        {/* ... (헤더 내용 동일) ... */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h1 style={{ 
-            fontSize: 36,        
-            color: '#fff',        
-            fontWeight: '900',    
-            letterSpacing: '-1px',
-            margin: 0,
-            fontFamily: 'sans-serif' 
-          }}>
+          <h1 style={{ fontSize: 36, color: '#fff', fontWeight: '900', letterSpacing: '-1px', margin: 0, fontFamily: 'sans-serif' }}>
             Easy Alba
           </h1>
           <UserBar email={userEmail} />
@@ -287,7 +275,6 @@ function DashboardContent() {
 
         {errorMsg && <div style={{ marginBottom: 16, color: 'salmon' }}>{errorMsg}</div>}
 
-        {/* 매장 선택기 */}
         <StoreSelector
           stores={stores}
           currentStoreId={currentStoreId}
@@ -297,17 +284,10 @@ function DashboardContent() {
           onDeleteStore={handleDeleteStore}
         />
 
-        {/* 탭 메뉴 (여기도 750px 안에 포함되어 좁게 유지됨) */}
         {stores.length > 0 && currentStoreId && (
           <div style={{ 
-            display: 'flex', 
-            justifyContent: 'center', // 메뉴 가운데 정렬
-            flexWrap: 'wrap',         
-            gap: 20,                  
-            marginTop: 20,            
-            marginBottom: 40,         
-            borderBottom: '1px solid rgba(255,255,255,0.2)', 
-            paddingBottom: 20         
+            display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 20, 
+            marginTop: 20, marginBottom: 40, borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: 20 
           }}>
             {[
               { key: 'home', label: '🏠 홈' },
@@ -319,16 +299,10 @@ function DashboardContent() {
                 key={tab.key}
                 onClick={() => handleTabChange(tab.key as TabKey)}
                 style={{
-                  padding: '12px 24px', 
-                  border: 'none',
+                  padding: '12px 24px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 16, transition: 'all 0.2s', whiteSpace: 'nowrap',
                   borderBottom: currentTab === tab.key ? '3px solid dodgerblue' : '3px solid transparent',
-                  background: 'transparent',
                   color: currentTab === tab.key ? '#fff' : '#aaa', 
-                  cursor: 'pointer',
-                  fontSize: 16, 
                   fontWeight: currentTab === tab.key ? 'bold' : 'normal',
-                  transition: 'all 0.2s',
-                  whiteSpace: 'nowrap' 
                 }}
               >
                 {tab.label}
@@ -338,20 +312,19 @@ function DashboardContent() {
         )}
       </div>
 
-      {/* 🔵 [콘텐츠 영역] 
-          - 최대 너비 1000px
-          - 위쪽 헤더보다 더 넓게 퍼질 수 있음
-          - 화면이 작아지면 자동으로 줄어듬 (fluid)
-      */}
+      {/* 🔵 [콘텐츠 영역] 1000px 제한 + 작아지면 100% 유동적 축소 */}
       <div style={{ 
-        maxWidth: '1000px', 
-        width: '100%', 
-        margin: '0 auto', 
-        padding: '0 20px', 
-        boxSizing: 'border-box' 
+        width: '100%',            // ⭐️ 중요: 화면이 작을 땐 꽉 차게 (유동적)
+        maxWidth: '1000px',       // ⭐️ 중요: 1000px 이상으론 안 커짐
+        margin: '0 auto',         // 중앙 정렬
+        padding: '0 20px',        // 모바일에서 좌우 여백 확보
+        boxSizing: 'border-box'   // 패딩 포함해서 너비 계산
       }}>
         {stores.length > 0 && currentStoreId && (
-          <div>{renderTabContent()}</div>
+          // 내부 콘텐츠가 너무 넓어 터지는 것을 방지하기 위해 overflow 처리 추가 가능
+          <div style={{ width: '100%' }}>
+            {renderTabContent()}
+          </div>
         )}
       </div>
 
