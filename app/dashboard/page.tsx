@@ -6,7 +6,6 @@ import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import UserBar from '@/components/UserBar';
 import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
-// TemplateSection이 WeeklyScheduleManager와 ScheduleCalendar를 포함하는 구조로 예상됩니다.
 import TemplateSection from '@/components/TemplateSection'; 
 import PayrollSection from '@/components/PayrollSection';
 import { format } from 'date-fns';
@@ -241,7 +240,6 @@ function DashboardContent() {
     if (currentTab === 'schedules') {
       return (
         <div>
-          {/* ✅ [수정] 타이틀과 설명 글자색을 흰색/밝은 회색으로 변경 */}
           <h2 style={{ fontSize: 24, marginBottom: 8, color: '#fff', fontWeight: 'bold' }}>스케줄 관리</h2>
           <p style={{ color: '#ddd', marginBottom: 32 }}>월간 스케줄을 확인하고 관리합니다.</p>
           
@@ -259,16 +257,15 @@ function DashboardContent() {
   return (
     <main style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        {/* ✅ [수정] 제목 변경 및 스타일 강화 (로고 느낌) */}
         <h1 style={{ 
-          fontSize: 36,         // 폰트 크기 키움
-          color: '#fff',        // 흰색
-          fontWeight: '900',    // 가장 굵게
-          letterSpacing: '-1px',// 자간을 좁혀서 단단한 느낌
-          margin: 0,            // 기본 여백 제거
-          // fontFamily: '...' // 만약 로그인 페이지에서 쓰던 특정 웹폰트가 있다면 여기에 적용하세요.
+          fontSize: 36,         
+          color: '#fff',        
+          fontWeight: '900',    
+          letterSpacing: '-1px',
+          margin: 0,
+          fontFamily: 'sans-serif' 
         }}>
-          easy alba
+          Easy Alba
         </h1>
         <UserBar email={userEmail} />
       </header>
@@ -287,26 +284,37 @@ function DashboardContent() {
 
         {stores.length > 0 && currentStoreId && (
           <div>
-            <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #rgba(255,255,255,0.2)', marginBottom: 24 }}>
+            {/* ✅ [수정] 탭 메뉴: 가운데 정렬, 여백 추가, 이모티콘, 모바일 줄바꿈(wrap) */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', // 가운데 정렬
+              flexWrap: 'wrap',         // 모바일 등 공간 부족 시 줄바꿈
+              gap: 20,                  // 버튼 사이 간격 늘림
+              marginTop: 40,            // 위쪽 여백 넉넉하게
+              marginBottom: 40,         // 아래쪽 여백 넉넉하게
+              borderBottom: '1px solid rgba(255,255,255,0.2)', 
+              paddingBottom: 20         // 구분선과 버튼 사이 간격
+            }}>
               {[
                 { key: 'home', label: '🏠 홈' },
-                { key: 'employees', label: '직원 관리' },
-                { key: 'schedules', label: '스케줄 관리' },
-                { key: 'payroll', label: '급여 / 정산' }
+                { key: 'employees', label: '👥 직원 관리' },     // 이모티콘 추가
+                { key: 'schedules', label: '🗓️ 스케줄 관리' },   // 이모티콘 추가
+                { key: 'payroll', label: '💰 급여 / 정산' }      // 이모티콘 추가
               ].map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => handleTabChange(tab.key as TabKey)}
                   style={{
-                    padding: '10px 20px',
+                    padding: '12px 24px', 
                     border: 'none',
                     borderBottom: currentTab === tab.key ? '3px solid dodgerblue' : '3px solid transparent',
                     background: 'transparent',
-                    // ✅ 탭 버튼 글자색: 활성화(흰색), 비활성화(밝은 회색)
-                    color: currentTab === tab.key ? '#fff' : '#aaa',
+                    color: currentTab === tab.key ? '#fff' : '#aaa', // 활성 흰색, 비활성 회색
                     cursor: 'pointer',
-                    fontSize: 15,
-                    fontWeight: currentTab === tab.key ? 'bold' : 'normal'
+                    fontSize: 16, // 글자 크기 적절히
+                    fontWeight: currentTab === tab.key ? 'bold' : 'normal',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap' // 텍스트 줄바꿈 방지
                   }}
                 >
                   {tab.label}
@@ -321,7 +329,7 @@ function DashboardContent() {
   );
 }
 
-// ✅ 카드 스타일: 흰색 배경, 연한 테두리
+// ✅ 카드 스타일
 const cardStyle = {
   backgroundColor: '#ffffff',
   borderRadius: 8,
