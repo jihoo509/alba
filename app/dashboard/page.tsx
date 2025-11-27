@@ -255,10 +255,9 @@ function DashboardContent() {
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
   return (
-    // ✅ [수정] 전체 너비를 1000px로 줄여서 첫 번째 사진처럼 컴팩트하게 고정
-    <main style={{ padding: '40px 20px', maxWidth: 1000, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-      
-      {/* 헤더: Easy Alba (좌) - UserBar (우) */}
+    // ✅ [수정] 전체 너비를 1000px로 통일하여 아담하고 꽉 찬 느낌 복구
+    // 이전의 1200px 설정과 width:100% 강제 설정을 제거했습니다.
+    <main style={{ padding: '40px 20px', maxWidth: 1000, margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h1 style={{ 
           fontSize: 36,         
@@ -287,7 +286,7 @@ function DashboardContent() {
 
         {stores.length > 0 && currentStoreId && (
           <div>
-            {/* 탭 메뉴: 가운데 정렬, 여백 20px */}
+            {/* 탭 메뉴: 가운데 정렬, 여백 */}
             <div style={{ 
               display: 'flex', 
               justifyContent: 'center', 
@@ -325,9 +324,8 @@ function DashboardContent() {
               ))}
             </div>
             
-            <div style={{ width: '100%', maxWidth: '100%' }}>
-                {renderTabContent()}
-            </div>
+            {/* 콘텐츠 영역: 전체 너비 1000px를 따름 */}
+            <div>{renderTabContent()}</div>
           </div>
         )}
       </section>
