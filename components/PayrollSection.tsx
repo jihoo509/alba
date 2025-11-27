@@ -54,7 +54,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
     loadAndCalculate();
   }, [loadAndCalculate]);
 
-  // ✅ [추가] 이번 달 총 지출액 계산 (세전 총액 기준)
+  // 이번 달 총 지출액 계산 (세전 총액 기준)
   const totalMonthlyCost = useMemo(() => {
     return payrollData.reduce((acc, curr) => acc + curr.totalPay, 0);
   }, [payrollData]);
@@ -94,79 +94,115 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   return (
     <div>
-      <StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} />
-      <hr style={{ margin: '32px 0', borderColor: '#333' }} />
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <h2 style={{ fontSize: 24, margin: 0 }}>💰 {year}년 {month}월 급여 대장</h2>
-          {/* ✅ [추가] 총 지출액 표시 */}
-          <span style={{ fontSize: 16, color: '#aaa' }}>
-            총 지급액: <strong style={{ color: '#ffeaa7', fontSize: 20 }}>{totalMonthlyCost.toLocaleString()}원</strong>
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setMonth(m => m === 1 ? 12 : m - 1)} style={btnStyle}>◀ 전월</button>
-          <span style={{ fontSize: 18, fontWeight: 'bold', alignSelf: 'center', minWidth: 60, textAlign: 'center' }}>{month}월</span>
-          <button onClick={() => setMonth(m => m === 12 ? 1 : m + 1)} style={btnStyle}>익월 ▶</button>
-          <div style={{ width: 10 }}></div>
-          <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: 'seagreen', color: '#fff', border: 'none' }}>
-            📊 세무용 엑셀 다운
-          </button>
-        </div>
+      {/* 1. 상단 설정 박스 (흰색 카드 적용) */}
+      <div style={cardStyle}>
+          {/* StoreSettings 내부도 수정이 필요할 수 있지만, 일단 흰색 박스로 감쌉니다 */}
+          <StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} />
       </div>
 
-      {loading ? <p>계산 중...</p> : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
-            <thead>
-              {/* ✅ 헤더 스타일 수정: fontSize 15px */}
-              <tr style={{ background: '#333', color: '#fff', fontSize: '15px' }}>
-                <th style={thStyle}>이름</th>
-                <th style={thStyle}>총 지급</th>
-                <th style={thStyle}>세후 지급</th>
-                <th style={{...thStyle, background: '#444'}}>소득세</th>
-                <th style={{...thStyle, background: '#444'}}>지방세</th>
-                <th style={{...thStyle, background: '#222'}}>국민</th>
-                <th style={{...thStyle, background: '#222'}}>건강</th>
-                <th style={{...thStyle, background: '#222'}}>요양</th>
-                <th style={{...thStyle, background: '#222'}}>고용</th>
-                <th style={thStyle}>상세보기</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payrollData.map(p => (
-                // ✅ 본문 스타일 수정: fontSize 15px
-                <tr key={p.empId} style={{ borderBottom: '1px solid #444', fontSize: '15px' }}>
-                  <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.name}</td>
-                  <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.totalPay.toLocaleString()}</td>
-                  <td style={{ ...tdStyle, color: '#ffeaa7', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
-                  <td style={{...tdStyle, color: '#aaa'}}>{p.taxDetails.incomeTax > 0 ? p.taxDetails.incomeTax.toLocaleString() : '-'}</td>
-                  <td style={{...tdStyle, color: '#aaa'}}>{p.taxDetails.localTax > 0 ? p.taxDetails.localTax.toLocaleString() : '-'}</td>
-                  <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.pension > 0 ? p.taxDetails.pension.toLocaleString() : '-'}</td>
-                  <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.health > 0 ? p.taxDetails.health.toLocaleString() : '-'}</td>
-                  <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.care > 0 ? p.taxDetails.care.toLocaleString() : '-'}</td>
-                  <td style={{...tdStyle, color: '#ccc'}}>{p.taxDetails.employment > 0 ? p.taxDetails.employment.toLocaleString() : '-'}</td>
-                  <td style={{ ...tdStyle }}>
-                    <button onClick={() => setSelectedPayStub(p)} style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, border: '1px solid #777', background: 'transparent', color: '#fff' }}>명세서 보기</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* 2. 하단 급여 대장 박스 (흰색 카드 적용) */}
+      <div style={cardStyle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+            <h2 style={{ fontSize: 24, margin: 0, color: '#333' }}>💰 {year}년 {month}월 급여 대장</h2>
+            <span style={{ fontSize: 16, color: '#666' }}>
+              총 지급액: <strong style={{ color: 'dodgerblue', fontSize: 20 }}>{totalMonthlyCost.toLocaleString()}원</strong>
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setMonth(m => m === 1 ? 12 : m - 1)} style={btnStyle}>◀ 전월</button>
+            <span style={{ fontSize: 18, fontWeight: 'bold', alignSelf: 'center', minWidth: 60, textAlign: 'center', color: '#333' }}>{month}월</span>
+            <button onClick={() => setMonth(m => m === 12 ? 1 : m + 1)} style={btnStyle}>익월 ▶</button>
+            <div style={{ width: 10 }}></div>
+            <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: '#27ae60', color: '#fff', border: 'none' }}>
+              📊 세무용 엑셀 다운
+            </button>
+          </div>
         </div>
-      )}
-      <p style={{ fontSize: 13, color: '#777', marginTop: 12 }}>
-        * 4대보험은 표준 요율(2024/25) 기준으로 자동 계산되었습니다.
-      </p>
+
+        {loading ? <p style={{color:'#333'}}>계산 중...</p> : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
+              <thead>
+                {/* 헤더: 밝은 회색 배경, 검은 글씨 */}
+                <tr style={{ background: '#f5f5f5', color: '#333', fontSize: '15px', borderBottom: '2px solid #ddd' }}>
+                  <th style={thStyle}>이름</th>
+                  <th style={thStyle}>총 지급</th>
+                  <th style={thStyle}>세후 지급</th>
+                  {/* 구분감을 위해 배경색 미세하게 조정 */}
+                  <th style={{...thStyle, background: '#f0f0f0'}}>소득세</th>
+                  <th style={{...thStyle, background: '#f0f0f0'}}>지방세</th>
+                  <th style={{...thStyle, background: '#e9e9e9'}}>국민</th>
+                  <th style={{...thStyle, background: '#e9e9e9'}}>건강</th>
+                  <th style={{...thStyle, background: '#e9e9e9'}}>요양</th>
+                  <th style={{...thStyle, background: '#e9e9e9'}}>고용</th>
+                  <th style={thStyle}>상세보기</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payrollData.map(p => (
+                  // 본문: 흰 배경, 검은 글씨, 연한 테두리
+                  <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '15px', backgroundColor: '#fff' }}>
+                    <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.name}</td>
+                    <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.totalPay.toLocaleString()}</td>
+                    <td style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
+                    <td style={{...tdStyle, color: '#666'}}>{p.taxDetails.incomeTax > 0 ? p.taxDetails.incomeTax.toLocaleString() : '-'}</td>
+                    <td style={{...tdStyle, color: '#666'}}>{p.taxDetails.localTax > 0 ? p.taxDetails.localTax.toLocaleString() : '-'}</td>
+                    <td style={{...tdStyle, color: '#888'}}>{p.taxDetails.pension > 0 ? p.taxDetails.pension.toLocaleString() : '-'}</td>
+                    <td style={{...tdStyle, color: '#888'}}>{p.taxDetails.health > 0 ? p.taxDetails.health.toLocaleString() : '-'}</td>
+                    <td style={{...tdStyle, color: '#888'}}>{p.taxDetails.care > 0 ? p.taxDetails.care.toLocaleString() : '-'}</td>
+                    <td style={{...tdStyle, color: '#888'}}>{p.taxDetails.employment > 0 ? p.taxDetails.employment.toLocaleString() : '-'}</td>
+                    <td style={{ ...tdStyle }}>
+                      <button onClick={() => setSelectedPayStub(p)} style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', background: '#fff', color: '#333' }}>명세서 보기</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p style={{ fontSize: 13, color: '#888', marginTop: 12 }}>
+          * 4대보험은 표준 요율(2024/25) 기준으로 자동 계산되었습니다.
+        </p>
+      </div>
 
       <PayStubModal isOpen={!!selectedPayStub} onClose={() => setSelectedPayStub(null)} data={selectedPayStub} year={year} month={month} />
     </div>
   );
 }
 
-const btnStyle = { padding: '8px 12px', background: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, cursor: 'pointer' };
-// ✅ [수정] 가운데 정렬(center) 및 패딩 확대
-const thStyle = { padding: '14px 10px', border: '1px solid #555', textAlign: 'center' as const, whiteSpace: 'nowrap' as const, fontWeight: 'bold' };
-const tdStyle = { padding: '14px 10px', border: '1px solid #555', textAlign: 'center' as const };
+// ✅ 스타일 정의: 흰색 카드, 검은 글씨 테마
+const cardStyle = {
+  backgroundColor: '#ffffff',
+  borderRadius: '12px',
+  padding: '24px',
+  border: '1px solid #ddd',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+  marginBottom: '24px' // 카드 간 간격
+};
+
+const btnStyle = { 
+  padding: '8px 12px', 
+  background: '#fff', 
+  border: '1px solid #ccc', 
+  color: '#333', 
+  borderRadius: 4, 
+  cursor: 'pointer',
+  fontSize: '14px',
+  fontWeight: 'bold'
+};
+
+const thStyle = { 
+  padding: '14px 10px', 
+  textAlign: 'center' as const, 
+  whiteSpace: 'nowrap' as const, 
+  fontWeight: 'bold',
+  color: '#333'
+};
+
+const tdStyle = { 
+  padding: '14px 10px', 
+  textAlign: 'center' as const,
+  color: '#333'
+};

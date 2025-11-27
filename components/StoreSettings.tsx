@@ -5,7 +5,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 
 type Props = {
   storeId: string;
-  onUpdate?: () => void; // ✅ [추가] 저장이 끝나면 호출할 함수
+  onUpdate?: () => void;
 };
 
 export default function StoreSettings({ storeId, onUpdate }: Props) {
@@ -58,7 +58,7 @@ export default function StoreSettings({ storeId, onUpdate }: Props) {
       alert('저장 실패: ' + error.message);
     } else {
       alert('설정이 저장되었습니다!');
-      if (onUpdate) onUpdate(); // ✅ [핵심] 부모에게 알림 -> 급여 재계산 트리거
+      if (onUpdate) onUpdate();
     }
   };
 
@@ -77,47 +77,85 @@ export default function StoreSettings({ storeId, onUpdate }: Props) {
   };
 
   return (
-    <div style={{ marginTop: 20, padding: 24, border: '1px solid #444', borderRadius: 8, background: '#1a1a1a' }}>
-      <h3 style={{ marginTop: 0, marginBottom: 16 }}>매장 급여/수당 설정</h3>
+    // ✅ [수정] 배경 흰색, 테두리 연하게, 그림자 추가 (카드 스타일)
+    // 만약 상위 컴포넌트(PayrollSection)에서 이미 카드 박스로 감쌌다면 border/boxShadow는 제거해도 됩니다.
+    // 여기서는 독립적으로 예쁘게 보이도록 설정했습니다.
+    <div style={{ 
+        width: '100%',
+        padding: 24, 
+        border: '1px solid #ddd', 
+        borderRadius: 12, 
+        backgroundColor: '#ffffff',
+        color: '#333',
+        boxSizing: 'border-box'
+    }}>
+      <h3 style={{ marginTop: 0, marginBottom: 16, color: '#000' }}>매장 급여/수당 설정</h3>
       
-      <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px dashed #444' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 'bold', cursor: 'pointer' }}>
-          <input type="checkbox" checked={isFivePlus} onChange={handleFivePlusChange} style={{ width: 18, height: 18 }} />
+      {/* 구분선 색상 변경 */}
+      <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px dashed #ddd' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 'bold', cursor: 'pointer', color: '#000' }}>
+          {/* 체크박스 크기 조정 */}
+          <input type="checkbox" checked={isFivePlus} onChange={handleFivePlusChange} style={{ width: 18, height: 18, cursor: 'pointer' }} />
           5인 이상 사업장입니다.
         </label>
-        <p style={{ margin: '4px 0 0 28px', fontSize: 13, color: '#888' }}>
+        <p style={{ margin: '4px 0 0 28px', fontSize: 13, color: '#666' }}>
           체크 시 가산수당(야간/휴일/연장 1.5배)이 자동으로 선택됩니다.
         </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <input type="checkbox" checked={payWeekly} onChange={(e) => setPayWeekly(e.target.checked)} />
+        <label style={checkboxLabelStyle}>
+          <input type="checkbox" checked={payWeekly} onChange={(e) => setPayWeekly(e.target.checked)} style={checkboxStyle} />
           주휴수당 지급 (주 15시간↑)
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <input type="checkbox" checked={autoDeductBreak} onChange={(e) => setAutoDeductBreak(e.target.checked)} />
+        <label style={checkboxLabelStyle}>
+          <input type="checkbox" checked={autoDeductBreak} onChange={(e) => setAutoDeductBreak(e.target.checked)} style={checkboxStyle} />
           휴게시간 자동 차감 (4h/30m, 8h/1h)
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <input type="checkbox" checked={payNight} onChange={(e) => setPayNight(e.target.checked)} />
+        <label style={checkboxLabelStyle}>
+          <input type="checkbox" checked={payNight} onChange={(e) => setPayNight(e.target.checked)} style={checkboxStyle} />
           야간수당 지급 (1.5배)
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <input type="checkbox" checked={payHoliday} onChange={(e) => setPayHoliday(e.target.checked)} />
+        <label style={checkboxLabelStyle}>
+          <input type="checkbox" checked={payHoliday} onChange={(e) => setPayHoliday(e.target.checked)} style={checkboxStyle} />
           휴일수당 지급 (1.5배)
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <input type="checkbox" checked={payOvertime} onChange={(e) => setPayOvertime(e.target.checked)} />
+        <label style={checkboxLabelStyle}>
+          <input type="checkbox" checked={payOvertime} onChange={(e) => setPayOvertime(e.target.checked)} style={checkboxStyle} />
           연장수당 지급 (1.5배)
         </label>
       </div>
 
       <div style={{ marginTop: 24, textAlign: 'right' }}>
-        <button onClick={handleSave} disabled={loading} style={{ padding: '10px 24px', background: 'royalblue', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 15, fontWeight: 'bold' }}>
+        <button onClick={handleSave} disabled={loading} style={{ 
+            padding: '10px 24px', 
+            background: 'dodgerblue', // 버튼 색상 통일 (royalblue -> dodgerblue)
+            color: 'white', 
+            border: 'none', 
+            borderRadius: 4, 
+            cursor: 'pointer', 
+            fontSize: 15, 
+            fontWeight: 'bold',
+            opacity: loading ? 0.7 : 1
+        }}>
           {loading ? '저장 중...' : '설정 저장하기'}
         </button>
       </div>
     </div>
   );
 }
+
+// ✅ 스타일 분리 (재사용 및 가독성)
+const checkboxLabelStyle = {
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: 8, 
+    cursor: 'pointer',
+    color: '#333', // 글자색 검정
+    fontSize: '14px'
+};
+
+const checkboxStyle = {
+    transform: 'scale(1.1)', // 체크박스 살짝 키움
+    cursor: 'pointer'
+};
