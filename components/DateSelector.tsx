@@ -113,7 +113,7 @@ export default function DateSelector({ value, onChange }: Props) {
 const selectStyle = {
   flex: 1,
   padding: '8px',
-  backgroundColor: '#333',
+  backgroundColor: '#494949ff',
   border: '1px solid #555',
   borderRadius: 4,
   color: '#fff',

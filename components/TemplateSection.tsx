@@ -54,13 +54,12 @@ export default function TemplateSection({ currentStoreId }: Props) {
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <p style={{ fontSize: 14, color: '#ccc', margin: 0 }}>
-          월간 스케줄을 확인하고 관리합니다.
-        </p>
-      </div>
+      {/* ✅ [수정 완료] 
+          기존에 있던 "월간 스케줄을 확인하고 관리합니다." 텍스트 div를 삭제했습니다.
+          이제 page.tsx의 타이틀과 중복되지 않습니다.
+      */}
 
-      {/* ✅ [위치 변경] 주간 스케줄 설정 (위로 올림) */}
+      {/* 주간 스케줄 설정 */}
       <div style={{ marginBottom: 40 }}>
         <WeeklyScheduleManager 
           currentStoreId={currentStoreId} 
@@ -68,7 +67,7 @@ export default function TemplateSection({ currentStoreId }: Props) {
         />
       </div>
 
-      {/* ✅ [위치 변경] 캘린더 (아래로 내림) */}
+      {/* 캘린더 */}
       <ScheduleCalendar 
         currentStoreId={currentStoreId} 
         selectedTemplate={null} 
