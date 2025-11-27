@@ -4,7 +4,8 @@ import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 
-type OAuthProvider = 'google' | 'kakao' | 'naver';
+// ✅ Naver 제거
+type OAuthProvider = 'google' | 'kakao';
 
 export default function AuthPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -16,19 +17,16 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   
   const [isSignUpMode, setIsSignUpMode] = useState(false);
-  const [rememberId, setRememberId] = useState(false); // ✅ 아이디 기억하기 상태
+  const [rememberId, setRememberId] = useState(false);
 
-  // 1. 초기 로딩 시: 자동 로그인 체크 & 아이디 기억하기 불러오기
+  // 초기 로딩 시 자동 로그인 & 아이디 불러오기
   useEffect(() => {
     const checkSession = async () => {
-      // (1) 이미 로그인 되어 있는지 확인
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        router.replace('/dashboard'); // 로그인 되어있으면 바로 대시보드로
+        router.replace('/dashboard');
         return;
       }
-
-      // (2) 저장된 아이디가 있는지 확인
       const savedEmail = localStorage.getItem('savedEmail');
       if (savedEmail) {
         setEmail(savedEmail);
@@ -38,13 +36,11 @@ export default function AuthPage() {
     checkSession();
   }, [supabase, router]);
 
-  // 통합 인증 핸들러
   async function handleAuth() {
     try {
       setMsg(null);
       setLoading(true);
 
-      // ✅ 로그인 성공 시 아이디 저장 처리
       if (rememberId) {
         localStorage.setItem('savedEmail', email);
       } else {
@@ -52,7 +48,6 @@ export default function AuthPage() {
       }
 
       if (isSignUpMode) {
-        // 회원가입
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -64,7 +59,6 @@ export default function AuthPage() {
           setIsSignUpMode(false);
         }
       } else {
-        // 로그인
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -105,7 +99,7 @@ export default function AuthPage() {
         backgroundRepeat: 'no-repeat',
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center', // 세로 중앙 정렬
+        alignItems: 'center',
         fontFamily: 'sans-serif',
       }}
     >
@@ -115,15 +109,15 @@ export default function AuthPage() {
         style={{
           position: 'relative',
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          padding: '32px 28px', // ✅ 패딩을 조금 줄임
+          padding: '32px 28px',
           borderRadius: '16px',
           boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
-          width: '90%',      // 모바일 대응
-          maxWidth: '360px', // ✅ 크기를 420px -> 360px로 줄임
+          width: '90%',
+          maxWidth: '360px',
           display: 'flex',
           flexDirection: 'column',
           gap: '14px',
-          marginBottom: '15vh', // ✅ 화면 중앙보다 15% 정도 위로 올림 (일러스트 확보)
+          marginBottom: '15vh',
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: '4px' }}>
@@ -151,7 +145,6 @@ export default function AuthPage() {
           />
         </div>
         
-        {/* ✅ 아이디 기억하기 체크박스 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <input 
             type="checkbox" 
@@ -170,7 +163,6 @@ export default function AuthPage() {
           disabled={loading}
           style={{
             padding: '12px',
-            // ✅ 회원가입 모드일 때는 초록색, 로그인일 때는 파란색
             backgroundColor: isSignUpMode ? '#28a745' : '#0052cc', 
             color: '#fff',
             border: 'none',
@@ -201,15 +193,13 @@ export default function AuthPage() {
           <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
         </div>
 
+        {/* ✅ 네이버 제거, 구글/카카오만 남김 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <button onClick={() => handleOAuthLogin('google')} style={{ ...socialBtnStyle, background: '#fff', border: '1px solid #ddd', color: '#333' }}>
             <span style={{ marginRight: '8px', fontWeight: 'bold', color: '#ea4335' }}>G</span> Google 계정으로 계속
           </button>
           <button onClick={() => handleOAuthLogin('kakao')} style={{ ...socialBtnStyle, background: '#FEE500', color: '#333' }}>
             <span style={{ marginRight: '8px', fontWeight: 'bold', color: '#3c1e1e' }}>K</span> Kakao 계정으로 계속
-          </button>
-          <button onClick={() => handleOAuthLogin('naver')} style={{ ...socialBtnStyle, background: '#03C75A', color: '#fff' }}>
-            <span style={{ marginRight: '8px', fontWeight: 'bold' }}>N</span> Naver 계정으로 계속
           </button>
         </div>
       </div>
