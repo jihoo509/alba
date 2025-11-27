@@ -255,9 +255,11 @@ function DashboardContent() {
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
   return (
-    // ✅ [수정] 레이아웃 고정을 위해 width: 100%와 boxSizing: border-box 추가
-    <main style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    // ✅ [수정] 전체 너비를 1000px로 줄여서 첫 번째 사진처럼 컴팩트하게 고정
+    <main style={{ padding: '40px 20px', maxWidth: 1000, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      
+      {/* 헤더: Easy Alba (좌) - UserBar (우) */}
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h1 style={{ 
           fontSize: 36,         
           color: '#fff',        
@@ -285,13 +287,13 @@ function DashboardContent() {
 
         {stores.length > 0 && currentStoreId && (
           <div>
-            {/* ✅ [수정] 위쪽 여백(marginTop)을 40 -> 20으로 줄여 간격 조정 */}
+            {/* 탭 메뉴: 가운데 정렬, 여백 20px */}
             <div style={{ 
               display: 'flex', 
               justifyContent: 'center', 
               flexWrap: 'wrap',         
               gap: 20,                  
-              marginTop: 20,            // 수정됨: 40 -> 20
+              marginTop: 20,            
               marginBottom: 40,         
               borderBottom: '1px solid rgba(255,255,255,0.2)', 
               paddingBottom: 20         
@@ -323,7 +325,6 @@ function DashboardContent() {
               ))}
             </div>
             
-            {/* ✅ [수정] 하단 콘텐츠가 상단 레이아웃을 밀어내지 않도록 너비 제한 wrapper 추가 */}
             <div style={{ width: '100%', maxWidth: '100%' }}>
                 {renderTabContent()}
             </div>
@@ -334,7 +335,6 @@ function DashboardContent() {
   );
 }
 
-// ✅ 카드 스타일
 const cardStyle = {
   backgroundColor: '#ffffff',
   borderRadius: 8,
