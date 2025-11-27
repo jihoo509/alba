@@ -257,10 +257,10 @@ function DashboardContent() {
   return (
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
       
-      {/* 🔴 [헤더 & 메뉴 영역] 550px 고정 (화면 작으면 100%로 축소) */}
+      {/* 🔴 [헤더 & 메뉴 영역] 600px 고정 (화면 작으면 100%로 축소) */}
       <div style={{ 
         width: '100%',           // 기본적으로 꽉 참
-        maxWidth: '550px',       // 단, 550px은 넘지 않음
+        maxWidth: '600px',       // 단, 600px은 넘지 않음
         margin: '0 auto',        // 중앙 정렬
         padding: '40px 20px 0 20px', 
         boxSizing: 'border-box' 
