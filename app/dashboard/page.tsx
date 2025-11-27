@@ -255,11 +255,10 @@ function DashboardContent() {
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
   return (
-    // 전체 페이지 컨테이너: 너비 100%
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
       
-      {/* 🔴 [헤더 & 메뉴] 여기는 800px로 좁게 고정! */}
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 20px 0 20px' }}>
+      {/* 🔴 [헤더 & 메뉴 영역] 750px로 고정! 절대 안 퍼짐 */}
+      <div style={{ maxWidth: 750, margin: '0 auto', padding: '40px 20px 0 20px', boxSizing: 'border-box' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h1 style={{ 
             fontSize: 36,         
@@ -325,8 +324,8 @@ function DashboardContent() {
         )}
       </div>
 
-      {/* 🔵 [하단 콘텐츠] 여기는 1000px로 조금 더 넓게! (스케줄표 등등) */}
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 20px' }}>
+      {/* 🔵 [콘텐츠 영역] 여기는 1000px까지 유동적으로 늘어남 */}
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 20px', width: '100%', boxSizing: 'border-box' }}>
         {stores.length > 0 && currentStoreId && (
           <div>{renderTabContent()}</div>
         )}
