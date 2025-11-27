@@ -85,7 +85,7 @@ export function EmployeeSection({
           {/* 전화번호 표시 */}
           {emp.phone_number && (
               <span style={{ 
-                  fontSize: 15,           // 크기: 14 -> 15 (가독성 상향)
+                  fontSize: 14,           // 크기: 14 -> 15 (가독성 상향)
                   color: '#ffffff',       // 색상: #ddd -> #ffffff (이름처럼 선명하게)
                   marginLeft: 10,         // 간격: 앞쪽 태그와 거리 두기
                   fontWeight: 500,        // 굵기: 약간 두껍게 하여 잘 보이게 함
