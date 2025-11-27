@@ -191,25 +191,25 @@ function DashboardContent() {
   }, [currentStoreId, loadEmployees, loadHomeStats]);
 
   const renderTabContent = () => {
-    if (!currentStoreId) return <p style={{ color: '#aaa', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
+    if (!currentStoreId) return <p style={{ color: '#666', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
 
     if (currentTab === 'home') {
       return (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          {/* ✅ 인라인 스타일 적용 */}
+          {/* ✅ 카드 스타일 적용 (흰 배경) */}
           <div style={cardStyle}>
-            <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #444', paddingBottom: 8 }}>
+            <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #eee', paddingBottom: 8, color: '#000' }}>
               📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
             </h3>
             {todayWorkers.length === 0 ? (
-              <p style={{ color: '#777', textAlign: 'center', padding: 20 }}>오늘 예정된 근무가 없습니다.</p>
+              <p style={{ color: '#888', textAlign: 'center', padding: 20 }}>오늘 예정된 근무가 없습니다.</p>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0 }}>
                 {todayWorkers.map(w => (
-                  <li key={w.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #333' }}>
+                  <li key={w.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee' }}>
                     <div>
-                      <strong style={{ fontSize: 16, color: '#fff' }}>{w.employees?.name || '미배정'}</strong>
-                      <span style={{ color: '#aaa', fontSize: 13, marginLeft: 8 }}>{w.employees?.phone_number}</span>
+                      <strong style={{ fontSize: 16, color: '#000' }}>{w.employees?.name || '미배정'}</strong>
+                      <span style={{ color: '#666', fontSize: 13, marginLeft: 8 }}>{w.employees?.phone_number}</span>
                     </div>
                     <div style={{ color: 'dodgerblue', fontWeight: 'bold' }}>
                       {w.start_time.slice(0,5)} ~ {w.end_time.slice(0,5)}
@@ -220,8 +220,8 @@ function DashboardContent() {
             )}
           </div>
           <div style={cardStyle}>
-            <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#aaa' }}>💰 11월 예상 급여 지출 (세전)</h3>
-            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#fff' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
+            <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#555' }}>💰 11월 예상 급여 지출 (세전)</h3>
+            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#000' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
           </div>
         </div>
       );
@@ -241,7 +241,7 @@ function DashboardContent() {
     if (currentTab === 'schedules') {
       return (
         <div>
-          <h2 style={{ fontSize: 20, marginBottom: 12 }}>스케줄 관리</h2>
+          <h2 style={{ fontSize: 20, marginBottom: 12, color: '#000' }}>스케줄 관리</h2>
           <TemplateSection currentStoreId={currentStoreId} />
         </div>
       );
@@ -251,12 +251,12 @@ function DashboardContent() {
     }
   };
 
-  if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
+  if (loading) return <main style={{ padding: 40, color: '#000' }}>로딩 중...</main>;
 
   return (
     <main style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24 }}>사장님 대시보드</h1>
+        <h1 style={{ fontSize: 24, color: '#000' }}>사장님 대시보드</h1>
         <UserBar email={userEmail} />
       </header>
 
@@ -274,7 +274,7 @@ function DashboardContent() {
 
         {stores.length > 0 && currentStoreId && (
           <div>
-            <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #333', marginBottom: 24 }}>
+            <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #ddd', marginBottom: 24 }}>
               {[
                 { key: 'home', label: '🏠 홈' },
                 { key: 'employees', label: '직원 관리' },
@@ -289,7 +289,7 @@ function DashboardContent() {
                     border: 'none',
                     borderBottom: currentTab === tab.key ? '3px solid dodgerblue' : '3px solid transparent',
                     background: 'transparent',
-                    color: currentTab === tab.key ? '#fff' : '#888',
+                    color: currentTab === tab.key ? '#000' : '#888',
                     cursor: 'pointer',
                     fontSize: 15,
                     fontWeight: currentTab === tab.key ? 'bold' : 'normal'
@@ -307,18 +307,18 @@ function DashboardContent() {
   );
 }
 
-// ✅ 인라인 스타일로 복구
+// ✅ 카드 스타일: 흰색 배경, 회색 테두리, 검은 글씨
 const cardStyle = {
-  backgroundColor: '#1f1f1f',
+  backgroundColor: '#ffffff',
   borderRadius: 8,
   padding: 24,
-  border: '1px solid #333',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+  border: '1px solid #ddd',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
 };
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 40, color: '#fff' }}>대시보드 로딩 중...</div>}>
+    <Suspense fallback={<div style={{ padding: 40, color: '#000' }}>대시보드 로딩 중...</div>}>
       <DashboardContent />
     </Suspense>
   );
