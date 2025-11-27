@@ -74,7 +74,7 @@ export function EmployeeSection({
       {list.map((emp) => (
         <li key={emp.id} style={{ padding: '12px 0', borderBottom: '1px solid #eee', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: isRetired ? 0.6 : 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            {/* 이름: 검은색 */}
+            {/* ✅ 이름: 검은색 */}
             <strong style={{ fontSize: 16, minWidth: 60, color: '#000' }}>{emp.name}</strong>
             <span style={{ color: '#666' }}>{emp.hourly_wage?.toLocaleString()}원</span>
             
@@ -82,11 +82,11 @@ export function EmployeeSection({
               {getEmploymentLabel(emp.employment_type)}
             </span>
 
-          {/* 전화번호 표시 */}
+          {/* ✅ 전화번호: 진한 회색 (흰 배경에 잘 보이게) */}
           {emp.phone_number && (
               <span style={{ 
                   fontSize: 15,           
-                  color: '#555555',       // ✅ 흰 배경에 잘 보이도록 진한 회색으로 변경
+                  color: '#555',       
                   marginLeft: 10,       
                   fontWeight: 500,        
                   letterSpacing: '0.5px'  
@@ -112,9 +112,9 @@ export function EmployeeSection({
 
   return (
     <section>
-      {/* 직원 등록 폼 (흰색 배경 스타일) */}
-      <div style={{ marginBottom: 32, padding: 20, backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid #ddd', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <h3 style={{ fontSize: 16, marginBottom: 12, color: '#333', marginTop: 0 }}>새 직원 등록</h3>
+      {/* ✅ 직원 등록 폼: 흰색 카드 스타일 */}
+      <div style={{ marginBottom: 32, padding: 24, backgroundColor: '#ffffff', borderRadius: 12, border: '1px solid #ddd', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        <h3 style={{ fontSize: 16, marginBottom: 16, color: '#000', marginTop: 0 }}>새 직원 등록</h3>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -135,7 +135,6 @@ export function EmployeeSection({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 12, color: '#666' }}>입사일</label>
               <div style={{ minWidth: 240 }}>
-                {/* DateSelector 내부 스타일도 확인 필요할 수 있음 */}
                 <DateSelector value={newEmpHireDate} onChange={setNewEmpHireDate} />
               </div>
             </div>
@@ -145,18 +144,26 @@ export function EmployeeSection({
       </div>
 
       <div style={{ marginBottom: 40 }}>
-        <h3 style={{ fontSize: 20, marginBottom: 10, borderBottom: '2px solid #eee', paddingBottom: 8, color: '#000' }}>
-          근무 중인 직원 <span style={{ fontSize: 14, color: 'dodgerblue', marginLeft: 4 }}>{activeEmployees.length}명</span>
+        {/* ✅ 목록 타이틀 글자색: 흰색 (파란 배경 위) */}
+        <h3 style={{ fontSize: 20, marginBottom: 10, borderBottom: '2px solid rgba(255,255,255,0.2)', paddingBottom: 8, color: '#fff' }}>
+          근무 중인 직원 <span style={{ fontSize: 14, color: '#54a0ff', marginLeft: 4 }}>{activeEmployees.length}명</span>
         </h3>
-        {loadingEmployees ? <p style={{color:'#000'}}>로딩 중...</p> : activeEmployees.length === 0 ? <p style={{ color: '#888' }}>근무 중인 직원이 없습니다.</p> : renderList(activeEmployees)}
+        {loadingEmployees ? <p style={{color:'#ddd'}}>로딩 중...</p> : activeEmployees.length === 0 ? <p style={{ color: '#ddd' }}>근무 중인 직원이 없습니다.</p> : 
+          // ✅ 목록이 들어갈 흰색 카드 박스 추가
+          <div style={listCardStyle}>
+            {renderList(activeEmployees)}
+          </div>
+        }
       </div>
 
       {retiredEmployees.length > 0 && (
         <div>
-          <h3 style={{ fontSize: 18, marginBottom: 10, color: '#888', borderBottom: '1px solid #eee', paddingBottom: 8 }}>
+          <h3 style={{ fontSize: 18, marginBottom: 10, color: '#aaa', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8 }}>
             퇴사한 직원 <span style={{ fontSize: 14, marginLeft: 4 }}>{retiredEmployees.length}명</span>
           </h3>
-          {renderList(retiredEmployees, true)}
+          <div style={{...listCardStyle, backgroundColor: '#f9f9f9', opacity: 0.8}}>
+            {renderList(retiredEmployees, true)}
+          </div>
         </div>
       )}
 
@@ -167,5 +174,7 @@ export function EmployeeSection({
   );
 }
 
-// ✅ 입력창 스타일: 흰 배경, 검은 글씨, 회색 테두리
+// ✅ 입력창 스타일: 흰색 배경
 const inputStyle = { padding: '10px', color: '#000', borderRadius: 4, border: '1px solid #ccc', backgroundColor: '#fff', fontSize: '14px', outline: 'none' };
+// ✅ 목록 카드 스타일 추가
+const listCardStyle = { backgroundColor: '#ffffff', borderRadius: 12, padding: '0 24px', border: '1px solid #ddd', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };

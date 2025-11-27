@@ -6,7 +6,8 @@ import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import UserBar from '@/components/UserBar';
 import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
-import TemplateSection from '@/components/TemplateSection';
+// TemplateSection이 WeeklyScheduleManager와 ScheduleCalendar를 포함하는 구조로 예상됩니다.
+import TemplateSection from '@/components/TemplateSection'; 
 import PayrollSection from '@/components/PayrollSection';
 import { format } from 'date-fns';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
@@ -191,12 +192,11 @@ function DashboardContent() {
   }, [currentStoreId, loadEmployees, loadHomeStats]);
 
   const renderTabContent = () => {
-    if (!currentStoreId) return <p style={{ color: '#666', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
+    if (!currentStoreId) return <p style={{ color: '#ddd', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
 
     if (currentTab === 'home') {
       return (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          {/* ✅ 카드 스타일 적용 (흰 배경) */}
           <div style={cardStyle}>
             <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #eee', paddingBottom: 8, color: '#000' }}>
               📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
@@ -241,7 +241,10 @@ function DashboardContent() {
     if (currentTab === 'schedules') {
       return (
         <div>
-          <h2 style={{ fontSize: 20, marginBottom: 12, color: '#000' }}>스케줄 관리</h2>
+          {/* ✅ [수정] 타이틀과 설명 글자색을 흰색/밝은 회색으로 변경 */}
+          <h2 style={{ fontSize: 24, marginBottom: 8, color: '#fff', fontWeight: 'bold' }}>스케줄 관리</h2>
+          <p style={{ color: '#ddd', marginBottom: 32 }}>월간 스케줄을 확인하고 관리합니다.</p>
+          
           <TemplateSection currentStoreId={currentStoreId} />
         </div>
       );
@@ -251,12 +254,12 @@ function DashboardContent() {
     }
   };
 
-  if (loading) return <main style={{ padding: 40, color: '#000' }}>로딩 중...</main>;
+  if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
   return (
     <main style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, color: '#000' }}>사장님 대시보드</h1>
+        <h1 style={{ fontSize: 24, color: '#fff' }}>사장님 대시보드</h1>
         <UserBar email={userEmail} />
       </header>
 
@@ -274,7 +277,7 @@ function DashboardContent() {
 
         {stores.length > 0 && currentStoreId && (
           <div>
-            <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #ddd', marginBottom: 24 }}>
+            <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid #rgba(255,255,255,0.2)', marginBottom: 24 }}>
               {[
                 { key: 'home', label: '🏠 홈' },
                 { key: 'employees', label: '직원 관리' },
@@ -289,7 +292,8 @@ function DashboardContent() {
                     border: 'none',
                     borderBottom: currentTab === tab.key ? '3px solid dodgerblue' : '3px solid transparent',
                     background: 'transparent',
-                    color: currentTab === tab.key ? '#000' : '#888',
+                    // ✅ 탭 버튼 글자색: 활성화(흰색), 비활성화(밝은 회색)
+                    color: currentTab === tab.key ? '#fff' : '#aaa',
                     cursor: 'pointer',
                     fontSize: 15,
                     fontWeight: currentTab === tab.key ? 'bold' : 'normal'
@@ -307,7 +311,7 @@ function DashboardContent() {
   );
 }
 
-// ✅ 카드 스타일: 흰색 배경, 회색 테두리, 검은 글씨
+// ✅ 카드 스타일: 흰색 배경, 연한 테두리
 const cardStyle = {
   backgroundColor: '#ffffff',
   borderRadius: 8,
@@ -318,7 +322,7 @@ const cardStyle = {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 40, color: '#000' }}>대시보드 로딩 중...</div>}>
+    <Suspense fallback={<div style={{ padding: 40, color: '#fff' }}>대시보드 로딩 중...</div>}>
       <DashboardContent />
     </Suspense>
   );

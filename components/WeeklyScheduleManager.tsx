@@ -41,7 +41,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   const [timeRules, setTimeRules] = useState<Record<number, { start: string; end: string }>>({});
   const [lastInputTime, setLastInputTime] = useState({ start: '10:00', end: '16:00' });
   
-  // ✅ 수정 모드 상태 추가
   const [editingPatternId, setEditingPatternId] = useState<string | null>(null);
   
   const [minuteInterval, setMinuteInterval] = useState(30);
@@ -50,7 +49,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   // 생성 기간 (오늘 ~ 말일)
   const today = new Date();
   const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  // 한국 시간대 기준 날짜 포맷팅 (YYYY-MM-DD)
+  
   const formatDate = (d: Date) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -61,18 +60,15 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   const [genStartDate, setGenStartDate] = useState(formatDate(today));
   const [genEndDate, setGenEndDate] = useState(formatDate(endOfMonth));
 
-  // ✅ 스마트 날짜 변경: 시작일을 바꾸면 종료일을 그 달의 말일로 자동 설정
   const handleStartDateChange = (dateVal: string) => {
     setGenStartDate(dateVal);
     if (dateVal) {
       const [y, m, d] = dateVal.split('-').map(Number);
-      // 해당 월의 마지막 날 계산 (다음 달의 0일)
       const lastDay = new Date(y, m, 0);
       setGenEndDate(formatDate(lastDay));
     }
   };
 
-  // 데이터 불러오기
   const loadData = useCallback(async () => {
     if (!currentStoreId) return;
     setLoading(true);
@@ -87,7 +83,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     if (tmplData) {
       const loadedPatterns = tmplData as any[];
       setPatterns(loadedPatterns);
-      // 새로 로드될 때, 기존 선택된 패턴들은 유지하되 없으면 전체 선택 (초기 로딩 시)
       if (selectedPatternIds.length === 0) {
         setSelectedPatternIds(loadedPatterns.map(p => p.id));
       }
@@ -106,13 +101,12 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
       setAssignments(map);
     }
     setLoading(false);
-  }, [currentStoreId, supabase]); // selectedPatternIds 의존성 제거 (무한루프 방지)
+  }, [currentStoreId, supabase]); 
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // 패턴 선택 토글
   const togglePatternSelection = (id: string) => {
     setSelectedPatternIds(prev => 
       prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
@@ -136,13 +130,11 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     setLastInputTime(prev => ({ ...prev, [type]: value }));
   };
 
-  // ✅ 패턴 생성 및 수정 로직 통합
   const handleSavePattern = async () => {
     if (!newPatternName.trim()) return alert('패턴 이름을 입력해주세요.');
     if (selectedDays.length === 0) return alert('요일을 하나 이상 선택해주세요.');
 
     if (editingPatternId) {
-      // 수정 모드
       const { error } = await supabase.from('schedule_templates')
         .update({
           name: newPatternName,
@@ -157,7 +149,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
         loadData();
       }
     } else {
-      // 생성 모드
       const { error } = await supabase.from('schedule_templates').insert({
         store_id: currentStoreId,
         name: newPatternName,
@@ -174,22 +165,18 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     }
   };
 
-  // ✅ [신규] 수정 버튼 클릭 핸들러
   const handleEditPattern = (pattern: ShiftPattern) => {
     setEditingPatternId(pattern.id);
     setNewPatternName(pattern.name);
     setTimeRules(pattern.weekly_rules);
-    // JSON 객체의 키는 문자열이므로 숫자로 변환
     setSelectedDays(Object.keys(pattern.weekly_rules).map(Number));
     
-    // 편의성을 위해 첫 번째 규칙의 시간을 lastInputTime으로 설정
     const firstRule = Object.values(pattern.weekly_rules)[0];
     if (firstRule) {
         setLastInputTime({ start: firstRule.start, end: firstRule.end });
     }
   };
 
-  // ✅ [신규] 수정 취소 / 폼 초기화
   const resetForm = () => {
     setEditingPatternId(null);
     setNewPatternName('');
@@ -200,7 +187,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   const handleDeletePattern = async (id: string) => {
     if (!confirm('이 패턴을 삭제하시겠습니까?')) return;
     await supabase.from('schedule_templates').delete().eq('id', id);
-    if (editingPatternId === id) resetForm(); // 삭제한 패턴을 수정중이었다면 초기화
+    if (editingPatternId === id) resetForm(); 
     loadData();
   };
 
@@ -309,22 +296,33 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   };
 
   return (
-    <div style={{ marginTop: 32, borderTop: '1px solid #444', paddingTop: 24 }}>
-      <h3 style={{ fontSize: 20, marginBottom: 16 }}>🔄 주간 반복 스케줄 설정 (패턴 배정)</h3>
-      <p style={{ color: '#aaa', marginBottom: 24, fontSize: 14 }}>
+    <div style={{ marginTop: 32, borderTop: '1px solid #ddd', paddingTop: 24 }}>
+      <h3 style={{ fontSize: 20, marginBottom: 16, color: '#fff' }}>🔄 주간 반복 스케줄 설정 (패턴 배정)</h3>
+      <p style={{ color: '#ddd', marginBottom: 24, fontSize: 14 }}>
         1. 근무 패턴(요일별 시간)을 만들고 → 2. 해당 패턴으로 근무할 직원을 체크하세요.
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      {/* ✅ 레이아웃 개선: 왼쪽(고정), 오른쪽(그리드) */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-start' }}>
         
-        {/* 왼쪽: 패턴 생성기 (수정 모드 지원) */}
-        <div className="section-box" style={{ padding: 20 }}>
-          <h4 style={{ marginTop: 0, marginBottom: 12, color: '#fff' }}>
+        {/* 왼쪽: 패턴 생성기 (Sticky 적용 - 스크롤 따라옴) */}
+        <div style={{ 
+            flex: '0 0 400px', // 너비 400px 고정
+            maxWidth: '100%',
+            position: 'sticky', // ✅ 스크롤 시 화면에 고정
+            top: 20,            // 상단 여백
+            backgroundColor: '#ffffff',
+            borderRadius: 12,
+            padding: 24,
+            border: '1px solid #ddd',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+        }}>
+          <h4 style={{ marginTop: 0, marginBottom: 12, color: '#333' }}>
             {editingPatternId ? '🛠️ 패턴 수정하기' : '1. 근무 패턴 만들기'}
           </h4>
           
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 4 }}>패턴 이름</label>
+            <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4 }}>패턴 이름</label>
             <input 
               type="text" 
               placeholder="예: 평일 오픈조" 
@@ -336,10 +334,10 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
 
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <label style={{ fontSize: 13, color: '#aaa' }}>요일 및 시간 설정</label>
+              <label style={{ fontSize: 13, color: '#666' }}>요일 및 시간 설정</label>
               <div style={{ display: 'flex', gap: 4 }}>
                 {[30, 10, 5].map((min) => (
-                  <button key={min} onClick={() => setMinuteInterval(min)} style={{ padding: '2px 8px', fontSize: 11, borderRadius: 4, border: '1px solid #555', cursor: 'pointer', backgroundColor: minuteInterval === min ? 'dodgerblue' : '#333', color: minuteInterval === min ? '#fff' : '#aaa' }}>{min}분</button>
+                  <button key={min} onClick={() => setMinuteInterval(min)} style={{ padding: '2px 8px', fontSize: 11, borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer', backgroundColor: minuteInterval === min ? 'dodgerblue' : '#f0f0f0', color: minuteInterval === min ? '#fff' : '#666' }}>{min}분</button>
                 ))}
               </div>
             </div>
@@ -348,13 +346,13 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
               {DAYS.map(day => {
                 const isChecked = selectedDays.includes(day.num);
                 return (
-                  <div key={day.num} style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: isChecked ? 1 : 0.4 }}>
+                  <div key={day.num} style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: isChecked ? 1 : 0.6 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: 50, cursor: 'pointer' }}>
-                      <input type="checkbox" checked={isChecked} onChange={() => toggleDay(day.num)} />
-                      <span style={{ color: isChecked ? 'dodgerblue' : '#aaa' }}>{day.label}</span>
+                      <input type="checkbox" checked={isChecked} onChange={() => toggleDay(day.num)} style={{ accentColor: 'dodgerblue' }} />
+                      <span style={{ color: isChecked ? 'dodgerblue' : '#888', fontWeight: isChecked ? 'bold' : 'normal' }}>{day.label}</span>
                     </label>
                     <TimeSelector value={timeRules[day.num]?.start || '10:00'} onChange={(val) => handleTimeChange(day.num, 'start', val)} interval={minuteInterval} />
-                    <span>~</span>
+                    <span style={{color: '#888'}}>~</span>
                     <TimeSelector value={timeRules[day.num]?.end || '16:00'} onChange={(val) => handleTimeChange(day.num, 'end', val)} interval={minuteInterval} />
                   </div>
                 );
@@ -367,82 +365,114 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
               {editingPatternId ? '수정 완료' : '이 패턴 생성하기'}
             </button>
             {editingPatternId && (
-              <button onClick={resetForm} style={{ ...addBtnStyle, backgroundColor: '#555' }}>
+              <button onClick={resetForm} style={{ ...addBtnStyle, backgroundColor: '#999' }}>
                 취소
               </button>
             )}
           </div>
         </div>
 
-        {/* 오른쪽: 직원 배정 (패턴 체크박스 포함) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <h4 style={{ marginTop: 0, marginBottom: 0, color: '#fff' }}>2. 직원 배정하기</h4>
-          {patterns.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: '#666', border: '1px dashed #444', borderRadius: 8 }}>생성된 패턴이 없습니다.</div> : 
-            patterns.map(pattern => {
-              const isSelected = selectedPatternIds.includes(pattern.id);
-              const isEditing = editingPatternId === pattern.id;
+        {/* 오른쪽: 직원 배정 (그리드 레이아웃 적용) */}
+        <div style={{ flex: 1, minWidth: '300px' }}>
+          <h4 style={{ marginTop: 0, marginBottom: 12, color: '#fff' }}>2. 직원 배정하기</h4>
+          
+          {patterns.length === 0 ? (
+             <div style={{ padding: 40, textAlign: 'center', color: '#ccc', border: '1px dashed #666', borderRadius: 8 }}>
+                생성된 패턴이 없습니다. 왼쪽에서 패턴을 만들어주세요.
+             </div>
+          ) : (
+             // ✅ 그리드 레이아웃: 카드가 자동으로 채워짐
+             <div style={{ 
+                 display: 'grid', 
+                 gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', // 최소 320px, 공간 남으면 늘어남
+                 gap: 16 
+             }}>
+                {patterns.map(pattern => {
+                  const isSelected = selectedPatternIds.includes(pattern.id);
+                  const isEditing = editingPatternId === pattern.id;
 
-              return (
-                <div key={pattern.id} style={{ 
-                  backgroundColor: '#1f1f1f', 
-                  border: isEditing ? '2px solid dodgerblue' : `1px solid ${isSelected ? 'dodgerblue' : '#444'}`, 
-                  borderRadius: 8, overflow: 'hidden', transition: 'all 0.2s' 
-                }}>
-                  {/* 패턴 헤더 */}
-                  <div style={{ padding: '10px 16px', backgroundColor: '#333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: '#fff', fontWeight: 'bold' }}>
-                      <input type="checkbox" checked={isSelected} onChange={() => togglePatternSelection(pattern.id)} style={{ width: 16, height: 16, accentColor: 'dodgerblue' }} />
-                      {pattern.name}
-                      <span style={{ fontSize: 12, color: '#aaa', fontWeight: 'normal', marginLeft: 4 }}>(자동 생성 포함)</span>
-                    </label>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {/* ✅ 수정 버튼 추가 */}
-                      <button onClick={() => handleEditPattern(pattern)} style={{ background: 'none', border: 'none', color: 'dodgerblue', cursor: 'pointer', fontWeight: 'bold' }}>수정</button>
-                      <button onClick={() => handleDeletePattern(pattern.id)} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer' }}>삭제</button>
-                    </div>
-                  </div>
-
-                  <div style={{ padding: '12px 16px', fontSize: 13, color: '#ccc', borderBottom: '1px solid #444' }}>
-                    {groupRulesByTime(pattern.weekly_rules).map((group, idx) => (
-                      <div key={idx} style={{ marginBottom: 4 }}>
-                        <strong style={{ color: 'dodgerblue', marginRight: 6 }}>{group.labels}</strong> 
-                        {group.timeRange}
-                        <span style={{ marginLeft: 8, color: '#777', fontSize: 12 }}>({group.duration}시간)</span>
+                  return (
+                    <div key={pattern.id} style={{ 
+                      backgroundColor: '#ffffff', 
+                      // 수정 중이면 파란색 진한 테두리
+                      border: isEditing ? '2px solid dodgerblue' : `1px solid ${isSelected ? 'dodgerblue' : '#ddd'}`, 
+                      borderRadius: 12, 
+                      overflow: 'hidden', 
+                      transition: 'all 0.2s',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                    }}>
+                      {/* 패턴 헤더 */}
+                      <div style={{ padding: '10px 16px', backgroundColor: '#f5f5f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: '#333', fontWeight: 'bold' }}>
+                          <input type="checkbox" checked={isSelected} onChange={() => togglePatternSelection(pattern.id)} style={{ width: 16, height: 16, accentColor: 'dodgerblue' }} />
+                          {pattern.name}
+                        </label>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => handleEditPattern(pattern)} style={{ background: 'none', border: 'none', color: 'dodgerblue', cursor: 'pointer', fontWeight: 'bold', fontSize: 12 }}>수정</button>
+                          <button onClick={() => handleDeletePattern(pattern.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: 12 }}>삭제</button>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                  
-                  <div style={{ padding: '12px 16px', opacity: isSelected ? 1 : 0.5, pointerEvents: isSelected ? 'auto' : 'none' }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {employees.map(emp => {
-                        const assignedTmplId = assignments[emp.id];
-                        const isAssignedHere = assignedTmplId === pattern.id;
-                        const isAssignedElsewhere = assignedTmplId && !isAssignedHere;
-                        return (
-                          <button key={emp.id} onClick={() => toggleAssignment(pattern.id, emp.id)} disabled={!!isAssignedElsewhere} style={{ padding: '6px 12px', borderRadius: 20, border: isAssignedHere ? '1px solid dodgerblue' : '1px solid #555', backgroundColor: isAssignedHere ? 'rgba(30, 144, 255, 0.2)' : 'transparent', color: isAssignedHere ? 'dodgerblue' : isAssignedElsewhere ? '#444' : '#aaa', cursor: isAssignedElsewhere ? 'not-allowed' : 'pointer', textDecoration: isAssignedElsewhere ? 'line-through' : 'none' }}>{emp.name} {isAssignedHere && '✓'}</button>
-                        );
-                      })}
+
+                      {/* 시간 정보 */}
+                      <div style={{ padding: '12px 16px', fontSize: 13, color: '#555', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fff' }}>
+                        {groupRulesByTime(pattern.weekly_rules).map((group, idx) => (
+                          <div key={idx} style={{ marginBottom: 4 }}>
+                            <strong style={{ color: 'dodgerblue', marginRight: 6 }}>{group.labels}</strong> 
+                            {group.timeRange}
+                            <span style={{ marginLeft: 8, color: '#999', fontSize: 12 }}>({group.duration}시간)</span>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* 직원 배정 버튼들 */}
+                      <div style={{ padding: '12px 16px', opacity: isSelected ? 1 : 0.5, pointerEvents: isSelected ? 'auto' : 'none', backgroundColor: '#fff' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {employees.map(emp => {
+                            const assignedTmplId = assignments[emp.id];
+                            const isAssignedHere = assignedTmplId === pattern.id;
+                            const isAssignedElsewhere = assignedTmplId && !isAssignedHere;
+                            return (
+                              <button 
+                                key={emp.id} 
+                                onClick={() => toggleAssignment(pattern.id, emp.id)} 
+                                disabled={!!isAssignedElsewhere} 
+                                style={{ 
+                                    padding: '6px 12px', 
+                                    borderRadius: 20, 
+                                    border: isAssignedHere ? '1px solid dodgerblue' : '1px solid #ddd', 
+                                    backgroundColor: isAssignedHere ? '#e6f7ff' : '#fff', // 선택 시 연한 파랑 배경
+                                    color: isAssignedHere ? 'dodgerblue' : isAssignedElsewhere ? '#ccc' : '#555', 
+                                    cursor: isAssignedElsewhere ? 'not-allowed' : 'pointer', 
+                                    textDecoration: isAssignedElsewhere ? 'line-through' : 'none',
+                                    fontSize: 12,
+                                    fontWeight: isAssignedHere ? 'bold' : 'normal'
+                                }}
+                              >
+                                {emp.name} {isAssignedHere && '✓'}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })
-          }
+                  );
+                })}
+             </div>
+          )}
         </div>
       </div>
 
-      {/* ✅ 스마트 날짜 선택기 */}
-      <div className="section-box" style={{ marginTop: 40, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+      {/* 스마트 날짜 선택기 (흰색 카드) */}
+      <div style={{ marginTop: 40, padding: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, backgroundColor: '#fff', borderRadius: 12, border: '1px solid #ddd', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <label style={{ color: '#ddd', fontSize: 14, fontWeight: 'bold' }}>생성 기간:</label>
-          {/* 시작일을 변경하면 종료일이 자동으로 해당 월의 말일로 바뀜 */}
+          <label style={{ color: '#333', fontSize: 14, fontWeight: 'bold' }}>생성 기간:</label>
           <DateSelector value={genStartDate} onChange={handleStartDateChange} />
-          <span style={{ color: '#aaa' }}>~</span>
+          <span style={{ color: '#888' }}>~</span>
           <DateSelector value={genEndDate} onChange={setGenEndDate} />
         </div>
-        <button onClick={handleAutoGenerate} style={{ padding: '10px 24px', backgroundColor: 'seagreen', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', fontSize: 15, cursor: 'pointer' }}>스케줄 자동 생성</button>
+        <button onClick={handleAutoGenerate} style={{ padding: '10px 24px', backgroundColor: '#27ae60', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', fontSize: 15, cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>스케줄 자동 생성</button>
       </div>
-      <p style={{ textAlign: 'right', fontSize: 13, color: '#888', marginTop: 8 }}>
+      <p style={{ textAlign: 'right', fontSize: 13, color: '#bbb', marginTop: 8 }}>
         * 직원의 퇴사일 이후 날짜는 자동으로 제외됩니다. <br/>
         * 체크된 패턴에 대해서만 스케줄이 생성됩니다.
       </p>
@@ -450,5 +480,5 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   );
 }
 
-const inputStyle = { width: '100%', padding: 10, backgroundColor: '#333', border: '1px solid #555', color: '#fff', borderRadius: 4, boxSizing: 'border-box' as const };
-const addBtnStyle = { flex: 1, padding: 12, backgroundColor: 'royalblue', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer', marginTop: 16 };
+const inputStyle = { width: '100%', padding: 10, backgroundColor: '#fff', border: '1px solid #ccc', color: '#333', borderRadius: 4, boxSizing: 'border-box' as const, outline: 'none' };
+const addBtnStyle = { flex: 1, padding: 12, backgroundColor: 'dodgerblue', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer', marginTop: 16, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' };
