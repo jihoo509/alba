@@ -259,7 +259,17 @@ function DashboardContent() {
   return (
     <main style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, color: '#fff' }}>사장님 대시보드</h1>
+        {/* ✅ [수정] 제목 변경 및 스타일 강화 (로고 느낌) */}
+        <h1 style={{ 
+          fontSize: 36,         // 폰트 크기 키움
+          color: '#fff',        // 흰색
+          fontWeight: '900',    // 가장 굵게
+          letterSpacing: '-1px',// 자간을 좁혀서 단단한 느낌
+          margin: 0,            // 기본 여백 제거
+          // fontFamily: '...' // 만약 로그인 페이지에서 쓰던 특정 웹폰트가 있다면 여기에 적용하세요.
+        }}>
+          easy alba
+        </h1>
         <UserBar email={userEmail} />
       </header>
 
