@@ -195,7 +195,7 @@ export default function AuthPage() {
 
         {/* ✅ 네이버 제거, 구글/카카오만 남김 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <button onClick={() => handleOAuthLogin('google')} style={{ ...socialBtnStyle, background: '#fff', border: '1px solid #ddd', color: '#333' }}>
+          <button onClick={() => handleOAuthLogin('google')} style={{ ...socialBtnStyle, background: '#979595ff', border: '1px solid #ddd', color: '#333' }}>
             <span style={{ marginRight: '8px', fontWeight: 'bold', color: '#ea4335' }}>G</span> Google 계정으로 계속
           </button>
           <button onClick={() => handleOAuthLogin('kakao')} style={{ ...socialBtnStyle, background: '#FEE500', color: '#333' }}>

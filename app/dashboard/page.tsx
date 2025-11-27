@@ -36,16 +36,13 @@ function DashboardContent() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
 
-  // 탭 초기값
   const [currentTab, setCurrentTab] = useState<TabKey>(
     (searchParams.get('tab') as TabKey) || 'home'
   );
 
-  // 홈 화면용 상태
   const [todayWorkers, setTodayWorkers] = useState<any[]>([]);
   const [monthlyEstPay, setMonthlyEstPay] = useState<number>(0);
 
-  // URL 업데이트 헬퍼
   const updateUrl = (tab: TabKey, storeId: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
     if (tab) params.set('tab', tab);
@@ -53,24 +50,20 @@ function DashboardContent() {
     router.replace(`${pathname}?${params.toString()}`);
   };
 
-  // 탭 변경
   const handleTabChange = (tab: TabKey) => {
     setCurrentTab(tab);
     updateUrl(tab, currentStoreId);
   };
 
-  // 매장 변경
   const handleStoreChange = (storeId: string) => {
     setCurrentStoreId(storeId);
     setCurrentTab('home'); 
     updateUrl('home', storeId);
   };
 
-  // 매장 로딩
   const loadStores = useCallback(async (userId: string) => {
     const { data, error } = await supabase.from('stores').select('*').eq('owner_id', userId);
     if (error) { setErrorMsg('매장 로딩 실패'); return; }
-    
     const list = (data ?? []).map((row: any) => ({ id: String(row.id), name: row.name }));
     setStores(list);
 
@@ -144,23 +137,17 @@ function DashboardContent() {
 
   }, [supabase]);
 
-  // ✅ [수정 완료] payload에서 값을 꺼낼 때 DB 컬럼명과 일치시킴 (hourlyWage -> hourly_wage)
   const handleCreateEmployee = useCallback(async (payload: any) => {
     if (!currentStoreId) return;
     const { error } = await supabase.from('employees').insert({
       store_id: currentStoreId,
       name: payload.name,
-      hourly_wage: payload.hourly_wage,        // ✅ 여기가 핵심 수정 사항!
-      employment_type: payload.employment_type, // ✅ 여기도 수정 (일관성)
-      hire_date: payload.hire_date || null,     // ✅ 여기도 수정 (일관성)
+      hourly_wage: payload.hourlyWage,
+      employment_type: payload.employmentType,
+      hire_date: payload.hireDate || null,
       is_active: true,
     });
-    if (error) {
-        console.error(error);
-        alert('추가 실패: ' + error.message);
-    } else {
-        await loadEmployees(currentStoreId);
-    }
+    if (error) alert('추가 실패'); else await loadEmployees(currentStoreId);
   }, [currentStoreId, supabase, loadEmployees]);
 
   const handleDeleteEmployee = useCallback(async (id: string) => {
@@ -206,11 +193,11 @@ function DashboardContent() {
   const renderTabContent = () => {
     if (!currentStoreId) return <p style={{ color: '#aaa', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
 
-    // ✅ 각 탭 컨텐츠를 'section-box'로 감싸서 디자인 통일
     if (currentTab === 'home') {
       return (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          <div className="section-box">
+          {/* ✅ 인라인 스타일 적용 */}
+          <div style={cardStyle}>
             <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #444', paddingBottom: 8 }}>
               📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
             </h3>
@@ -232,15 +219,9 @@ function DashboardContent() {
               </ul>
             )}
           </div>
-          <div className="section-box">
-            <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #444', paddingBottom: 8 }}>
-              📢 시스템 공지사항
-            </h3>
-            <ul style={{ paddingLeft: 20, color: '#ccc', lineHeight: 1.6 }}>
-              <li>[업데이트] 급여 명세서 이미지 저장 기능 추가</li>
-              <li>[안내] 주간 스케줄 자동 생성 기능 사용법</li>
-              <li>[공지] 5인 이상 사업장 수당 계산 관련</li>
-            </ul>
+          <div style={cardStyle}>
+            <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#aaa' }}>💰 11월 예상 급여 지출 (세전)</h3>
+            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#fff' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
           </div>
         </div>
       );
@@ -273,8 +254,7 @@ function DashboardContent() {
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
   return (
-    // ✅ main-container 클래스 적용 (전체 너비 통일)
-    <main className="main-container">
+    <main style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontSize: 24 }}>사장님 대시보드</h1>
         <UserBar email={userEmail} />
@@ -326,6 +306,15 @@ function DashboardContent() {
     </main>
   );
 }
+
+// ✅ 인라인 스타일로 복구
+const cardStyle = {
+  backgroundColor: '#1f1f1f',
+  borderRadius: 8,
+  padding: 24,
+  border: '1px solid #333',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+};
 
 export default function DashboardPage() {
   return (
