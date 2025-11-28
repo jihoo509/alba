@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Employee } from '@/app/dashboard/page';
+import type { Employee } from '@/app/dashboard/page';
 import DateSelector from './DateSelector';
 
 type Props = {
@@ -21,6 +21,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         name: employee.name,
         hourly_wage: employee.hourly_wage,
         employment_type: employee.employment_type,
+        // undefined 방지: 값이 없으면 빈 문자열('')로 초기화
         hire_date: employee.hire_date || '',
         end_date: employee.end_date || '',
         phone_number: employee.phone_number || '',
@@ -46,14 +47,13 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // ✅ [수정] 퇴사 처리 버튼 (누르면 오늘 날짜 입력 / 이미 있으면 취소)
   const toggleResignation = () => {
     const today = new Date().toISOString().split('T')[0];
     if (formData.end_date) {
-      // 이미 날짜가 있으면 -> 퇴사 취소 (날짜 비움)
+      // 퇴사 취소
       setFormData(prev => ({ ...prev, end_date: '', is_active: true }));
     } else {
-      // 날짜가 없으면 -> 오늘 날짜 입력 (퇴사 처리 시작)
+      // 퇴사 처리 (오늘 날짜)
       setFormData(prev => ({ ...prev, end_date: today, is_active: false }));
     }
   };
@@ -61,15 +61,18 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   const handleSave = async () => {
     setSaving(true);
     
-    // 저장 시 날짜가 있으면 is_active는 false로 확정
     const isActive = !formData.end_date; 
 
     const updates = {
       ...formData,
       is_active: isActive,
-      hire_date: formData.hire_date === '' ? null : formData.hire_date,
-      end_date: formData.end_date === '' ? null : formData.end_date,
-      birth_date: formData.birth_date === '' ? null : formData.birth_date,
+      // 빈 문자열은 null로 변환해서 저장 (DB 깔끔하게 유지)
+      hire_date: formData.hire_date === '' ? undefined : formData.hire_date,
+      end_date: formData.end_date === '' ? undefined : formData.end_date,
+      birth_date: formData.birth_date === '' ? undefined : formData.birth_date,
+      phone_number: formData.phone_number === '' ? undefined : formData.phone_number,
+      bank_name: formData.bank_name === '' ? undefined : formData.bank_name,
+      account_number: formData.account_number === '' ? undefined : formData.account_number,
     };
     
     // @ts-ignore
@@ -78,7 +81,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     onClose();
   };
 
-  // ✅ 현재 상태 계산 로직 (화면 표시용)
   const getStatusLabel = () => {
     if (!formData.end_date) return { text: '재직 중 🟢', color: '#4caf50' };
     
@@ -101,49 +103,51 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
           {/* 1행 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>이름</label>
-            <input name="name" value={formData.name || ''} onChange={handleChange} style={styles.input} />
+            {/* ?? '' 처리로 undefined 에러 방지 */}
+            <input name="name" value={formData.name ?? ''} onChange={handleChange} style={styles.input} />
           </div>
           <div style={styles.inputGroup}>
             <label style={styles.label}>시급 (원)</label>
-            <input name="hourly_wage" type="number" value={formData.hourly_wage || 0} onChange={handleChange} style={styles.input} />
+            <input name="hourly_wage" type="number" value={formData.hourly_wage ?? 0} onChange={handleChange} style={styles.input} />
           </div>
 
           {/* 2행 */}
           <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
             <label style={styles.label}>고용 형태</label>
-            <select name="employment_type" value={formData.employment_type} onChange={handleChange} style={styles.input}>
-              <option value="freelancer_33">3.3% 프리랜서</option>
-              <option value="four_insurance">4대 보험 직원</option>
+            <select name="employment_type" value={formData.employment_type ?? 'freelancer'} onChange={handleChange} style={styles.input}>
+              <option value="freelancer">3.3% 프리랜서</option>
+              <option value="employee">4대 보험 직원</option>
             </select>
           </div>
 
           {/* 3행 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>생년월일</label>
-            <DateSelector value={formData.birth_date} onChange={(val) => handleDateChange('birth_date', val)} />
+            {/* DateSelector에도 ?? '' 적용 */}
+            <DateSelector value={formData.birth_date ?? ''} onChange={(val) => handleDateChange('birth_date', val)} />
           </div>
           <div style={styles.inputGroup}>
             <label style={styles.label}>전화번호</label>
-            <input name="phone_number" placeholder="010-1234-5678" value={formData.phone_number || ''} onChange={handleChange} style={styles.input} />
+            <input name="phone_number" placeholder="010-1234-5678" value={formData.phone_number ?? ''} onChange={handleChange} style={styles.input} />
           </div>
 
           {/* 4행 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>은행명</label>
-            <input name="bank_name" placeholder="예: 국민" value={formData.bank_name || ''} onChange={handleChange} style={styles.input} />
+            <input name="bank_name" placeholder="예: 국민" value={formData.bank_name ?? ''} onChange={handleChange} style={styles.input} />
           </div>
           <div style={styles.inputGroup}>
             <label style={styles.label}>계좌번호</label>
-            <input name="account_number" placeholder="- 포함 가능" value={formData.account_number || ''} onChange={handleChange} style={styles.input} />
+            <input name="account_number" placeholder="- 포함 가능" value={formData.account_number ?? ''} onChange={handleChange} style={styles.input} />
           </div>
 
           {/* 5행 */}
           <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
             <label style={styles.label}>입사일</label>
-            <DateSelector value={formData.hire_date} onChange={(val) => handleDateChange('hire_date', val)} />
+            <DateSelector value={formData.hire_date ?? ''} onChange={(val) => handleDateChange('hire_date', val)} />
           </div>
 
-          {/* ✅ [수정] 퇴사일 & 상태 표시 */}
+          {/* 퇴사일 & 상태 표시 */}
            <div style={{ ...styles.inputGroup, gridColumn: 'span 2', marginTop: 10, padding: 16, backgroundColor: '#333', borderRadius: 6, border: '1px solid #444' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontSize: 15, fontWeight: 'bold', color: status.color }}>
@@ -153,7 +157,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
                   onClick={toggleResignation}
                   style={{ 
                     padding: '6px 12px', borderRadius: 4, border: 'none', 
-                    background: formData.end_date ? '#555' : '#d32f2f', // 날짜 있으면 회색(취소), 없으면 빨강(퇴사)
+                    background: formData.end_date ? '#555' : '#d32f2f', 
                     color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 'bold'
                   }}
                 >
@@ -161,10 +165,9 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
                 </button>
               </div>
               
-              {/* 퇴사 버튼 누르면 날짜 선택기 등장 */}
               <div style={{ opacity: formData.end_date ? 1 : 0.3, pointerEvents: formData.end_date ? 'auto' : 'none', transition: 'opacity 0.2s' }}>
                 <label style={{ ...styles.label, marginBottom: 6, display: 'block' }}>퇴사일 (날짜를 선택하세요)</label>
-                <DateSelector value={formData.end_date} onChange={(val) => handleDateChange('end_date', val)} />
+                <DateSelector value={formData.end_date ?? ''} onChange={(val) => handleDateChange('end_date', val)} />
               </div>
            </div>
         </div>
@@ -199,5 +202,5 @@ const styles = {
   },
   buttonContainer: { display: 'flex', gap: '12px', marginTop: '32px', justifyContent: 'flex-end' },
   cancelButton: { padding: '10px 20px', background: '#333', border: '1px solid #444', color: '#eee', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
-  saveButton: { padding: '10px 20px', background: 'royalblue', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }
+  saveButton: { padding: '10px 20px', background: 'royalblue', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
 };
