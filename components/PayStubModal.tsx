@@ -21,35 +21,42 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
   const [useBreakDeduct, setUseBreakDeduct] = useState(true);
 
   useEffect(() => {
+    // data.storeSettingsSnapshot이 없을 수도 있으므로 체크 강화
     if (isOpen && data && data.storeSettingsSnapshot) {
-      // ✅ [수정] 매장 설정을 기본값으로 사용
       const s = data.storeSettingsSnapshot;
-      setUseWeekly(s.pay_weekly);
+      setUseWeekly(s.pay_weekly ?? true); // 값이 없으면 true 기본값
       setUseNight(s.is_five_plus && s.pay_night);
       setUseOvertime(s.is_five_plus && s.pay_overtime);
       setUseHolidayWork(s.is_five_plus && s.pay_holiday);
-      setUseBreakDeduct(s.auto_deduct_break !== false); // 기본 true
+      setUseBreakDeduct(s.auto_deduct_break !== false);
     }
   }, [isOpen, data]);
 
   if (!isOpen || !data) return null;
 
-  // 🔄 실시간 재계산 로직
   let newBasePay = 0;
   let newNightPay = 0;
   let newOvertimePay = 0;
   let newHolidayWorkPay = 0;
   let newWeeklyPay = 0;
 
-  const filteredLedger = data.ledger.map((row: any) => {
+  const filteredLedger = (data.ledger || []).map((row: any) => { // data.ledger가 없을 경우 대비
     if (row.type === 'WORK') {
-      // 기본급: 휴게 차감 여부에 따라 선택
-      let rowBase = useBreakDeduct ? row.basePayDeducted : row.basePayNoDeduct;
+      // 🔴 [수정 포인트] 값이 undefined일 경우 0 또는 기존 basePay로 대체하여 충돌 방지
+      // 데이터가 아직 업데이트 안 됐다면 row.basePay를 쓰도록 fallback 처리 (|| row.basePay)
+      const valDeducted = row.basePayDeducted !== undefined ? row.basePayDeducted : row.basePay;
       
-      // 시간 표시: 휴게 차감 시에만 멘트 추가
+      // 만약 basePayNoDeduct가 없으면, 직접 계산하거나(수정 전 로직) 일단 0으로 둠
+      // 여기서는 안전하게 계산 로직을 복구하거나 0 처리를 합니다.
+      const valNoDeduct = row.basePayNoDeduct !== undefined ? row.basePayNoDeduct : (row.basePay + (row.breakMins ? Math.floor((row.breakMins / 60) * data.wage) : 0));
+
+      let rowBase = useBreakDeduct ? valDeducted : valNoDeduct;
+      
+      // 혹시라도 rowBase가 여전히 undefined나 NaN이면 0으로 만듦
+      if (!rowBase) rowBase = 0;
+
       let displayHours = row.hours;
       if (!useBreakDeduct && row.breakMins > 0) {
-         // 차감 안 함 -> 시간 늘려서 표시 (예: 3.5 -> 4.0)
          const originalHours = (Number(row.hours) + (row.breakMins / 60)).toFixed(1);
          displayHours = `${originalHours}h`;
       } else if (useBreakDeduct && row.breakMins > 0) {
@@ -57,9 +64,9 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
       }
 
       newBasePay += rowBase;
-      if (useNight) newNightPay += row.nightPay;
-      if (useOvertime) newOvertimePay += row.overtimePay;
-      if (useHolidayWork) newHolidayWorkPay += row.holidayWorkPay;
+      if (useNight) newNightPay += (row.nightPay || 0);
+      if (useOvertime) newOvertimePay += (row.overtimePay || 0);
+      if (useHolidayWork) newHolidayWorkPay += (row.holidayWorkPay || 0);
 
       return { 
         ...row, 
@@ -68,7 +75,7 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
       };
     } 
     if (row.type === 'WEEKLY') {
-      if (useWeekly) newWeeklyPay += row.weeklyPay;
+      if (useWeekly) newWeeklyPay += (row.weeklyPay || 0);
       return row;
     }
     return row;
@@ -76,23 +83,23 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
 
   const currentTotal = newBasePay + newWeeklyPay + newNightPay + newOvertimePay + newHolidayWorkPay;
   
-  // 세금 재계산
   let currentTax = 0;
-  if (data.type.includes('four')) {
-     // 4대보험 비율로 재계산 (기존 세금 / 기존 총액 비율 사용은 부정확할 수 있으니 다시 계산)
-     // 간단하게 아까 payroll.ts의 요율 그대로 적용
-     const p = Math.floor(currentTotal * 0.045 / 10) * 10;
-     const h = Math.floor(currentTotal * 0.03545 / 10) * 10;
-     const c = Math.floor(h * 0.1295 / 10) * 10;
-     const e = Math.floor(currentTotal * 0.009 / 10) * 10;
-     currentTax = p + h + c + e;
+  // 세금 계산 시 NaN 방지
+  const safeTotal = currentTotal || 0;
+
+  if (data.type && data.type.includes('four')) {
+      const p = Math.floor(safeTotal * 0.045 / 10) * 10;
+      const h = Math.floor(safeTotal * 0.03545 / 10) * 10;
+      const c = Math.floor(h * 0.1295 / 10) * 10;
+      const e = Math.floor(safeTotal * 0.009 / 10) * 10;
+      currentTax = p + h + c + e;
   } else {
-     // 3.3%
-     const i = Math.floor(currentTotal * 0.03 / 10) * 10;
-     const l = Math.floor(i * 0.1 / 10) * 10;
-     currentTax = i + l;
+      const i = Math.floor(safeTotal * 0.03 / 10) * 10;
+      const l = Math.floor(i * 0.1 / 10) * 10;
+      currentTax = i + l;
   }
-  const currentFinalPay = currentTotal - currentTax;
+  
+  const currentFinalPay = safeTotal - currentTax;
 
   const handleSaveImage = async () => {
     if (printRef.current) {
@@ -152,7 +159,7 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
                       <tr key={idx} style={{ backgroundColor: '#fff8c4', borderBottom: '1px solid #ddd' }}>
                         <td colSpan={3} style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold', color: '#d68910' }}>⭐ {row.dayLabel} ({row.note})</td>
                         <td style={tdStyle}>-</td>
-                        <td colSpan={3} style={{ ...tdStyle, textAlign: 'right', fontWeight: 'bold', color: '#d68910' }}>{row.weeklyPay.toLocaleString()}</td>
+                        <td colSpan={3} style={{ ...tdStyle, textAlign: 'right', fontWeight: 'bold', color: '#d68910' }}>{(row.weeklyPay || 0).toLocaleString()}</td>
                       </tr>
                     );
                   }
@@ -161,10 +168,11 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
                       <td style={tdStyle}>{row.date.slice(5)} ({row.dayLabel})</td>
                       <td style={tdStyle}>{row.timeRange}</td>
                       <td style={tdStyle}>{row.displayHours}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right' }}>{row.displayBase.toLocaleString()}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', color: useNight && row.nightPay > 0 ? 'red' : '#ccc' }}>{useNight ? row.nightPay.toLocaleString() : 0}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', color: useOvertime && row.overtimePay > 0 ? 'blue' : '#ccc' }}>{useOvertime ? row.overtimePay.toLocaleString() : 0}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', color: useHolidayWork && row.holidayWorkPay > 0 ? 'red' : '#ccc', fontWeight: 'bold' }}>{useHolidayWork ? row.holidayWorkPay.toLocaleString() : 0}</td>
+                      {/* 🔴 [오류 수정] toLocaleString 호출 전 undefined 체크 (|| 0) */}
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>{(row.displayBase || 0).toLocaleString()}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', color: useNight && row.nightPay > 0 ? 'red' : '#ccc' }}>{useNight ? (row.nightPay || 0).toLocaleString() : 0}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', color: useOvertime && row.overtimePay > 0 ? 'blue' : '#ccc' }}>{useOvertime ? (row.overtimePay || 0).toLocaleString() : 0}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', color: useHolidayWork && row.holidayWorkPay > 0 ? 'red' : '#ccc', fontWeight: 'bold' }}>{useHolidayWork ? (row.holidayWorkPay || 0).toLocaleString() : 0}</td>
                     </tr>
                   );
                 })}
@@ -190,17 +198,17 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
             <div style={{ marginTop: 25, borderTop: '1px solid #eee', paddingTop: 15 }}>
                <p style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 8, color: '#333' }}>[참고] 공제 내역 상세 (원단위 절사)</p>
                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px', fontSize: 11, color: '#666' }}>
-                  {data.type.includes('four') ? (
+                  {data.type && data.type.includes('four') ? (
                     <>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>국민연금</span> <span>{(Math.floor(currentTotal * 0.045 / 10) * 10).toLocaleString()}원</span></div>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>건강보험</span> <span>{(Math.floor(currentTotal * 0.03545 / 10) * 10).toLocaleString()}원</span></div>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>장기요양</span> <span>{(Math.floor((currentTotal * 0.03545) * 0.1295 / 10) * 10).toLocaleString()}원</span></div>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>고용보험</span> <span>{(Math.floor(currentTotal * 0.009 / 10) * 10).toLocaleString()}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>국민연금</span> <span>{(Math.floor(safeTotal * 0.045 / 10) * 10).toLocaleString()}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>건강보험</span> <span>{(Math.floor(safeTotal * 0.03545 / 10) * 10).toLocaleString()}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>장기요양</span> <span>{(Math.floor((safeTotal * 0.03545) * 0.1295 / 10) * 10).toLocaleString()}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>고용보험</span> <span>{(Math.floor(safeTotal * 0.009 / 10) * 10).toLocaleString()}원</span></div>
                     </>
                   ) : (
                     <>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>소득세(3%)</span> <span>{(Math.floor(currentTotal * 0.03 / 10) * 10).toLocaleString()}원</span></div>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><span>지방세(0.3%)</span> <span>{(Math.floor(currentTotal * 0.003 / 10) * 10).toLocaleString()}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>소득세(3%)</span> <span>{(Math.floor(safeTotal * 0.03 / 10) * 10).toLocaleString()}원</span></div>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><span>지방세(0.3%)</span> <span>{(Math.floor(safeTotal * 0.003 / 10) * 10).toLocaleString()}원</span></div>
                     </>
                   )}
                </div>
