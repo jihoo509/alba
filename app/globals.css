@@ -13,7 +13,7 @@ body {
    => .desktop-only 클래스가 붙은 요소(광고 배너)를 강제로 숨김 
    (계산: 본문 1000px + 광고 300px*2 + 여백 = 약 1620px)
 */
-@media (max-width: 1620px) {
+@media (max-width: 1480px) {
   .responsive-banner {
     display: none !important; /* !important로 강제 숨김 */
   }
