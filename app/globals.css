@@ -194,3 +194,56 @@ body {
     min-width: 0;
   }
 }
+/* =========================================
+   6. 🕒 근무 패턴 생성기 모바일 최적화
+   ========================================= */
+
+/* 요일 한 줄 (체크박스 + 시간설정) */
+.pattern-day-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+/* 시간 설정 그룹 (Start ~ End) */
+.time-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 📱 모바일 전용 (768px 이하) */
+@media (max-width: 768px) {
+  
+  /* 1. 요일과 시간 설정을 위아래로 배치 (공간 확보) */
+  .pattern-day-row {
+    flex-direction: column;       /* 세로 배치 */
+    align-items: flex-start;      /* 왼쪽 정렬 */
+    border-bottom: 1px solid #f0f0f0; /* 줄마다 구분선 추가 */
+    padding: 8px 0;
+    margin-bottom: 4px;
+  }
+
+  /* 2. 시간 설정 부분을 한 줄에 꽉 차게 배치 */
+  .time-input-group {
+    width: 100%;
+    justify-content: flex-start; /* 왼쪽부터 정렬 */
+    gap: 2px !important;         /* 간격 최소화 */
+  }
+
+  /* 3. [핵심] 선택창(Select) 크기 강제 축소 */
+  /* TimeSelector 컴포넌트 내부의 select 태그를 타겟팅 */
+  .time-input-group select {
+    padding: 0 2px !important;   /* 내부 여백 제거 */
+    font-size: 11px !important;  /* 글자 크기 축소 */
+    height: 28px !important;     /* 높이 축소 */
+    min-width: auto !important;  /* 최소 너비 제한 해제 */
+  }
+  
+  /* 중간 물결(~) 기호 크기 조절 */
+  .time-input-group span {
+    font-size: 10px !important;
+    margin: 0 2px !important;
+  }
+}

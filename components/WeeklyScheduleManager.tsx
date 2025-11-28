@@ -35,7 +35,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   const [assignments, setAssignments] = useState<Record<string, string>>({}); 
   const [loading, setLoading] = useState(false);
 
-  // 패턴 생성/수정 폼 상태
   const [newPatternName, setNewPatternName] = useState('');
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [timeRules, setTimeRules] = useState<Record<number, { start: string; end: string }>>({});
@@ -46,7 +45,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   const [minuteInterval, setMinuteInterval] = useState(30);
   const [selectedPatternIds, setSelectedPatternIds] = useState<string[]>([]);
 
-  // 생성 기간 (오늘 ~ 말일)
   const today = new Date();
   const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
   
@@ -302,7 +300,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
         1. 근무 패턴(요일별 시간)을 만들고 → 2. 해당 패턴으로 근무할 직원을 체크하세요.
       </p>
 
-      {/* ✅ [수정] globals.css의 .weekly-container 클래스 적용 */}
+      {/* weekly-container: PC는 가로, 모바일은 세로 배치 */}
       <div className="weekly-container">
         
         {/* 왼쪽: 패턴 생성기 */}
@@ -336,15 +334,15 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
               {DAYS.map(day => {
                 const isChecked = selectedDays.includes(day.num);
                 return (
-                  // ✅ [수정] 모바일에서 시간 선택기가 좁아질 때 줄바꿈 허용 (flex-wrap: wrap)
-                  <div key={day.num} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, opacity: isChecked ? 1 : 0.6 }}>
+                  // ✅ [수정] pattern-day-row 클래스 적용 (모바일에서 세로 배치)
+                  <div key={day.num} className="pattern-day-row" style={{ opacity: isChecked ? 1 : 0.6 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: 50, cursor: 'pointer' }}>
                       <input type="checkbox" checked={isChecked} onChange={() => toggleDay(day.num)} style={{ accentColor: 'dodgerblue' }} />
                       <span style={{ color: isChecked ? 'dodgerblue' : '#888', fontWeight: isChecked ? 'bold' : 'normal' }}>{day.label}</span>
                     </label>
                     
-                    {/* 시간 선택 영역 */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {/* ✅ [수정] time-input-group 클래스 적용 (모바일에서 select 축소) */}
+                    <div className="time-input-group">
                         <TimeSelector value={timeRules[day.num]?.start || '10:00'} onChange={(val) => handleTimeChange(day.num, 'start', val)} interval={minuteInterval} />
                         <span style={{color: '#888'}}>~</span>
                         <TimeSelector value={timeRules[day.num]?.end || '16:00'} onChange={(val) => handleTimeChange(day.num, 'end', val)} interval={minuteInterval} />
