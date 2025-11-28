@@ -93,3 +93,57 @@ body {
 .table-wrapper table {
   min-width: 800px; 
 }
+
+/* ... 기존 코드 아래에 추가 ... */
+
+/* =========================================
+   5. 🚀 헤더 동작 분리 (PC: 고정 / 모바일: 메뉴만 고정)
+   ========================================= */
+
+/* [PC용] 헤더 전체를 화면에 박제 (기본) */
+.header-wrapper {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  /* 배경: 이미지 + 어두운 필터 */
+  background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/dashboard-bg.jpg');
+  background-size: cover;
+  background-position: top center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+/* [PC용] 콘텐츠 여백 (헤더가 떠 있으니 밀어줌) */
+.content-spacer {
+  padding-top: 190px; 
+}
+
+/* 📱 [모바일용] 동작 변경 (768px 이하) */
+@media (max-width: 768px) {
+  
+  /* 1. 헤더 고정 해제 -> 자연스럽게 스크롤됨 */
+  .header-wrapper {
+    position: static !important; /* 고정 해제 */
+    box-shadow: none !important; /* 그림자 제거 (탭에만 줄 거임) */
+    border-bottom: none !important;
+  }
+
+  /* 2. 대신, 메뉴(탭) 부분만 화면 상단에 '착' 달라붙게 설정 */
+  .mobile-sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    /* 메뉴바 배경 (헤더랑 이어지게 설정) */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/dashboard-bg.jpg');
+    background-size: cover;
+    background-position: top center; 
+    /* 살짝 그림자 추가 */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* 3. 콘텐츠 여백 제거 (헤더가 고정이 아니므로 밀어줄 필요 없음) */
+  .content-spacer {
+    padding-top: 0 !important;
+  }
+}
