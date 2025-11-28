@@ -260,16 +260,25 @@ function DashboardContent() {
   return (
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
       
-      {/* 🔴 [헤더 고정] */}
+      {/* 🔴 [헤더 고정] 배경을 이미지 + 어두운 필터로 변경 */}
       <div style={{ 
         position: 'fixed', 
         top: 0, 
         left: 0, 
         right: 0, 
         zIndex: 100,
-        // 기존 배경과 어울리는 파란색 그라데이션 + 그림자
-        background: 'linear-gradient(to right, #0072ff, #00c6ff)',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.2)' 
+        
+        // 👇 [핵심 변경] 이미지 위에 검은색 30~40% 투명도를 덮어씌움
+        // rgba(0, 0, 0, 0.4) -> 0.4가 투명도입니다 (0 ~ 1 사이 조절 가능)
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/dashboard-bg.jpg')`,
+        
+        // 배경 이미지 위치 및 크기 설정 (화면 꽉 차게)
+        backgroundSize: 'cover',      
+        backgroundPosition: 'top center',
+        backgroundRepeat: 'no-repeat',
+
+        boxShadow: '0 4px 15px rgba(0,0,0,0.3)', // 그림자 유지
+        borderBottom: '1px solid rgba(255,255,255,0.15)' // 하단에 살짝 밝은 선을 줘서 경계 구분
       }}>
         <div style={{ 
           width: '100%', 
