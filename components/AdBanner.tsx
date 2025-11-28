@@ -47,7 +47,7 @@ export default function AdBanner({ position, href }: Props) {
         >
           {/* 왼쪽 이미지 (파일명 확인 필요, 예: policy-banner.png 등) */}
           <img 
-            src="/art-1.png" 
+            src="/art-2.png" 
             alt="정책자금 지원" 
             style={{ 
               width: '100%', 
