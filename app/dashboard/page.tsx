@@ -260,42 +260,47 @@ function DashboardContent() {
   return (
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
       
-      {/* 🔴 [헤더 고정] 배경을 이미지 + 어두운 필터로 변경 */}
+      {/* 🔴 [헤더 고정] 높이 축소 (다이어트) */}
       <div style={{ 
         position: 'fixed', 
         top: 0, 
         left: 0, 
         right: 0, 
         zIndex: 100,
-        
-        // 👇 [핵심 변경] 이미지 위에 검은색 30~40% 투명도를 덮어씌움
-        // rgba(0, 0, 0, 0.4) -> 0.4가 투명도입니다 (0 ~ 1 사이 조절 가능)
+        // 이미지 + 어두운 오버레이
         backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/dashboard-bg.jpg')`,
-        
-        // 배경 이미지 위치 및 크기 설정 (화면 꽉 차게)
         backgroundSize: 'cover',      
         backgroundPosition: 'top center',
         backgroundRepeat: 'no-repeat',
-
-        boxShadow: '0 4px 15px rgba(0,0,0,0.3)', // 그림자 유지
-        borderBottom: '1px solid rgba(255,255,255,0.15)' // 하단에 살짝 밝은 선을 줘서 경계 구분
+        boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+        borderBottom: '1px solid rgba(255,255,255,0.15)'
       }}>
         <div style={{ 
           width: '100%', 
           maxWidth: '650px', 
           margin: '0 auto', 
-          padding: '20px 20px 0 20px', 
+          // ✅ [수정] 상하 패딩을 줄임 (20px -> 12px)
+          padding: '12px 20px 0 20px', 
           boxSizing: 'border-box' 
         }}>
-          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h1 style={{ fontSize: 36, color: '#fff', fontWeight: '900', letterSpacing: '-1px', margin: 0, fontFamily: 'sans-serif' }}>
+          {/* ✅ [수정] 로고 크기 축소 및 마진 감소 */}
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h1 style={{ 
+                fontSize: 28,  // 36 -> 28 축소
+                color: '#fff', 
+                fontWeight: '900', 
+                letterSpacing: '-1px', 
+                margin: 0, 
+                fontFamily: 'sans-serif' 
+            }}>
               Easy Alba
             </h1>
             <UserBar email={userEmail} />
           </header>
 
-          {errorMsg && <div style={{ marginBottom: 16, color: 'salmon' }}>{errorMsg}</div>}
+          {errorMsg && <div style={{ marginBottom: 10, color: 'salmon' }}>{errorMsg}</div>}
 
+          {/* ✅ [수정] 매장 선택기 마진 없음 (StoreSelector 자체 마진만 사용) */}
           <StoreSelector
             stores={stores}
             currentStoreId={currentStoreId}
@@ -307,27 +312,28 @@ function DashboardContent() {
 
           {stores.length > 0 && currentStoreId && (
             <div style={{ 
-              display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 20, 
-              marginTop: 20, paddingBottom: 20 
+              display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 15, // 갭도 살짝 축소
+              // ✅ [수정] 위아래 여백 축소
+              marginTop: 12, 
+              paddingBottom: 12 
             }}>
               {[
                 { key: 'home', label: '🏠 홈' },
-                { key: 'employees', label: '👥 직원 관리' },     
-                { key: 'schedules', label: '🗓️ 스케줄 관리' },   
-                { key: 'payroll', label: '💰 급여 / 정산' }      
+                { key: 'employees', label: '👥 직원' },     // 라벨도 살짝 줄임 (선택사항)
+                { key: 'schedules', label: '🗓️ 스케줄' },   
+                { key: 'payroll', label: '💰 급여' }      
               ].map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => handleTabChange(tab.key as TabKey)}
                   style={{
-                    padding: '10px 20px', 
+                    padding: '8px 16px', // 버튼 패딩 축소
                     border: 'none', 
                     background: 'transparent', 
                     cursor: 'pointer', 
-                    fontSize: 16, 
+                    fontSize: 15, // 폰트 사이즈 16 -> 15 미세 축소
                     transition: 'all 0.2s', 
                     whiteSpace: 'nowrap',
-                    // 고정 헤더에서는 흰색으로 활성 탭 표시
                     borderBottom: currentTab === tab.key ? '3px solid #fff' : '3px solid transparent',
                     color: currentTab === tab.key ? '#fff' : 'rgba(255,255,255,0.7)', 
                     fontWeight: currentTab === tab.key ? 'bold' : 'normal',
@@ -341,15 +347,15 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* 🔵 [콘텐츠 영역] 헤더가 뜬 만큼 상단 여백(paddingTop) 추가 */}
+      {/* 🔵 [콘텐츠 영역] 헤더 높이가 줄었으므로 패딩도 줄임 */}
       <div style={{ 
         width: '100%', 
         maxWidth: '1000px', 
         margin: '0 auto', 
         padding: '0 20px', 
         boxSizing: 'border-box',
-        // 헤더 높이만큼 띄워줌 (약 250px, 필요시 조절)
-        paddingTop: '250px' 
+        // ✅ [수정] 250px -> 190px (헤더가 작아졌으니 위로 올림)
+        paddingTop: '190px' 
       }}>
         {stores.length > 0 && currentStoreId && (
           <div style={{ width: '100%' }}>

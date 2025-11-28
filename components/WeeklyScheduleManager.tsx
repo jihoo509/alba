@@ -310,7 +310,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
             flex: '0 0 400px', // 너비 400px 고정
             maxWidth: '100%',
             position: 'sticky', // ✅ 스크롤 시 화면에 고정
-            top: 250,            // 상단 여백
+            top: 200,            // 상단 여백
             backgroundColor: '#ffffff',
             borderRadius: 12,
             padding: 24,
