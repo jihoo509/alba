@@ -6,6 +6,7 @@ import StoreSettings from './StoreSettings';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
 import * as XLSX from 'xlsx';
 import PayStubModal from './PayStubModal';
+// ✅ [확인] 퇴직금 계산기 import
 import SeveranceCalculator from './SeveranceCalculator';
 
 type Props = {
@@ -24,26 +25,36 @@ export default function PayrollSection({ currentStoreId }: Props) {
   const [storeSettings, setStoreSettings] = useState<any>(null);
   const [selectedPayStub, setSelectedPayStub] = useState<any>(null);
 
-  // ✅ [추가] 개별 설정(overrides)을 담을 state
+  // ✅ [수정 1] 직원 목록을 자식 컴포넌트(퇴직금 계산기)에 넘겨주기 위해 state로 승격
+  const [employees, setEmployees] = useState<any[]>([]);
+
+  // 개별 설정(overrides)을 담을 state
   const [overrides, setOverrides] = useState<any[]>([]);
 
   const loadAndCalculate = useCallback(async () => {
     if (!currentStoreId) return;
     setLoading(true);
 
-    // 1. 매장 정보, 직원, 스케줄 가져오기
+    // 1. 매장 정보 가져오기
     const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
     setStoreSettings(storeData);
 
-    const { data: employees } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
+    // 2. 직원 목록 가져오기
+    const { data: empData } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
+    
+    // ✅ [수정 2] 가져온 직원 데이터를 state에 저장 (퇴직금 계산기용)
+    if (empData) {
+        setEmployees(empData);
+    }
 
-    // ✅ [추가] 개별 설정 테이블(employee_settings) 데이터 가져오기
+    // 3. 개별 설정 가져오기
     const { data: overData } = await supabase.from('employee_settings').select('*');
     if (overData) setOverrides(overData);
 
     const startStr = `${year}-${String(month - 1).padStart(2,'0')}-20`;
     const endStr = `${year}-${String(month + 1).padStart(2,'0')}-10`;
     
+    // 4. 스케줄 가져오기
     const { data: schedules } = await supabase
       .from('schedules')
       .select('*')
@@ -51,15 +62,15 @@ export default function PayrollSection({ currentStoreId }: Props) {
       .gte('date', startStr)
       .lte('date', endStr);
 
-    if (employees && schedules && storeData) {
-      // ✅ [수정] calculateMonthlyPayroll에 overrides(overData) 전달
+    if (empData && schedules && storeData) {
+      // calculateMonthlyPayroll 호출
       const result = calculateMonthlyPayroll(
         year, 
         month, 
-        employees, 
+        empData, // 여기서는 로컬 변수 empData 사용 (state 업데이트 전일 수 있으므로)
         schedules, 
         storeData, 
-        overData || [] // <--- 여기 추가됨
+        overData || [] 
       );
       setPayrollData(result);
     }
@@ -70,7 +81,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
     loadAndCalculate();
   }, [loadAndCalculate]);
 
-  // ✅ [추가] 모달에서 '설정 저장' 버튼을 눌렀을 때 실행될 함수
+  // 모달에서 '설정 저장' 버튼을 눌렀을 때 실행될 함수
   const handleSaveOverride = async (settings: any) => {
     const { error } = await supabase
       .from('employee_settings')
@@ -81,27 +92,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
       alert('설정 저장 중 오류가 발생했습니다.');
       return;
     }
-  // ✅ [추가] 직원 목록을 SeveranceCalculator에 넘겨주기 위해 employees state 사용 (이미 있음)
-
-  return (
-    <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-      
-      <div style={cardStyle}>
-          <StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} />
-      </div>
-
-      <div style={cardStyle}>
-        {/* ... (급여 대장 테이블 부분 동일) ... */}
-      </div>
-
-      {/* ✅ [추가] 퇴직금 계산기 섹션 (맨 아래에 배치) */}
-      <SeveranceCalculator 
-        currentStoreId={currentStoreId} 
-        employees={employees} 
-      />
-
-      <PayStubModal 
-    // 저장 성공 시 데이터를 다시 불러와서 급여 대장 갱신
     await loadAndCalculate();
   };
 
@@ -142,7 +132,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
   };
 
   return (
-    // 전체 너비를 1000px로 제한하여 컴팩트하게 만듦
     <div style={{ maxWidth: 1000, margin: '0 auto' }}>
       
       {/* 설정 박스 */}
@@ -171,14 +160,11 @@ export default function PayrollSection({ currentStoreId }: Props) {
         </div>
 
         {loading ? <p style={{color:'#333'}}>계산 중...</p> : (
-          // 테이블 컨테이너에 가로 스크롤 적용
           <div style={{ overflowX: 'auto', position: 'relative' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200, tableLayout: 'fixed' }}>
               <thead>
                 <tr style={{ background: '#f5f5f5', color: '#333', fontSize: '15px', borderBottom: '2px solid #ddd', height: 50 }}>
-                  {/* 고정 열: 이름 (Left 0) */}
                   <th style={{ ...thStyle, ...stickyLeftStyle, left: 0, width: 80, zIndex: 10 }}>이름</th>
-                  {/* 고정 열: 총 지급 (Left 80) */}
                   <th style={{ ...thStyle, ...stickyLeftStyle, left: 80, width: 100, zIndex: 10, borderRight: '2px solid #ddd' }}>총 지급</th>
                   
                   <th style={{ ...thStyle, width: 100 }}>세후 지급</th>
@@ -191,16 +177,13 @@ export default function PayrollSection({ currentStoreId }: Props) {
                   <th style={{ ...thStyle, width: 90 }}>기본급</th>
                   <th style={{ ...thStyle, width: 90 }}>주휴수당</th>
                   
-                  {/* 고정 열: 상세보기 (Right 0) */}
                   <th style={{ ...thStyle, ...stickyRightStyle, right: 0, width: 100, zIndex: 10, borderLeft: '2px solid #ddd' }}>상세보기</th>
                 </tr>
               </thead>
               <tbody>
                 {payrollData.map(p => (
                   <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '15px', backgroundColor: '#fff', height: 50 }}>
-                    {/* 고정 셀: 이름 */}
                     <td style={{ ...tdStyle, ...stickyLeftStyle, left: 0, fontWeight: 'bold', zIndex: 5 }}>{p.name}</td>
-                    {/* 고정 셀: 총 지급 */}
                     <td style={{ ...tdStyle, ...stickyLeftStyle, left: 80, fontWeight: 'bold', zIndex: 5, borderRight: '2px solid #eee' }}>{p.totalPay.toLocaleString()}</td>
                     
                     <td style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
@@ -213,7 +196,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
                     <td style={{...tdStyle, color: '#aaa'}}>{p.basePay.toLocaleString()}</td>
                     <td style={{...tdStyle, color: '#aaa'}}>{p.weeklyHolidayPay.toLocaleString()}</td>
 
-                    {/* 고정 셀: 상세보기 */}
                     <td style={{ ...tdStyle, ...stickyRightStyle, right: 0, zIndex: 5, borderLeft: '2px solid #eee' }}>
                       <button onClick={() => setSelectedPayStub(p)} style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', background: '#fff', color: '#333', whiteSpace: 'nowrap' }}>명세서</button>
                     </td>
@@ -228,7 +210,12 @@ export default function PayrollSection({ currentStoreId }: Props) {
         </p>
       </div>
 
-      {/* ✅ [수정] PayStubModal에 onSave 함수 전달 */}
+      {/* ✅ [추가] 퇴직금 계산기 섹션 (맨 아래에 배치) */}
+      <SeveranceCalculator 
+        currentStoreId={currentStoreId} 
+        employees={employees} 
+      />
+
       <PayStubModal 
         isOpen={!!selectedPayStub} 
         onClose={() => setSelectedPayStub(null)} 
@@ -278,13 +265,11 @@ const tdStyle = {
   whiteSpace: 'nowrap' as const
 };
 
-// 고정 열 스타일 (왼쪽)
 const stickyLeftStyle = {
   position: 'sticky' as const,
-  backgroundColor: '#fff', // 스크롤 시 뒤 내용 가림
+  backgroundColor: '#fff', 
 };
 
-// 고정 열 스타일 (오른쪽)
 const stickyRightStyle = {
   position: 'sticky' as const,
   backgroundColor: '#fff',
