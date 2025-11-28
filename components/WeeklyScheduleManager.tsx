@@ -302,21 +302,11 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
         1. 근무 패턴(요일별 시간)을 만들고 → 2. 해당 패턴으로 근무할 직원을 체크하세요.
       </p>
 
-      {/* ✅ 레이아웃 개선: 왼쪽(고정), 오른쪽(그리드) */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-start' }}>
+      {/* ✅ [수정] globals.css의 .weekly-container 클래스 적용 */}
+      <div className="weekly-container">
         
-        {/* 왼쪽: 패턴 생성기 (Sticky 적용 - 스크롤 따라옴) */}
-        <div style={{ 
-            flex: '0 0 400px', // 너비 400px 고정
-            maxWidth: '100%',
-            position: 'sticky', // ✅ 스크롤 시 화면에 고정
-            top: 200,            // 상단 여백
-            backgroundColor: '#ffffff',
-            borderRadius: 12,
-            padding: 24,
-            border: '1px solid #ddd',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-        }}>
+        {/* 왼쪽: 패턴 생성기 */}
+        <div className="pattern-maker-panel">
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#333' }}>
             {editingPatternId ? '🛠️ 패턴 수정하기' : '1. 근무 패턴 만들기'}
           </h4>
@@ -346,14 +336,19 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
               {DAYS.map(day => {
                 const isChecked = selectedDays.includes(day.num);
                 return (
-                  <div key={day.num} style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: isChecked ? 1 : 0.6 }}>
+                  // ✅ [수정] 모바일에서 시간 선택기가 좁아질 때 줄바꿈 허용 (flex-wrap: wrap)
+                  <div key={day.num} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, opacity: isChecked ? 1 : 0.6 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: 50, cursor: 'pointer' }}>
                       <input type="checkbox" checked={isChecked} onChange={() => toggleDay(day.num)} style={{ accentColor: 'dodgerblue' }} />
                       <span style={{ color: isChecked ? 'dodgerblue' : '#888', fontWeight: isChecked ? 'bold' : 'normal' }}>{day.label}</span>
                     </label>
-                    <TimeSelector value={timeRules[day.num]?.start || '10:00'} onChange={(val) => handleTimeChange(day.num, 'start', val)} interval={minuteInterval} />
-                    <span style={{color: '#888'}}>~</span>
-                    <TimeSelector value={timeRules[day.num]?.end || '16:00'} onChange={(val) => handleTimeChange(day.num, 'end', val)} interval={minuteInterval} />
+                    
+                    {/* 시간 선택 영역 */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <TimeSelector value={timeRules[day.num]?.start || '10:00'} onChange={(val) => handleTimeChange(day.num, 'start', val)} interval={minuteInterval} />
+                        <span style={{color: '#888'}}>~</span>
+                        <TimeSelector value={timeRules[day.num]?.end || '16:00'} onChange={(val) => handleTimeChange(day.num, 'end', val)} interval={minuteInterval} />
+                    </div>
                   </div>
                 );
               })}
@@ -372,99 +367,94 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
           </div>
         </div>
 
-        {/* 오른쪽: 직원 배정 (그리드 레이아웃 적용) */}
-        <div style={{ flex: 1, minWidth: '300px' }}>
+        {/* 오른쪽: 직원 배정 */}
+        <div className="pattern-list-panel">
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#fff' }}>2. 직원 배정하기</h4>
           
           {patterns.length === 0 ? (
              <div style={{ padding: 40, textAlign: 'center', color: '#ccc', border: '1px dashed #666', borderRadius: 8 }}>
-                생성된 패턴이 없습니다. 왼쪽에서 패턴을 만들어주세요.
+               생성된 패턴이 없습니다. 왼쪽에서 패턴을 만들어주세요.
              </div>
           ) : (
-             // ✅ 그리드 레이아웃: 카드가 자동으로 채워짐
              <div style={{ 
                  display: 'grid', 
-                 gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', // 최소 320px, 공간 남으면 늘어남
+                 gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
                  gap: 16 
              }}>
-                {patterns.map(pattern => {
-                  const isSelected = selectedPatternIds.includes(pattern.id);
-                  const isEditing = editingPatternId === pattern.id;
+               {patterns.map(pattern => {
+                 const isSelected = selectedPatternIds.includes(pattern.id);
+                 const isEditing = editingPatternId === pattern.id;
 
-                  return (
-                    <div key={pattern.id} style={{ 
-                      backgroundColor: '#ffffff', 
-                      // 수정 중이면 파란색 진한 테두리
-                      border: isEditing ? '2px solid dodgerblue' : `1px solid ${isSelected ? 'dodgerblue' : '#ddd'}`, 
-                      borderRadius: 12, 
-                      overflow: 'hidden', 
-                      transition: 'all 0.2s',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-                    }}>
-                      {/* 패턴 헤더 */}
-                      <div style={{ padding: '10px 16px', backgroundColor: '#f5f5f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: '#333', fontWeight: 'bold' }}>
-                          <input type="checkbox" checked={isSelected} onChange={() => togglePatternSelection(pattern.id)} style={{ width: 16, height: 16, accentColor: 'dodgerblue' }} />
-                          {pattern.name}
-                        </label>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => handleEditPattern(pattern)} style={{ background: 'none', border: 'none', color: 'dodgerblue', cursor: 'pointer', fontWeight: 'bold', fontSize: 12 }}>수정</button>
-                          <button onClick={() => handleDeletePattern(pattern.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: 12 }}>삭제</button>
-                        </div>
-                      </div>
+                 return (
+                   <div key={pattern.id} style={{ 
+                     backgroundColor: '#ffffff', 
+                     border: isEditing ? '2px solid dodgerblue' : `1px solid ${isSelected ? 'dodgerblue' : '#ddd'}`, 
+                     borderRadius: 12, 
+                     overflow: 'hidden', 
+                     transition: 'all 0.2s',
+                     boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                   }}>
+                     <div style={{ padding: '10px 16px', backgroundColor: '#f5f5f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee' }}>
+                       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: '#333', fontWeight: 'bold' }}>
+                         <input type="checkbox" checked={isSelected} onChange={() => togglePatternSelection(pattern.id)} style={{ width: 16, height: 16, accentColor: 'dodgerblue' }} />
+                         {pattern.name}
+                       </label>
+                       <div style={{ display: 'flex', gap: 8 }}>
+                         <button onClick={() => handleEditPattern(pattern)} style={{ background: 'none', border: 'none', color: 'dodgerblue', cursor: 'pointer', fontWeight: 'bold', fontSize: 12 }}>수정</button>
+                         <button onClick={() => handleDeletePattern(pattern.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: 12 }}>삭제</button>
+                       </div>
+                     </div>
 
-                      {/* 시간 정보 */}
-                      <div style={{ padding: '12px 16px', fontSize: 13, color: '#555', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fff' }}>
-                        {groupRulesByTime(pattern.weekly_rules).map((group, idx) => (
-                          <div key={idx} style={{ marginBottom: 4 }}>
-                            <strong style={{ color: 'dodgerblue', marginRight: 6 }}>{group.labels}</strong> 
-                            {group.timeRange}
-                            <span style={{ marginLeft: 8, color: '#999', fontSize: 12 }}>({group.duration}시간)</span>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* 직원 배정 버튼들 */}
-                      <div style={{ padding: '12px 16px', opacity: isSelected ? 1 : 0.5, pointerEvents: isSelected ? 'auto' : 'none', backgroundColor: '#fff' }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                          {employees.map(emp => {
-                            const assignedTmplId = assignments[emp.id];
-                            const isAssignedHere = assignedTmplId === pattern.id;
-                            const isAssignedElsewhere = assignedTmplId && !isAssignedHere;
-                            return (
-                              <button 
-                                key={emp.id} 
-                                onClick={() => toggleAssignment(pattern.id, emp.id)} 
-                                disabled={!!isAssignedElsewhere} 
-                                style={{ 
-                                    padding: '6px 12px', 
-                                    borderRadius: 20, 
-                                    border: isAssignedHere ? '1px solid dodgerblue' : '1px solid #ddd', 
-                                    backgroundColor: isAssignedHere ? '#e6f7ff' : '#fff', // 선택 시 연한 파랑 배경
-                                    color: isAssignedHere ? 'dodgerblue' : isAssignedElsewhere ? '#ccc' : '#555', 
-                                    cursor: isAssignedElsewhere ? 'not-allowed' : 'pointer', 
-                                    textDecoration: isAssignedElsewhere ? 'line-through' : 'none',
-                                    fontSize: 12,
-                                    fontWeight: isAssignedHere ? 'bold' : 'normal'
-                                }}
-                              >
-                                {emp.name} {isAssignedHere && '✓'}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-             </div>
+                     <div style={{ padding: '12px 16px', fontSize: 13, color: '#555', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fff' }}>
+                       {groupRulesByTime(pattern.weekly_rules).map((group, idx) => (
+                         <div key={idx} style={{ marginBottom: 4 }}>
+                           <strong style={{ color: 'dodgerblue', marginRight: 6 }}>{group.labels}</strong> 
+                           {group.timeRange}
+                           <span style={{ marginLeft: 8, color: '#999', fontSize: 12 }}>({group.duration}시간)</span>
+                         </div>
+                       ))}
+                     </div>
+                     
+                     <div style={{ padding: '12px 16px', opacity: isSelected ? 1 : 0.5, pointerEvents: isSelected ? 'auto' : 'none', backgroundColor: '#fff' }}>
+                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                         {employees.map(emp => {
+                           const assignedTmplId = assignments[emp.id];
+                           const isAssignedHere = assignedTmplId === pattern.id;
+                           const isAssignedElsewhere = assignedTmplId && !isAssignedHere;
+                           return (
+                             <button 
+                               key={emp.id} 
+                               onClick={() => toggleAssignment(pattern.id, emp.id)} 
+                               disabled={!!isAssignedElsewhere} 
+                               style={{ 
+                                   padding: '6px 12px', 
+                                   borderRadius: 20, 
+                                   border: isAssignedHere ? '1px solid dodgerblue' : '1px solid #ddd', 
+                                   backgroundColor: isAssignedHere ? '#e6f7ff' : '#fff', 
+                                   color: isAssignedHere ? 'dodgerblue' : isAssignedElsewhere ? '#ccc' : '#555', 
+                                   cursor: isAssignedElsewhere ? 'not-allowed' : 'pointer', 
+                                   textDecoration: isAssignedElsewhere ? 'line-through' : 'none',
+                                   fontSize: 12,
+                                   fontWeight: isAssignedHere ? 'bold' : 'normal'
+                               }}
+                             >
+                               {emp.name} {isAssignedHere && '✓'}
+                             </button>
+                           );
+                         })}
+                       </div>
+                     </div>
+                   </div>
+                 );
+               })}
+            </div>
           )}
         </div>
       </div>
 
-      {/* 스마트 날짜 선택기 (흰색 카드) */}
-      <div style={{ marginTop: 40, padding: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, backgroundColor: '#fff', borderRadius: 12, border: '1px solid #ddd', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {/* 스마트 날짜 선택기 */}
+      <div style={{ marginTop: 40, padding: 24, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, backgroundColor: '#fff', borderRadius: 12, border: '1px solid #ddd', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <label style={{ color: '#333', fontSize: 14, fontWeight: 'bold' }}>생성 기간:</label>
           <DateSelector value={genStartDate} onChange={handleStartDateChange} />
           <span style={{ color: '#888' }}>~</span>

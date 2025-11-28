@@ -147,3 +147,50 @@ body {
     padding-top: 0 !important;
   }
 }
+/* [주간 스케줄 관리] 반응형 레이아웃 */
+.weekly-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* 왼쪽 패널 (패턴 생성) */
+.pattern-maker-panel {
+  flex: 0 0 400px; /* PC: 400px 고정 */
+  max-width: 100%;
+  position: sticky;
+  top: 200px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  z-index: 10;
+}
+
+/* 오른쪽 패널 (직원 배정) */
+.pattern-list-panel {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* 📱 모바일 전용 스타일 (768px 이하) */
+@media (max-width: 768px) {
+  .weekly-container {
+    flex-direction: column; /* 세로 배치로 변경 */
+  }
+
+  .pattern-maker-panel {
+    flex: none;
+    width: 100%; /* 너비 100% 꽉 채움 */
+    position: relative; /* 스티키 해제 (자연스럽게 스크롤) */
+    top: 0;
+    padding: 16px;
+  }
+
+  .pattern-list-panel {
+    width: 100%;
+    min-width: 0;
+  }
+}
