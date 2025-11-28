@@ -9,19 +9,26 @@ body {
   overflow-x: hidden; 
 }
 
-/* 2. 화면 크기별 숨김 처리 */
-@media (max-width: 768px) {
-  .pc-only { display: none !important; }
-}
-
-@media (min-width: 769px) {
-  .mobile-only { display: none !important; }
-}
-
-/* 3. 노트북 등 좁은 화면(1300px 이하)에서 양옆 광고 숨기기 */
-@media (max-width: 1300px) {
-  .side-ad {
+@media (max-width: 1620px) {
+  
+  /* 1. 화면이 좁아지면 광고 배너 숨기기 (겹침 방지) */
+  .desktop-only {
     display: none !important;
+  }
+
+  /* 2. 좁은 화면에서 좌우 여백 줄이기 */
+  .mobile-padding {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  /* 3. (선택사항) 폰트 사이즈 미세 조절은 모바일(768px)에서만 해도 됨 */
+}
+
+/* 📱 진짜 모바일(폰) 전용 스타일은 따로 분리해도 좋습니다 (선택) */
+@media (max-width: 768px) {
+  html, body {
+    font-size: 14px;
   }
 }
 
