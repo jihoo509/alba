@@ -13,7 +13,7 @@ export default function AdBanner({ position }: Props) {
   return (
     <div 
       style={{
-        width: '200px',        // 너비 200px 고정
+        width: '400px',        // 너비 200px 고정
         height: '100vh',       // 높이 화면 전체
         position: 'fixed',
         top: 0,
