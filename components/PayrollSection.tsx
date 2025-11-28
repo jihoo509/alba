@@ -6,6 +6,7 @@ import StoreSettings from './StoreSettings';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
 import * as XLSX from 'xlsx';
 import PayStubModal from './PayStubModal';
+import SeveranceCalculator from './SeveranceCalculator';
 
 type Props = {
   currentStoreId: string;
@@ -80,7 +81,26 @@ export default function PayrollSection({ currentStoreId }: Props) {
       alert('설정 저장 중 오류가 발생했습니다.');
       return;
     }
+  // ✅ [추가] 직원 목록을 SeveranceCalculator에 넘겨주기 위해 employees state 사용 (이미 있음)
 
+  return (
+    <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+      
+      <div style={cardStyle}>
+          <StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} />
+      </div>
+
+      <div style={cardStyle}>
+        {/* ... (급여 대장 테이블 부분 동일) ... */}
+      </div>
+
+      {/* ✅ [추가] 퇴직금 계산기 섹션 (맨 아래에 배치) */}
+      <SeveranceCalculator 
+        currentStoreId={currentStoreId} 
+        employees={employees} 
+      />
+
+      <PayStubModal 
     // 저장 성공 시 데이터를 다시 불러와서 급여 대장 갱신
     await loadAndCalculate();
   };
