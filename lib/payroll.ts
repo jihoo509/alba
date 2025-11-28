@@ -19,11 +19,27 @@ function calculateNightMinutes(start: string, end: string) {
   return nightMin;
 }
 
+// ✅ [수정] overrides 파라미터 추가 (개별 설정값 배열)
+// overrides 구조 예시: [{ employee_id: '...', pay_weekly: true, auto_deduct_break: false, ... }]
 export function calculateMonthlyPayroll(
-  year: number, month: number, employees: any[], schedules: any[], storeSettings: any
+  year: number, month: number, employees: any[], schedules: any[], storeSettings: any, overrides: any[] = []
 ) {
   return employees.map(emp => {
     const empSchedules = schedules.filter(s => s.employee_id === emp.id);
+    
+    // ✅ [수정] 이 직원을 위한 개별 설정이 있는지 확인
+    const override = overrides.find(o => o.employee_id === emp.id);
+
+    // ✅ [수정] 적용할 설정값 결정 (개별 설정이 있으면 우선, 없으면 매장 기본값)
+    // 주의: false일 수도 있으므로 null/undefined 체크(??)를 해야 함
+    const cfg = {
+        pay_weekly: override?.pay_weekly ?? storeSettings.pay_weekly,
+        pay_night: override?.pay_night ?? (storeSettings.is_five_plus && storeSettings.pay_night),
+        pay_overtime: override?.pay_overtime ?? (storeSettings.is_five_plus && storeSettings.pay_overtime),
+        pay_holiday: override?.pay_holiday ?? (storeSettings.is_five_plus && storeSettings.pay_holiday),
+        // 휴게시간 차감은 로직이 조금 다르니 주의 (true/false)
+        auto_deduct_break: override?.auto_deduct_break ?? (storeSettings.auto_deduct_break !== false)
+    };
     
     let totalBasePay = 0;
     let totalNightPay = 0;
@@ -65,22 +81,21 @@ export function calculateMonthlyPayroll(
         let rawMins = (eH * 60 + eM) - (sH * 60 + sM);
         if (rawMins < 0) rawMins += 24 * 60;
 
-        // 1. 휴게시간 계산 (차감 전/후 모두 확보)
         let breakMins = 0;
         if (rawMins >= 480) { breakMins = 60; }
         else if (rawMins >= 240) { breakMins = 30; }
         
         const deductedMins = rawMins - breakMins;
 
-        // 2. 기본급 계산 (차감 함/안함 두 가지 버전 모두 계산)
+        // 값 계산 (옵션 무관하게 둘 다 계산)
         const basePayDeducted = Math.floor((deductedMins / 60) * emp.hourly_wage);
         const basePayNoDeduct = Math.floor((rawMins / 60) * emp.hourly_wage);
         
-        // 실제 적용할 기본급 (설정에 따름)
-        const activeBasePay = (storeSettings.auto_deduct_break !== false) ? basePayDeducted : basePayNoDeduct;
-        const activeMins = (storeSettings.auto_deduct_break !== false) ? deductedMins : rawMins;
+        // ✅ [수정] 결정된 cfg(설정)을 사용하여 적용 여부 판단
+        const useBreak = cfg.auto_deduct_break; // true면 차감, false면 미차감
+        const activeBasePay = useBreak ? basePayDeducted : basePayNoDeduct;
+        const activeMins = useBreak ? deductedMins : rawMins;
 
-        // 3. 수당 계산 (조건과 상관없이 '잠재적 금액' 계산)
         const nightMins = calculateNightMinutes(s.start_time, s.end_time);
         const potentialNightPay = Math.floor((nightMins / 60) * emp.hourly_wage * 0.5);
 
@@ -93,10 +108,10 @@ export function calculateMonthlyPayroll(
             potentialHolidayWorkPay = Math.floor((activeMins / 60) * emp.hourly_wage * 0.5);
         }
 
-        // 4. 실제 지급액 반영 (설정 체크)
-        const nightPay = (storeSettings.is_five_plus && storeSettings.pay_night) ? potentialNightPay : 0;
-        const overtimePay = (storeSettings.is_five_plus && storeSettings.pay_overtime) ? potentialOvertimePay : 0;
-        const holidayWorkPay = (storeSettings.is_five_plus && storeSettings.pay_holiday) ? potentialHolidayWorkPay : 0;
+        // ✅ [수정] cfg 설정에 따라 지급액 결정
+        const nightPay = cfg.pay_night ? potentialNightPay : 0;
+        const overtimePay = cfg.pay_overtime ? potentialOvertimePay : 0;
+        const holidayWorkPay = cfg.pay_holiday ? potentialHolidayWorkPay : 0;
 
         if (isThisMonth) {
             ledger.push({
@@ -105,12 +120,10 @@ export function calculateMonthlyPayroll(
                 dayLabel: DAYS[scheduleDate.getDay()],
                 timeRange: `${s.start_time.slice(0,5)}~${s.end_time.slice(0,5)}`,
                 
-                // 🔴 중요: 텍스트가 아닌 순수 숫자로 저장
                 hoursDeducted: (deductedMins / 60).toFixed(1),
                 hoursNoDeduct: (rawMins / 60).toFixed(1),
                 breakMins: breakMins,
 
-                // 🔴 중요: 옵션별 금액 모두 저장
                 basePayDeducted: basePayDeducted,
                 basePayNoDeduct: basePayNoDeduct,
                 
@@ -118,7 +131,6 @@ export function calculateMonthlyPayroll(
                 potentialOvertimePay: potentialOvertimePay,
                 potentialHolidayWorkPay: potentialHolidayWorkPay,
 
-                // 기존 필드 (현재 설정 기준)
                 basePay: activeBasePay,
                 nightPay: nightPay,      
                 overtimePay: overtimePay, 
@@ -139,19 +151,17 @@ export function calculateMonthlyPayroll(
         }
       });
 
-      // 주휴수당 계산
       if (isSameMonth(weekSunday, monthStart)) {
-        // 주휴 발생 조건 충족 시 금액 계산
         let potentialWeeklyPay = 0;
         if (weekMinutes >= 900) { 
            const cappedWeekMinutes = Math.min(weekMinutes, 40 * 60); 
            potentialWeeklyPay = Math.floor((cappedWeekMinutes / 40 / 60) * 8 * emp.hourly_wage);
         }
 
-        // 실제 지급 여부 (설정 체크)
-        const weeklyPay = storeSettings.pay_weekly ? potentialWeeklyPay : 0;
+        // ✅ [수정] cfg.pay_weekly 사용
+        const weeklyPay = cfg.pay_weekly ? potentialWeeklyPay : 0;
         
-        if (potentialWeeklyPay > 0) { // 받을 가능성이 있는 경우만 레저에 기록
+        if (potentialWeeklyPay > 0) {
              totalWeeklyPay += weeklyPay;
              ledger.push({
                  type: 'WEEKLY',
@@ -163,10 +173,8 @@ export function calculateMonthlyPayroll(
                  nightPay: 0,
                  overtimePay: 0,
                  holidayWorkPay: 0,
-                 
-                 potentialWeeklyPay: potentialWeeklyPay, // 🔴 잠재 금액 저장
-                 weeklyPay: weeklyPay, // 실제 지급액
-                 
+                 potentialWeeklyPay: potentialWeeklyPay,
+                 weeklyPay: weeklyPay, 
                  note: `1주 ${Math.floor(weekMinutes/60)}시간 근무`
              });
         }
@@ -180,7 +188,6 @@ export function calculateMonthlyPayroll(
         pension: 0, health: 0, care: 0, employment: 0, incomeTax: 0, localTax: 0, total: 0
     };
 
-    // ... 세금 계산 로직 동일 ...
     if (emp.employment_type.includes('four')) {
         taxDetails.pension = Math.floor(totalPay * RATES.pension / 10) * 10;
         taxDetails.health = Math.floor(totalPay * RATES.health / 10) * 10;
@@ -214,7 +221,8 @@ export function calculateMonthlyPayroll(
       birthDate: emp.birth_date,
       phoneNumber: emp.phone_number,
       ledger: ledger,
-      storeSettingsSnapshot: storeSettings 
+      // ✅ [중요] 나중에 모달에서 '현재 적용된 설정'이 무엇인지 알 수 있게 snapshot에 cfg 저장
+      storeSettingsSnapshot: { ...storeSettings, ...cfg } 
     };
   });
 }
