@@ -10,12 +10,12 @@ export default function AdBanner({ position }: Props) {
   return (
     <div 
       style={{
-        width: '160px',          // 너비 고정
+        width: '200px',          // 너비 고정
         height: '100vh',         // 높이 화면 전체 꽉 채움
         position: 'fixed',
         top: 0,
         [position]: 0,           // left: 0 또는 right: 0
-        backgroundColor: '#000', // 광고 없을 때 보일 배경색 (이미지 로딩 전)
+        backgroundColor: '#ffffffff', // 광고 없을 때 보일 배경색 (이미지 로딩 전)
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
