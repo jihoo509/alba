@@ -63,7 +63,7 @@ export default function AdBanner({ position, href = '#' }: Props) {
           }}
         >
           <img 
-            src="/art-1.png" 
+            src="/art-2.png" 
             alt="Right Banner" 
             style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
           />
