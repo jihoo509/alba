@@ -190,13 +190,11 @@ function DashboardContent() {
     }
   }, [currentStoreId, loadEmployees, loadHomeStats]);
 
-const renderTabContent = () => {
+  const renderTabContent = () => {
     if (!currentStoreId) return <p style={{ color: '#ddd', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
 
     if (currentTab === 'home') {
       return (
-        // 🔴 [수정] 홈 화면만 별도로 maxWidth 750px + 중앙 정렬 적용
-        // 이렇게 하면 헤더와 라인이 딱 맞아떨어지고, 카드가 너무 옆으로 퍼지지 않습니다.
         <div style={{ maxWidth: 750, margin: '0 auto', width: '100%' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             <div style={cardStyle}>
@@ -229,10 +227,8 @@ const renderTabContent = () => {
         </div>
       );
     }
-    
-if (currentTab === 'employees') {
+    if (currentTab === 'employees') {
       return (
-        // 🔴 [수정] 홈 화면과 동일하게 750px로 제한하고 중앙 정렬
         <div style={{ maxWidth: 750, margin: '0 auto', width: '100%' }}>
           <EmployeeSection
             currentStoreId={currentStoreId}
@@ -245,7 +241,6 @@ if (currentTab === 'employees') {
         </div>
       );
     }
-    
     if (currentTab === 'schedules') {
       return (
         <div>
@@ -265,71 +260,89 @@ if (currentTab === 'employees') {
   return (
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
       
-      {/* 🔴 [헤더 & 메뉴 영역] 650px 고정 (화면 작으면 100%로 축소) */}
+      {/* 🔴 [헤더 고정] */}
       <div style={{ 
-        width: '100%',           // 기본적으로 꽉 참
-        maxWidth: '650px',       // 단, 650px은 넘지 않음
-        margin: '0 auto',        // 중앙 정렬
-        padding: '40px 20px 0 20px', 
-        boxSizing: 'border-box' 
+        position: 'fixed', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        zIndex: 100,
+        // 기존 배경과 어울리는 파란색 그라데이션 + 그림자
+        background: 'linear-gradient(to right, #0072ff, #00c6ff)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.2)' 
       }}>
-        {/* ... (헤더 내용 동일) ... */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h1 style={{ fontSize: 36, color: '#fff', fontWeight: '900', letterSpacing: '-1px', margin: 0, fontFamily: 'sans-serif' }}>
-            Easy Alba
-          </h1>
-          <UserBar email={userEmail} />
-        </header>
+        <div style={{ 
+          width: '100%', 
+          maxWidth: '650px', 
+          margin: '0 auto', 
+          padding: '20px 20px 0 20px', 
+          boxSizing: 'border-box' 
+        }}>
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h1 style={{ fontSize: 36, color: '#fff', fontWeight: '900', letterSpacing: '-1px', margin: 0, fontFamily: 'sans-serif' }}>
+              Easy Alba
+            </h1>
+            <UserBar email={userEmail} />
+          </header>
 
-        {errorMsg && <div style={{ marginBottom: 16, color: 'salmon' }}>{errorMsg}</div>}
+          {errorMsg && <div style={{ marginBottom: 16, color: 'salmon' }}>{errorMsg}</div>}
 
-        <StoreSelector
-          stores={stores}
-          currentStoreId={currentStoreId}
-          onChangeStore={handleStoreChange}
-          creatingStore={creatingStore}
-          onCreateStore={handleCreateStore}
-          onDeleteStore={handleDeleteStore}
-        />
+          <StoreSelector
+            stores={stores}
+            currentStoreId={currentStoreId}
+            onChangeStore={handleStoreChange}
+            creatingStore={creatingStore}
+            onCreateStore={handleCreateStore}
+            onDeleteStore={handleDeleteStore}
+          />
 
-        {stores.length > 0 && currentStoreId && (
-          <div style={{ 
-            display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 20, 
-            marginTop: 20, marginBottom: 40, borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: 20 
-          }}>
-            {[
-              { key: 'home', label: '🏠 홈' },
-              { key: 'employees', label: '👥 직원 관리' },     
-              { key: 'schedules', label: '🗓️ 스케줄 관리' },   
-              { key: 'payroll', label: '💰 급여 / 정산' }      
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => handleTabChange(tab.key as TabKey)}
-                style={{
-                  padding: '12px 24px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 16, transition: 'all 0.2s', whiteSpace: 'nowrap',
-                  borderBottom: currentTab === tab.key ? '3px solid dodgerblue' : '3px solid transparent',
-                  color: currentTab === tab.key ? '#fff' : '#aaa', 
-                  fontWeight: currentTab === tab.key ? 'bold' : 'normal',
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        )}
+          {stores.length > 0 && currentStoreId && (
+            <div style={{ 
+              display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 20, 
+              marginTop: 20, paddingBottom: 20 
+            }}>
+              {[
+                { key: 'home', label: '🏠 홈' },
+                { key: 'employees', label: '👥 직원 관리' },     
+                { key: 'schedules', label: '🗓️ 스케줄 관리' },   
+                { key: 'payroll', label: '💰 급여 / 정산' }      
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => handleTabChange(tab.key as TabKey)}
+                  style={{
+                    padding: '10px 20px', 
+                    border: 'none', 
+                    background: 'transparent', 
+                    cursor: 'pointer', 
+                    fontSize: 16, 
+                    transition: 'all 0.2s', 
+                    whiteSpace: 'nowrap',
+                    // 고정 헤더에서는 흰색으로 활성 탭 표시
+                    borderBottom: currentTab === tab.key ? '3px solid #fff' : '3px solid transparent',
+                    color: currentTab === tab.key ? '#fff' : 'rgba(255,255,255,0.7)', 
+                    fontWeight: currentTab === tab.key ? 'bold' : 'normal',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* 🔵 [콘텐츠 영역] 1000px 제한 + 작아지면 100% 유동적 축소 */}
+      {/* 🔵 [콘텐츠 영역] 헤더가 뜬 만큼 상단 여백(paddingTop) 추가 */}
       <div style={{ 
-        width: '100%',            // ⭐️ 중요: 화면이 작을 땐 꽉 차게 (유동적)
-        maxWidth: '1000px',       // ⭐️ 중요: 1000px 이상으론 안 커짐
-        margin: '0 auto',         // 중앙 정렬
-        padding: '0 20px',        // 모바일에서 좌우 여백 확보
-        boxSizing: 'border-box'   // 패딩 포함해서 너비 계산
+        width: '100%', 
+        maxWidth: '1000px', 
+        margin: '0 auto', 
+        padding: '0 20px', 
+        boxSizing: 'border-box',
+        // 헤더 높이만큼 띄워줌 (약 250px, 필요시 조절)
+        paddingTop: '250px' 
       }}>
         {stores.length > 0 && currentStoreId && (
-          // 내부 콘텐츠가 너무 넓어 터지는 것을 방지하기 위해 overflow 처리 추가 가능
           <div style={{ width: '100%' }}>
             {renderTabContent()}
           </div>
