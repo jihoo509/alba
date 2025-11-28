@@ -1,5 +1,6 @@
-import './globals.css'; // 👈 [핵심] 방금 만든 CSS 파일을 여기서 불러옵니다!
+import './globals.css'; // 스타일 파일
 import React from 'react';
+import AdBanner from '@/components/AdBanner'; // ✅ [필수] 배너 컴포넌트 불러오기
 
 export const metadata = {
   title: "Alba Manager",
@@ -13,9 +14,22 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      {/* 스타일은 이제 globals.css에서 관리하므로 body 태그를 깨끗하게 유지합니다. */}
       <body>
+        {/* ✅ [왼쪽 광고] 
+           className="desktop-only" 덕분에 화면이 1620px보다 좁아지면 
+           CSS에 의해 자동으로 사라집니다 (display: none).
+        */}
+        <div className="desktop-only">
+          <AdBanner position="left" />
+        </div>
+
+        {/* 메인 콘텐츠 */}
         {children}
+
+        {/* ✅ [오른쪽 광고] */}
+        <div className="desktop-only">
+          <AdBanner position="right" />
+        </div>
       </body>
     </html>
   );

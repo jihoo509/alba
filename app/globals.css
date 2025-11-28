@@ -1,5 +1,3 @@
-/* app/globals.css */
-
 /* 1. 기본 설정 */
 body {
   background-color: #fcfcfc;
@@ -9,82 +7,41 @@ body {
   overflow-x: hidden; 
 }
 
+/* 2. 📱 반응형 숨김 처리 (핵심) */
+
+/* 화면 너비가 1620px 이하일 때 (노트북 등)
+   => .desktop-only 클래스가 붙은 요소(광고 배너)를 강제로 숨김 
+   (계산: 본문 1000px + 광고 300px*2 + 여백 = 약 1620px)
+*/
 @media (max-width: 1620px) {
-  
-  /* 1. 화면이 좁아지면 광고 배너 숨기기 (겹침 방지) */
   .desktop-only {
     display: none !important;
   }
-
-  /* 2. 좁은 화면에서 좌우 여백 줄이기 */
-  .mobile-padding {
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-  }
-
-  /* 3. (선택사항) 폰트 사이즈 미세 조절은 모바일(768px)에서만 해도 됨 */
 }
 
-/* 📱 진짜 모바일(폰) 전용 스타일은 따로 분리해도 좋습니다 (선택) */
+/* 화면 너비가 769px 이상일 때 (PC)
+   => .mobile-only 클래스가 붙은 요소(하단 광고 등)를 숨김
+*/
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* 3. 모바일 전용 스타일 */
 @media (max-width: 768px) {
   html, body {
     font-size: 14px;
   }
-}
-
-/* 4. 전체 레이아웃 (광고 영역 제외한 중앙 콘텐츠) */
-.dashboard-content {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  /* 기본: 양옆 광고 자리(160px) 확보 */
-  margin-left: 160px;
-  margin-right: 160px;
-  transition: margin 0.3s ease;
-}
-
-/* 좁은 화면에서는 여백 제거 */
-@media (max-width: 1300px) {
-  .dashboard-content {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+  
+  /* 모바일에서 좌우 여백 확보 */
+  .mobile-padding {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
   }
 }
 
-/* 모바일에서는 하단 광고 공간 확보 */
-@media (max-width: 768px) {
-  .dashboard-content {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    padding-bottom: 80px;
-  }
-}
-
-/* 5. 메인 컨테이너 (모든 페이지 크기 통일) */
-.main-container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-/* 6. 박스 디자인 통일 */
-.section-box {
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-  border: 1px solid #333;
-}
-
-@media (max-width: 768px) {
-  .section-box {
-    padding: 16px;
-  }
-}
-
-/* 7. 표 가로 스크롤 (표 깨짐 방지) */
+/* 4. 표 가로 스크롤 (표 깨짐 방지) */
 .table-wrapper {
   width: 100%;
   overflow-x: auto;
