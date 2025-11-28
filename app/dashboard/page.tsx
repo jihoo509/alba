@@ -190,41 +190,47 @@ function DashboardContent() {
     }
   }, [currentStoreId, loadEmployees, loadHomeStats]);
 
-  const renderTabContent = () => {
+const renderTabContent = () => {
     if (!currentStoreId) return <p style={{ color: '#ddd', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
 
     if (currentTab === 'home') {
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          <div style={cardStyle}>
-            <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #eee', paddingBottom: 8, color: '#000' }}>
-              📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
-            </h3>
-            {todayWorkers.length === 0 ? (
-              <p style={{ color: '#888', textAlign: 'center', padding: 20 }}>오늘 예정된 근무가 없습니다.</p>
-            ) : (
-              <ul style={{ listStyle: 'none', padding: 0 }}>
-                {todayWorkers.map(w => (
-                  <li key={w.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee' }}>
-                    <div>
-                      <strong style={{ fontSize: 16, color: '#000' }}>{w.employees?.name || '미배정'}</strong>
-                      <span style={{ color: '#666', fontSize: 13, marginLeft: 8 }}>{w.employees?.phone_number}</span>
-                    </div>
-                    <div style={{ color: 'dodgerblue', fontWeight: 'bold' }}>
-                      {w.start_time.slice(0,5)} ~ {w.end_time.slice(0,5)}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div style={cardStyle}>
-            <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#555' }}>💰 11월 예상 급여 지출 (세전)</h3>
-            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#000' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
+        // 🔴 [수정] 홈 화면만 별도로 maxWidth 750px + 중앙 정렬 적용
+        // 이렇게 하면 헤더와 라인이 딱 맞아떨어지고, 카드가 너무 옆으로 퍼지지 않습니다.
+        <div style={{ maxWidth: 750, margin: '0 auto', width: '100%' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <div style={cardStyle}>
+              <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #eee', paddingBottom: 8, color: '#000' }}>
+                📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
+              </h3>
+              {todayWorkers.length === 0 ? (
+                <p style={{ color: '#888', textAlign: 'center', padding: 20 }}>오늘 예정된 근무가 없습니다.</p>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0 }}>
+                  {todayWorkers.map(w => (
+                    <li key={w.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee' }}>
+                      <div>
+                        <strong style={{ fontSize: 16, color: '#000' }}>{w.employees?.name || '미배정'}</strong>
+                        <span style={{ color: '#666', fontSize: 13, marginLeft: 8 }}>{w.employees?.phone_number}</span>
+                      </div>
+                      <div style={{ color: 'dodgerblue', fontWeight: 'bold' }}>
+                        {w.start_time.slice(0,5)} ~ {w.end_time.slice(0,5)}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div style={cardStyle}>
+              <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#555' }}>💰 11월 예상 급여 지출 (세전)</h3>
+              <div style={{ fontSize: 32, fontWeight: 'bold', color: '#000' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
+            </div>
           </div>
         </div>
       );
     }
+    
+    // ... 나머지 탭(직원, 스케줄, 급여)은 1000px을 넓게 써야 하므로 별도 제한 없이 그대로 둡니다.
     if (currentTab === 'employees') {
       return (
         <EmployeeSection
@@ -242,7 +248,6 @@ function DashboardContent() {
         <div>
           <h2 style={{ fontSize: 24, marginBottom: 8, color: '#fff', fontWeight: 'bold' }}>스케줄 관리</h2>
           <p style={{ color: '#ddd', marginBottom: 32 }}>월간 스케줄을 확인하고 관리합니다.</p>
-          
           <TemplateSection currentStoreId={currentStoreId} />
         </div>
       );
