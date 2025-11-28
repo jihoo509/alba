@@ -7,48 +7,89 @@ body {
   overflow-x: hidden; 
 }
 
-/* 2. 📱 반응형 숨김 처리 (핵심) */
+/* =========================================
+   2. 🖥️ 반응형 숨김 처리 (광고 배너 등)
+   ========================================= */
 
-/* 화면 너비가 1620px 이하일 때 (노트북 등)
-   => .desktop-only 클래스가 붙은 요소(광고 배너)를 강제로 숨김 
-   (계산: 본문 1000px + 광고 300px*2 + 여백 = 약 1620px)
-*/
-@media (max-width: 1480px) {
+/* 화면 너비가 1620px 이하일 때 (노트북 등) -> 광고 숨김 */
+@media (max-width: 1550px) {
   .responsive-banner {
-    display: none !important; /* !important로 강제 숨김 */
+    display: none !important;
+  }
+  .desktop-only {
+    display: none !important;
   }
 }
 
-/* 화면 너비가 769px 이상일 때 (PC)
-   => .mobile-only 클래스가 붙은 요소(하단 광고 등)를 숨김
-*/
+/* 화면 너비가 769px 이상일 때 (PC) -> 모바일 전용 요소 숨김 */
 @media (min-width: 769px) {
   .mobile-only {
     display: none !important;
   }
 }
 
-/* 3. 모바일 전용 스타일 */
+/* =========================================
+   3. 📱 모바일 전용 스타일 (화면 768px 이하)
+   ========================================= */
 @media (max-width: 768px) {
+  
   html, body {
     font-size: 14px;
   }
+
+  /* 3-1. 본문 상단 여백 줄이기 (헤더 다이어트 대응) */
+  .mobile-top-padding {
+    padding-top: 135px !important; /* PC 190px -> 모바일 135px */
+  }
+
+  /* 3-2. 헤더 내부 간격 줄이기 */
+  .mobile-header-padding {
+    padding: 10px 16px !important;
+  }
   
-  /* 모바일에서 좌우 여백 확보 */
-  .mobile-padding {
-    padding-left: 10px !important;
-    padding-right: 10px !important;
+  /* 3-3. 로고 텍스트 크기 줄이기 */
+  .mobile-logo-text {
+    font-size: 20px !important;
+  }
+
+  /* 3-4. 탭 메뉴 버튼 크기 및 간격 축소 */
+  .mobile-tab-btn {
+    font-size: 13px !important;
+    padding: 6px 12px !important;
+  }
+  .mobile-tab-container {
+    gap: 10px !important;
+    margin-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  /* 3-5. [스케줄 관리 전용] 강제 축소 스타일 (스크롤 없이 한눈에 보기) */
+  .shrink-on-mobile table,
+  .shrink-on-mobile th,
+  .shrink-on-mobile td,
+  .shrink-on-mobile div {
+    font-size: 11px !important; /* 글씨 작게 */
+    padding: 2px !important;    /* 여백 최소화 */
+  }
+  
+  .shrink-on-mobile table {
+    width: 100% !important;
+    table-layout: fixed !important; /* 칸 크기 균등 분할 */
   }
 }
 
-/* 4. 표 가로 스크롤 (표 깨짐 방지) */
+/* =========================================
+   4. 📊 테이블 가로 스크롤 (급여 대장용)
+   ========================================= */
+/* 사장님이 말씀하신 '이 기능'입니다. 살려뒀습니다! */
 .table-wrapper {
   width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow-x: auto; /* 내용이 넘치면 가로 스크롤 생성 */
+  -webkit-overflow-scrolling: touch; /* 부드러운 스크롤 */
   padding-bottom: 10px;
 }
 
+/* 표의 최소 너비를 지정해서, 모바일에서도 찌그러지지 않게 함 */
 .table-wrapper table {
-  min-width: 800px;
+  min-width: 800px; 
 }

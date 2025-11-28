@@ -260,7 +260,7 @@ function DashboardContent() {
   return (
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
       
-      {/* 🔴 [헤더 고정] 높이 축소 (다이어트) */}
+      {/* 🔴 [헤더 고정] */}
       <div style={{ 
         position: 'fixed', 
         top: 0, 
@@ -275,18 +275,21 @@ function DashboardContent() {
         boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
         borderBottom: '1px solid rgba(255,255,255,0.15)'
       }}>
-        <div style={{ 
-          width: '100%', 
-          maxWidth: '650px', 
-          margin: '0 auto', 
-          // ✅ [수정] 상하 패딩을 줄임 (20px -> 12px)
-          padding: '12px 20px 0 20px', 
-          boxSizing: 'border-box' 
-        }}>
-          {/* ✅ [수정] 로고 크기 축소 및 마진 감소 */}
+        {/* ✅ className="mobile-header-padding" 추가: 모바일에서 패딩 줄임 */}
+        <div 
+          className="mobile-header-padding"
+          style={{ 
+            width: '100%', 
+            maxWidth: '750px', // PC 기준 (아래 컨텐츠와 라인 맞춤)
+            margin: '0 auto', 
+            padding: '12px 20px', 
+            boxSizing: 'border-box' 
+          }}
+        >
+          {/* ✅ className="mobile-logo-text" 추가: 모바일에서 로고 크기 줄임 */}
           <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h1 style={{ 
-                fontSize: 28,  // 36 -> 28 축소
+            <h1 className="mobile-logo-text" style={{ 
+                fontSize: 28,  
                 color: '#fff', 
                 fontWeight: '900', 
                 letterSpacing: '-1px', 
@@ -300,7 +303,6 @@ function DashboardContent() {
 
           {errorMsg && <div style={{ marginBottom: 10, color: 'salmon' }}>{errorMsg}</div>}
 
-          {/* ✅ [수정] 매장 선택기 마진 없음 (StoreSelector 자체 마진만 사용) */}
           <StoreSelector
             stores={stores}
             currentStoreId={currentStoreId}
@@ -311,27 +313,31 @@ function DashboardContent() {
           />
 
           {stores.length > 0 && currentStoreId && (
-            <div style={{ 
-              display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 15, // 갭도 살짝 축소
-              // ✅ [수정] 위아래 여백 축소
-              marginTop: 12, 
-              paddingBottom: 12 
-            }}>
+            // ✅ className="mobile-tab-container" 추가: 모바일에서 간격 줄임
+            <div 
+              className="mobile-tab-container"
+              style={{ 
+                display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 15, 
+                marginTop: 12, paddingBottom: 12 
+              }}
+            >
               {[
                 { key: 'home', label: '🏠 홈' },
-                { key: 'employees', label: '👥 직원' },     // 라벨도 살짝 줄임 (선택사항)
+                { key: 'employees', label: '👥 직원' },     
                 { key: 'schedules', label: '🗓️ 스케줄' },   
                 { key: 'payroll', label: '💰 급여' }      
               ].map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => handleTabChange(tab.key as TabKey)}
+                  // ✅ className="mobile-tab-btn" 추가: 모바일에서 버튼 크기 줄임
+                  className="mobile-tab-btn"
                   style={{
-                    padding: '8px 16px', // 버튼 패딩 축소
+                    padding: '8px 16px', 
                     border: 'none', 
                     background: 'transparent', 
                     cursor: 'pointer', 
-                    fontSize: 15, // 폰트 사이즈 16 -> 15 미세 축소
+                    fontSize: 15, 
                     transition: 'all 0.2s', 
                     whiteSpace: 'nowrap',
                     borderBottom: currentTab === tab.key ? '3px solid #fff' : '3px solid transparent',
@@ -347,18 +353,22 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* 🔵 [콘텐츠 영역] 헤더 높이가 줄었으므로 패딩도 줄임 */}
-      <div style={{ 
-        width: '100%', 
-        maxWidth: '1000px', 
-        margin: '0 auto', 
-        padding: '0 20px', 
-        boxSizing: 'border-box',
-        // ✅ [수정] 250px -> 190px (헤더가 작아졌으니 위로 올림)
-        paddingTop: '190px' 
-      }}>
+      {/* 🔵 [콘텐츠 영역] */}
+      {/* ✅ className="mobile-top-padding" 추가: 모바일에서 상단 여백 줄임 */}
+      <div 
+        className="mobile-top-padding"
+        style={{ 
+          width: '100%', 
+          maxWidth: '1000px', 
+          margin: '0 auto', 
+          padding: '0 20px', 
+          boxSizing: 'border-box',
+          paddingTop: '190px' // PC 기본값
+        }}
+      >
         {stores.length > 0 && currentStoreId && (
-          <div style={{ width: '100%' }}>
+          // ✅ [스케줄 관리] 탭일 때만 'shrink-on-mobile' 클래스 적용 (화면 축소)
+          <div style={{ width: '100%' }} className={currentTab === 'schedules' ? 'shrink-on-mobile' : ''}>
             {renderTabContent()}
           </div>
         )}
