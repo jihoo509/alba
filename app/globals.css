@@ -12,7 +12,7 @@ body {
    ========================================= */
 
 /* 화면 너비가 1620px 이하일 때 (노트북 등) -> 광고 숨김 */
-@media (max-width: 1550px) {
+@media (max-width: 1620px) {
   .responsive-banner {
     display: none !important;
   }
@@ -29,7 +29,7 @@ body {
 }
 
 /* =========================================
-   3. 📱 모바일 전용 스타일 (화면 768px 이하)
+   3. 📱 모바일 전용 기본 스타일 (화면 768px 이하)
    ========================================= */
 @media (max-width: 768px) {
   
@@ -81,7 +81,6 @@ body {
 /* =========================================
    4. 📊 테이블 가로 스크롤 (급여 대장용)
    ========================================= */
-/* 사장님이 말씀하신 '이 기능'입니다. 살려뒀습니다! */
 .table-wrapper {
   width: 100%;
   overflow-x: auto; /* 내용이 넘치면 가로 스크롤 생성 */
@@ -93,8 +92,6 @@ body {
 .table-wrapper table {
   min-width: 800px; 
 }
-
-/* ... 기존 코드 아래에 추가 ... */
 
 /* =========================================
    5. 🚀 헤더 동작 분리 (PC: 고정 / 모바일: 메뉴만 고정)
@@ -147,53 +144,7 @@ body {
     padding-top: 0 !important;
   }
 }
-/* [주간 스케줄 관리] 반응형 레이아웃 */
-.weekly-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  align-items: flex-start;
-}
 
-/* 왼쪽 패널 (패턴 생성) */
-.pattern-maker-panel {
-  flex: 0 0 400px; /* PC: 400px 고정 */
-  max-width: 100%;
-  position: sticky;
-  top: 200px;
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #ddd;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  z-index: 10;
-}
-
-/* 오른쪽 패널 (직원 배정) */
-.pattern-list-panel {
-  flex: 1;
-  min-width: 300px;
-}
-
-/* 📱 모바일 전용 스타일 (768px 이하) */
-@media (max-width: 768px) {
-  .weekly-container {
-    flex-direction: column; /* 세로 배치로 변경 */
-  }
-
-  .pattern-maker-panel {
-    flex: none;
-    width: 100%; /* 너비 100% 꽉 채움 */
-    position: relative; /* 스티키 해제 (자연스럽게 스크롤) */
-    top: 0;
-    padding: 16px;
-  }
-
-  .pattern-list-panel {
-    width: 100%;
-    min-width: 0;
-  }
-}
 /* =========================================
    6. 🕒 근무 패턴 생성기 (카드형 디자인)
    ========================================= */
@@ -264,13 +215,83 @@ body {
     text-align: center;
   }
 
-  /* 선택창(Select) 크기 최적화 */
+  /* [수정] 선택창(Select) 크기 및 가독성 확보 */
   select {
-    height: 32px !important;
-    font-size: 13px !important;
+    height: 36px !important;      /* 높이를 36px로 넉넉하게 키움 */
+    font-size: 13px !important;   /* 글자 크기 확보 */
     background-color: #fff !important;
+    padding-left: 4px !important; /* 내부 여백 */
+    padding-right: 20px !important; /* 화살표 자리 확보 (글자 겹침 방지) */
+    
+    /* 모바일 브라우저 기본 스타일 초기화 (아이폰 등에서 둥글게 나오는 것 방지) */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    
+    /* 커스텀 화살표 추가 (선택사항, 없어도 됨) */
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='gray' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    background-size: 14px;
+    border: 1px solid #ccc !important;
+    border-radius: 4px !important;
   }
 }
+
+/* =========================================
+   7. 📋 주간 스케줄 관리 레이아웃 (반응형)
+   ========================================= */
+.weekly-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* 왼쪽 패널 (패턴 생성) */
+.pattern-maker-panel {
+  flex: 0 0 400px; /* PC: 400px 고정 */
+  max-width: 100%;
+  position: sticky;
+  top: 200px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  z-index: 10;
+}
+
+/* 오른쪽 패널 (직원 배정) */
+.pattern-list-panel {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* 📱 모바일 전용 스타일 (768px 이하) */
+@media (max-width: 768px) {
+  .weekly-container {
+    flex-direction: column; /* 세로 배치로 변경 */
+  }
+
+  .pattern-maker-panel {
+    flex: none;
+    width: 100%; /* 너비 100% 꽉 채움 */
+    position: relative; /* 스티키 해제 (자연스럽게 스크롤) */
+    top: 0;
+    padding: 16px;
+  }
+
+  .pattern-list-panel {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* =========================================
+   8. 🛠️ 유틸리티 클래스 (인라인 표시 제어)
+   ========================================= */
+
 /* 모바일에서만 보이는 요소 (예: '시작', '종료' 라벨) */
 @media (max-width: 768px) {
   .mobile-only-inline {
