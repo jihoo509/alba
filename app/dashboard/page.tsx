@@ -230,19 +230,22 @@ const renderTabContent = () => {
       );
     }
     
-    // ... 나머지 탭(직원, 스케줄, 급여)은 1000px을 넓게 써야 하므로 별도 제한 없이 그대로 둡니다.
-    if (currentTab === 'employees') {
+if (currentTab === 'employees') {
       return (
-        <EmployeeSection
-          currentStoreId={currentStoreId}
-          employees={employees}
-          loadingEmployees={loadingEmployees}
-          onCreateEmployee={handleCreateEmployee}
-          onDeleteEmployee={handleDeleteEmployee}
-          onUpdateEmployee={handleUpdateEmployee}
-        />
+        // 🔴 [수정] 홈 화면과 동일하게 750px로 제한하고 중앙 정렬
+        <div style={{ maxWidth: 750, margin: '0 auto', width: '100%' }}>
+          <EmployeeSection
+            currentStoreId={currentStoreId}
+            employees={employees}
+            loadingEmployees={loadingEmployees}
+            onCreateEmployee={handleCreateEmployee}
+            onDeleteEmployee={handleDeleteEmployee}
+            onUpdateEmployee={handleUpdateEmployee}
+          />
+        </div>
       );
     }
+    
     if (currentTab === 'schedules') {
       return (
         <div>
