@@ -14,8 +14,8 @@ body {
    (계산: 본문 1000px + 광고 300px*2 + 여백 = 약 1620px)
 */
 @media (max-width: 1620px) {
-  .desktop-only {
-    display: none !important;
+  .responsive-banner {
+    display: none !important; /* !important로 강제 숨김 */
   }
 }
 
