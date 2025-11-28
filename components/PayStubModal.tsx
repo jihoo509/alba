@@ -21,10 +21,10 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
   const [useBreakDeduct, setUseBreakDeduct] = useState(true);
 
   useEffect(() => {
-    // data.storeSettingsSnapshot이 없을 수도 있으므로 체크 강화
     if (isOpen && data && data.storeSettingsSnapshot) {
       const s = data.storeSettingsSnapshot;
-      setUseWeekly(s.pay_weekly ?? true); // 값이 없으면 true 기본값
+      // 기본값은 매장 설정 따라감
+      setUseWeekly(s.pay_weekly ?? true);
       setUseNight(s.is_five_plus && s.pay_night);
       setUseOvertime(s.is_five_plus && s.pay_overtime);
       setUseHolidayWork(s.is_five_plus && s.pay_holiday);
@@ -40,53 +40,69 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
   let newHolidayWorkPay = 0;
   let newWeeklyPay = 0;
 
-  const filteredLedger = (data.ledger || []).map((row: any) => { // data.ledger가 없을 경우 대비
+  const filteredLedger = (data.ledger || []).map((row: any) => {
     if (row.type === 'WORK') {
-      // 🔴 [수정 포인트] 값이 undefined일 경우 0 또는 기존 basePay로 대체하여 충돌 방지
-      // 데이터가 아직 업데이트 안 됐다면 row.basePay를 쓰도록 fallback 처리 (|| row.basePay)
-      const valDeducted = row.basePayDeducted !== undefined ? row.basePayDeducted : row.basePay;
-      
-      // 만약 basePayNoDeduct가 없으면, 직접 계산하거나(수정 전 로직) 일단 0으로 둠
-      // 여기서는 안전하게 계산 로직을 복구하거나 0 처리를 합니다.
-      const valNoDeduct = row.basePayNoDeduct !== undefined ? row.basePayNoDeduct : (row.basePay + (row.breakMins ? Math.floor((row.breakMins / 60) * data.wage) : 0));
+      // 1. 기본급 계산 (토글에 따라 선택)
+      // potential 값이 없으면 기존 값으로 fallback
+      const valDeducted = row.basePayDeducted ?? row.basePay;
+      const valNoDeduct = row.basePayNoDeduct ?? row.basePay;
 
-      let rowBase = useBreakDeduct ? valDeducted : valNoDeduct;
+      const rowBase = useBreakDeduct ? valDeducted : valNoDeduct;
       
-      // 혹시라도 rowBase가 여전히 undefined나 NaN이면 0으로 만듦
-      if (!rowBase) rowBase = 0;
-
-      let displayHours = row.hours;
-      if (!useBreakDeduct && row.breakMins > 0) {
-         const originalHours = (Number(row.hours) + (row.breakMins / 60)).toFixed(1);
-         displayHours = `${originalHours}h`;
-      } else if (useBreakDeduct && row.breakMins > 0) {
-         displayHours = `${row.hours}h (휴게-${row.breakMins}분)`;
+      // 2. 시간 표기 텍스트 생성 (여기서만 텍스트를 만듦)
+      let displayHoursStr = '';
+      if (useBreakDeduct) {
+         // 차감 적용 시: 순수 시간 + 텍스트
+         const h = row.hoursDeducted ?? row.hours; // 없으면 기존 hours(문자일수도 있음)
+         displayHoursStr = `${h}h`;
+         if (row.breakMins > 0) {
+             displayHoursStr += ` (휴게-${row.breakMins}분)`;
+         }
+      } else {
+         // 차감 미적용 시: 전체 시간
+         const h = row.hoursNoDeduct ?? row.hours;
+         displayHoursStr = `${h}h`;
       }
 
+      // 3. 수당 계산 (potential 값을 사용하여 토글 켤 때 0원 방지)
+      // potential 값이 없으면(구버전 데이터) 그냥 0 처리
+      const nightAmount = useNight ? (row.potentialNightPay ?? row.nightPay) : 0;
+      const overtimeAmount = useOvertime ? (row.potentialOvertimePay ?? row.overtimePay) : 0;
+      const holidayAmount = useHolidayWork ? (row.potentialHolidayWorkPay ?? row.holidayWorkPay) : 0;
+
       newBasePay += rowBase;
-      if (useNight) newNightPay += (row.nightPay || 0);
-      if (useOvertime) newOvertimePay += (row.overtimePay || 0);
-      if (useHolidayWork) newHolidayWorkPay += (row.holidayWorkPay || 0);
+      newNightPay += nightAmount;
+      newOvertimePay += overtimeAmount;
+      newHolidayWorkPay += holidayAmount;
 
       return { 
         ...row, 
         displayBase: rowBase, 
-        displayHours: displayHours
+        displayHours: displayHoursStr, // 텍스트 중복 해결된 문자열
+        displayNight: nightAmount,
+        displayOvertime: overtimeAmount,
+        displayHoliday: holidayAmount
       };
     } 
+    
     if (row.type === 'WEEKLY') {
-      if (useWeekly) newWeeklyPay += (row.weeklyPay || 0);
-      return row;
+      // 주휴수당 토글 처리
+      const weeklyAmount = useWeekly ? (row.potentialWeeklyPay ?? row.weeklyPay) : 0;
+      newWeeklyPay += weeklyAmount;
+      
+      return {
+          ...row,
+          displayWeekly: weeklyAmount
+      };
     }
     return row;
   });
 
   const currentTotal = newBasePay + newWeeklyPay + newNightPay + newOvertimePay + newHolidayWorkPay;
-  
-  let currentTax = 0;
-  // 세금 계산 시 NaN 방지
   const safeTotal = currentTotal || 0;
 
+  // 세금 계산 로직 (비율은 그대로 유지)
+  let currentTax = 0;
   if (data.type && data.type.includes('four')) {
       const p = Math.floor(safeTotal * 0.045 / 10) * 10;
       const h = Math.floor(safeTotal * 0.03545 / 10) * 10;
@@ -159,7 +175,8 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
                       <tr key={idx} style={{ backgroundColor: '#fff8c4', borderBottom: '1px solid #ddd' }}>
                         <td colSpan={3} style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold', color: '#d68910' }}>⭐ {row.dayLabel} ({row.note})</td>
                         <td style={tdStyle}>-</td>
-                        <td colSpan={3} style={{ ...tdStyle, textAlign: 'right', fontWeight: 'bold', color: '#d68910' }}>{(row.weeklyPay || 0).toLocaleString()}</td>
+                        {/* 🔴 [수정] row.displayWeekly 사용 */}
+                        <td colSpan={3} style={{ ...tdStyle, textAlign: 'right', fontWeight: 'bold', color: '#d68910' }}>{(row.displayWeekly || 0).toLocaleString()}</td>
                       </tr>
                     );
                   }
@@ -168,11 +185,10 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
                       <td style={tdStyle}>{row.date.slice(5)} ({row.dayLabel})</td>
                       <td style={tdStyle}>{row.timeRange}</td>
                       <td style={tdStyle}>{row.displayHours}</td>
-                      {/* 🔴 [오류 수정] toLocaleString 호출 전 undefined 체크 (|| 0) */}
                       <td style={{ ...tdStyle, textAlign: 'right' }}>{(row.displayBase || 0).toLocaleString()}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', color: useNight && row.nightPay > 0 ? 'red' : '#ccc' }}>{useNight ? (row.nightPay || 0).toLocaleString() : 0}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', color: useOvertime && row.overtimePay > 0 ? 'blue' : '#ccc' }}>{useOvertime ? (row.overtimePay || 0).toLocaleString() : 0}</td>
-                      <td style={{ ...tdStyle, textAlign: 'right', color: useHolidayWork && row.holidayWorkPay > 0 ? 'red' : '#ccc', fontWeight: 'bold' }}>{useHolidayWork ? (row.holidayWorkPay || 0).toLocaleString() : 0}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', color: row.displayNight > 0 ? 'red' : '#ccc' }}>{(row.displayNight || 0).toLocaleString()}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', color: row.displayOvertime > 0 ? 'blue' : '#ccc' }}>{(row.displayOvertime || 0).toLocaleString()}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', color: row.displayHoliday > 0 ? 'red' : '#ccc', fontWeight: 'bold' }}>{(row.displayHoliday || 0).toLocaleString()}</td>
                     </tr>
                   );
                 })}
