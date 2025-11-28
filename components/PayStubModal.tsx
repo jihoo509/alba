@@ -17,21 +17,24 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
   const [useWeekly, setUseWeekly] = useState(true);
   const [useNight, setUseNight] = useState(true);
   const [useOvertime, setUseOvertime] = useState(true);
-  const [useHolidayWork, setUseHolidayWork] = useState(true); // ✅ 휴일수당 토글
+  const [useHolidayWork, setUseHolidayWork] = useState(true);
   const [useBreakDeduct, setUseBreakDeduct] = useState(true);
 
   useEffect(() => {
-    if (isOpen) {
-      setUseWeekly(true);
-      setUseNight(true);
-      setUseOvertime(true);
-      setUseHolidayWork(true); // 초기값 true
-      setUseBreakDeduct(true);
+    if (isOpen && data && data.storeSettingsSnapshot) {
+      // ✅ [수정] 매장 설정을 기본값으로 사용
+      const s = data.storeSettingsSnapshot;
+      setUseWeekly(s.pay_weekly);
+      setUseNight(s.is_five_plus && s.pay_night);
+      setUseOvertime(s.is_five_plus && s.pay_overtime);
+      setUseHolidayWork(s.is_five_plus && s.pay_holiday);
+      setUseBreakDeduct(s.auto_deduct_break !== false); // 기본 true
     }
   }, [isOpen, data]);
 
   if (!isOpen || !data) return null;
 
+  // 🔄 실시간 재계산 로직
   let newBasePay = 0;
   let newNightPay = 0;
   let newOvertimePay = 0;
@@ -40,22 +43,28 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
 
   const filteredLedger = data.ledger.map((row: any) => {
     if (row.type === 'WORK') {
-      let rowBase = row.basePay;
+      // 기본급: 휴게 차감 여부에 따라 선택
+      let rowBase = useBreakDeduct ? row.basePayDeducted : row.basePayNoDeduct;
       
+      // 시간 표시: 휴게 차감 시에만 멘트 추가
+      let displayHours = row.hours;
       if (!useBreakDeduct && row.breakMins > 0) {
-        const addedPay = Math.floor((row.breakMins / 60) * data.wage);
-        rowBase += addedPay;
+         // 차감 안 함 -> 시간 늘려서 표시 (예: 3.5 -> 4.0)
+         const originalHours = (Number(row.hours) + (row.breakMins / 60)).toFixed(1);
+         displayHours = `${originalHours}h`;
+      } else if (useBreakDeduct && row.breakMins > 0) {
+         displayHours = `${row.hours}h (휴게-${row.breakMins}분)`;
       }
 
       newBasePay += rowBase;
       if (useNight) newNightPay += row.nightPay;
       if (useOvertime) newOvertimePay += row.overtimePay;
-      if (useHolidayWork) newHolidayWorkPay += row.holidayWorkPay; // ✅ 합산
+      if (useHolidayWork) newHolidayWorkPay += row.holidayWorkPay;
 
       return { 
         ...row, 
         displayBase: rowBase, 
-        displayHours: row.hours + (useBreakDeduct && row.breakMins > 0 ? ` (휴게-${row.breakMins}분)` : '')
+        displayHours: displayHours
       };
     } 
     if (row.type === 'WEEKLY') {
@@ -67,14 +76,22 @@ export default function PayStubModal({ data, isOpen, onClose, year, month }: Pro
 
   const currentTotal = newBasePay + newWeeklyPay + newNightPay + newOvertimePay + newHolidayWorkPay;
   
+  // 세금 재계산
   let currentTax = 0;
   if (data.type.includes('four')) {
-     const originalRate = data.taxDetails.total / data.totalPay; 
-     if (data.totalPay > 0) currentTax = Math.floor(currentTotal * originalRate / 10) * 10;
+     // 4대보험 비율로 재계산 (기존 세금 / 기존 총액 비율 사용은 부정확할 수 있으니 다시 계산)
+     // 간단하게 아까 payroll.ts의 요율 그대로 적용
+     const p = Math.floor(currentTotal * 0.045 / 10) * 10;
+     const h = Math.floor(currentTotal * 0.03545 / 10) * 10;
+     const c = Math.floor(h * 0.1295 / 10) * 10;
+     const e = Math.floor(currentTotal * 0.009 / 10) * 10;
+     currentTax = p + h + c + e;
   } else {
-     currentTax = Math.floor(currentTotal * 0.033 / 10) * 10;
+     // 3.3%
+     const i = Math.floor(currentTotal * 0.03 / 10) * 10;
+     const l = Math.floor(i * 0.1 / 10) * 10;
+     currentTax = i + l;
   }
-  
   const currentFinalPay = currentTotal - currentTax;
 
   const handleSaveImage = async () => {
