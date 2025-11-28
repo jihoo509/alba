@@ -12,13 +12,13 @@ type Props = {
 };
 
 const DAYS = [
-  { num: 1, label: '월' },
-  { num: 2, label: '화' },
-  { num: 3, label: '수' },
-  { num: 4, label: '목' },
-  { num: 5, label: '금' },
-  { num: 6, label: '토' },
-  { num: 0, label: '일' },
+  { num: 1, label: '월요일' }, // 라벨을 좀 더 길게 수정 (선택사항)
+  { num: 2, label: '화요일' },
+  { num: 3, label: '수요일' },
+  { num: 4, label: '목요일' },
+  { num: 5, label: '금요일' },
+  { num: 6, label: '토요일' },
+  { num: 0, label: '일요일' },
 ];
 
 type ShiftPattern = {
@@ -334,18 +334,31 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
               {DAYS.map(day => {
                 const isChecked = selectedDays.includes(day.num);
                 return (
-                  // ✅ [수정] pattern-day-row 클래스 적용 (모바일에서 세로 배치)
+                  // ✅ [수정] pattern-day-row 클래스 적용
                   <div key={day.num} className="pattern-day-row" style={{ opacity: isChecked ? 1 : 0.6 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: 50, cursor: 'pointer' }}>
-                      <input type="checkbox" checked={isChecked} onChange={() => toggleDay(day.num)} style={{ accentColor: 'dodgerblue' }} />
-                      <span style={{ color: isChecked ? 'dodgerblue' : '#888', fontWeight: isChecked ? 'bold' : 'normal' }}>{day.label}</span>
+                    {/* 요일 체크박스 */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', minWidth: '70px' }}>
+                      <input type="checkbox" checked={isChecked} onChange={() => toggleDay(day.num)} style={{ accentColor: 'dodgerblue', transform: 'scale(1.2)' }} />
+                      <span style={{ color: isChecked ? 'dodgerblue' : '#555', fontWeight: isChecked ? 'bold' : 'normal' }}>{day.label}</span>
                     </label>
                     
-                    {/* ✅ [수정] time-input-group 클래스 적용 (모바일에서 select 축소) */}
-                    <div className="time-input-group">
-                        <TimeSelector value={timeRules[day.num]?.start || '10:00'} onChange={(val) => handleTimeChange(day.num, 'start', val)} interval={minuteInterval} />
-                        <span style={{color: '#888'}}>~</span>
-                        <TimeSelector value={timeRules[day.num]?.end || '16:00'} onChange={(val) => handleTimeChange(day.num, 'end', val)} interval={minuteInterval} />
+                    {/* 시간 입력 (모바일에서는 2줄로 나뉨) */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%' }}>
+                        
+                        {/* 1. 시작 시간 */}
+                        <div className="time-row">
+                            <span className="time-label-badge mobile-only-inline" style={{ display: 'none' }}>시작</span>
+                            <TimeSelector value={timeRules[day.num]?.start || '10:00'} onChange={(val) => handleTimeChange(day.num, 'start', val)} interval={minuteInterval} />
+                        </div>
+
+                        {/* PC에서만 보이는 물결 */}
+                        <span style={{ margin: '0 4px', color: '#aaa' }} className="desktop-only-inline">~</span>
+
+                        {/* 2. 종료 시간 */}
+                        <div className="time-row">
+                            <span className="time-label-badge mobile-only-inline" style={{ display: 'none' }}>종료</span>
+                            <TimeSelector value={timeRules[day.num]?.end || '16:00'} onChange={(val) => handleTimeChange(day.num, 'end', val)} interval={minuteInterval} />
+                        </div>
                     </div>
                   </div>
                 );
@@ -365,7 +378,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
           </div>
         </div>
 
-        {/* 오른쪽: 직원 배정 */}
+        {/* 오른쪽: 직원 배정 (기존 코드 유지) */}
         <div className="pattern-list-panel">
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#fff' }}>2. 직원 배정하기</h4>
           

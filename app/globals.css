@@ -195,19 +195,19 @@ body {
   }
 }
 /* =========================================
-   6. 🕒 근무 패턴 생성기 모바일 최적화
+   6. 🕒 근무 패턴 생성기 (카드형 디자인)
    ========================================= */
 
-/* 요일 한 줄 (체크박스 + 시간설정) */
+/* 기본(PC): 한 줄에 배치 */
 .pattern-day-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0;
+  padding: 6px 0;
+  border-bottom: 1px solid #f5f5f5;
 }
 
-/* 시간 설정 그룹 (Start ~ End) */
-.time-input-group {
+.time-row {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -216,34 +216,77 @@ body {
 /* 📱 모바일 전용 (768px 이하) */
 @media (max-width: 768px) {
   
-  /* 1. 요일과 시간 설정을 위아래로 배치 (공간 확보) */
+  /* 요일 한 줄을 '박스'로 만듦 */
   .pattern-day-row {
     flex-direction: column;       /* 세로 배치 */
-    align-items: flex-start;      /* 왼쪽 정렬 */
-    border-bottom: 1px solid #f0f0f0; /* 줄마다 구분선 추가 */
-    padding: 8px 0;
-    margin-bottom: 4px;
+    align-items: stretch;         /* 가로 꽉 채우기 */
+    background-color: #f9f9f9;    /* 회색 배경 */
+    border: 1px solid #eee;
+    border-radius: 8px;           /* 둥근 모서리 */
+    padding: 12px;
+    margin-bottom: 10px;          /* 박스 간 간격 */
   }
 
-  /* 2. 시간 설정 부분을 한 줄에 꽉 차게 배치 */
-  .time-input-group {
+  /* 요일 라벨 (체크박스 부분) */
+  .pattern-day-row label {
+    margin-bottom: 8px;
+    font-weight: bold;
+    font-size: 15px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 6px;
     width: 100%;
-    justify-content: flex-start; /* 왼쪽부터 정렬 */
-    gap: 2px !important;         /* 간격 최소화 */
   }
 
-  /* 3. [핵심] 선택창(Select) 크기 강제 축소 */
-  /* TimeSelector 컴포넌트 내부의 select 태그를 타겟팅 */
-  .time-input-group select {
-    padding: 0 2px !important;   /* 내부 여백 제거 */
-    font-size: 11px !important;  /* 글자 크기 축소 */
-    height: 28px !important;     /* 높이 축소 */
-    min-width: auto !important;  /* 최소 너비 제한 해제 */
+  /* 시간 입력 줄 (시작/종료 각각 한 줄씩) */
+  .time-row {
+    display: flex;
+    justify-content: space-between; /* 라벨과 입력창 양끝 정렬 */
+    align-items: center;
+    margin-bottom: 6px;
+    width: 100%;
   }
   
-  /* 중간 물결(~) 기호 크기 조절 */
-  .time-input-group span {
-    font-size: 10px !important;
-    margin: 0 2px !important;
+  /* 마지막 줄은 마진 제거 */
+  .time-row:last-child {
+    margin-bottom: 0;
+  }
+
+  /* '시작', '종료' 글씨 스타일 */
+  .time-label-badge {
+    font-size: 12px;
+    color: #666;
+    background: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    margin-right: 8px;
+    min-width: 30px;
+    text-align: center;
+  }
+
+  /* 선택창(Select) 크기 최적화 */
+  select {
+    height: 32px !important;
+    font-size: 13px !important;
+    background-color: #fff !important;
+  }
+}
+/* 모바일에서만 보이는 요소 (예: '시작', '종료' 라벨) */
+@media (max-width: 768px) {
+  .mobile-only-inline {
+    display: inline-block !important;
+  }
+  .desktop-only-inline {
+    display: none !important;
+  }
+}
+
+/* PC에서만 보이는 요소 (예: 물결 ~ 기호) */
+@media (min-width: 769px) {
+  .mobile-only-inline {
+    display: none !important;
+  }
+  .desktop-only-inline {
+    display: inline-block !important;
   }
 }
