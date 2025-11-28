@@ -7,7 +7,6 @@ type Props = {
   data: any;
   isOpen: boolean;
   onClose: () => void;
-  // ✅ [추가] 부모에게 변경된 설정을 전달하는 함수
   onSave?: (settings: any) => void; 
   year: number;
   month: number;
@@ -21,7 +20,11 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   const [useOvertime, setUseOvertime] = useState(true);
   const [useHolidayWork, setUseHolidayWork] = useState(true);
   const [useBreakDeduct, setUseBreakDeduct] = useState(true);
-  const [isSaving, setIsSaving] = useState(false); // 저장 로딩 상태
+  
+  // ✅ [추가] 세금 공제 여부 상태
+  const [noTax, setNoTax] = useState(false);
+  
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen && data && data.storeSettingsSnapshot) {
@@ -30,14 +33,14 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
       setUseNight(s.pay_night ?? false);
       setUseOvertime(s.pay_overtime ?? false);
       setUseHolidayWork(s.pay_holiday ?? false);
-      // auto_deduct_break가 undefined면 기본값(true) 혹은 매장설정 따름
       setUseBreakDeduct(s.auto_deduct_break !== false);
+      // ✅ [추가] snapshot에서 값 불러오기
+      setNoTax(s.no_tax_deduction || false);
     }
   }, [isOpen, data]);
 
   if (!isOpen || !data) return null;
 
-  // --- (계산 로직은 이전과 동일, 생략 없이 전체 포함) ---
   let newBasePay = 0;
   let newNightPay = 0;
   let newOvertimePay = 0;
@@ -45,88 +48,100 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   let newWeeklyPay = 0;
 
   const filteredLedger = (data.ledger || []).map((row: any) => {
+    // ... (이 부분은 이전과 완전히 동일하므로 생략, 그대로 두시면 됩니다) ...
+    // ... displayBase, displayHours 등 계산 로직 동일 ...
     if (row.type === 'WORK') {
-      const valDeducted = row.basePayDeducted ?? row.basePay;
-      const valNoDeduct = row.basePayNoDeduct ?? row.basePay;
-      const rowBase = useBreakDeduct ? valDeducted : valNoDeduct;
-      
-      let displayHoursStr = '';
-      if (useBreakDeduct) {
-         const h = row.hoursDeducted ?? row.hours; 
-         displayHoursStr = `${h}h`;
-         if (row.breakMins > 0) displayHoursStr += ` (휴게-${row.breakMins}분)`;
-      } else {
-         const h = row.hoursNoDeduct ?? row.hours;
-         displayHoursStr = `${h}h`;
+        const valDeducted = row.basePayDeducted ?? row.basePay;
+        const valNoDeduct = row.basePayNoDeduct ?? row.basePay;
+        const rowBase = useBreakDeduct ? valDeducted : valNoDeduct;
+        
+        let displayHoursStr = '';
+        if (useBreakDeduct) {
+           const h = row.hoursDeducted ?? row.hours; 
+           displayHoursStr = `${h}h`;
+           if (row.breakMins > 0) displayHoursStr += ` (휴게-${row.breakMins}분)`;
+        } else {
+           const h = row.hoursNoDeduct ?? row.hours;
+           displayHoursStr = `${h}h`;
+        }
+  
+        const nightAmount = useNight ? (row.potentialNightPay ?? row.nightPay) : 0;
+        const overtimeAmount = useOvertime ? (row.potentialOvertimePay ?? row.overtimePay) : 0;
+        const holidayAmount = useHolidayWork ? (row.potentialHolidayWorkPay ?? row.holidayWorkPay) : 0;
+  
+        newBasePay += rowBase;
+        newNightPay += nightAmount;
+        newOvertimePay += overtimeAmount;
+        newHolidayWorkPay += holidayAmount;
+  
+        return { 
+          ...row, 
+          displayBase: rowBase, 
+          displayHours: displayHoursStr,
+          displayNight: nightAmount,
+          displayOvertime: overtimeAmount,
+          displayHoliday: holidayAmount
+        };
+      } 
+      if (row.type === 'WEEKLY') {
+        const weeklyAmount = useWeekly ? (row.potentialWeeklyPay ?? row.weeklyPay) : 0;
+        newWeeklyPay += weeklyAmount;
+        return { ...row, displayWeekly: weeklyAmount };
       }
-
-      const nightAmount = useNight ? (row.potentialNightPay ?? row.nightPay) : 0;
-      const overtimeAmount = useOvertime ? (row.potentialOvertimePay ?? row.overtimePay) : 0;
-      const holidayAmount = useHolidayWork ? (row.potentialHolidayWorkPay ?? row.holidayWorkPay) : 0;
-
-      newBasePay += rowBase;
-      newNightPay += nightAmount;
-      newOvertimePay += overtimeAmount;
-      newHolidayWorkPay += holidayAmount;
-
-      return { 
-        ...row, 
-        displayBase: rowBase, 
-        displayHours: displayHoursStr,
-        displayNight: nightAmount,
-        displayOvertime: overtimeAmount,
-        displayHoliday: holidayAmount
-      };
-    } 
-    if (row.type === 'WEEKLY') {
-      const weeklyAmount = useWeekly ? (row.potentialWeeklyPay ?? row.weeklyPay) : 0;
-      newWeeklyPay += weeklyAmount;
-      return { ...row, displayWeekly: weeklyAmount };
-    }
-    return row;
+      return row;
   });
 
   const currentTotal = newBasePay + newWeeklyPay + newNightPay + newOvertimePay + newHolidayWorkPay;
   const safeTotal = currentTotal || 0;
 
+  // ✅ [수정] 세금 계산 로직
   let currentTax = 0;
-  if (data.type && data.type.includes('four')) {
-      const p = Math.floor(safeTotal * 0.045 / 10) * 10;
-      const h = Math.floor(safeTotal * 0.03545 / 10) * 10;
-      const c = Math.floor(h * 0.1295 / 10) * 10;
-      const e = Math.floor(safeTotal * 0.009 / 10) * 10;
-      currentTax = p + h + c + e;
+  
+  if (noTax) {
+      // 공제 안 함 체크 시 -> 0원
+      currentTax = 0;
   } else {
-      const i = Math.floor(safeTotal * 0.03 / 10) * 10;
-      const l = Math.floor(i * 0.1 / 10) * 10;
-      currentTax = i + l;
+      // 기존 계산 로직
+      if (data.type && data.type.includes('four')) {
+          const p = Math.floor(safeTotal * 0.045 / 10) * 10;
+          const h = Math.floor(safeTotal * 0.03545 / 10) * 10;
+          const c = Math.floor(h * 0.1295 / 10) * 10;
+          const e = Math.floor(safeTotal * 0.009 / 10) * 10;
+          currentTax = p + h + c + e;
+      } else {
+          const i = Math.floor(safeTotal * 0.03 / 10) * 10;
+          const l = Math.floor(i * 0.1 / 10) * 10;
+          currentTax = i + l;
+      }
   }
+
   const currentFinalPay = safeTotal - currentTax;
 
-  // ✅ [추가] 설정 저장 핸들러
   const handleSaveSettings = async () => {
     if (!onSave) return;
     setIsSaving(true);
     try {
-      // 부모에게 현재 체크박스 상태들을 객체로 전달
       await onSave({
-        employee_id: data.empId, // data에 empId가 있다고 가정 (없으면 data.details 등 확인)
+        employee_id: data.empId, 
         pay_weekly: useWeekly,
         pay_night: useNight,
         pay_overtime: useOvertime,
         pay_holiday: useHolidayWork,
-        auto_deduct_break: useBreakDeduct
+        auto_deduct_break: useBreakDeduct,
+        // ✅ [추가] 저장 시 값 포함
+        no_tax_deduction: noTax
       });
-      alert('설정이 저장되었습니다. 급여 대장에 반영됩니다.');
-      onClose(); // 저장 후 닫기 (선택사항)
+      alert('설정이 저장되었습니다.');
+      onClose(); 
     } catch (e) {
-      alert('저장 중 오류가 발생했습니다.');
+      alert('오류 발생');
       console.error(e);
     } finally {
       setIsSaving(false);
     }
   };
 
+  // ... (handleSaveImage 등 동일) ...
   const handleSaveImage = async () => {
     if (printRef.current) {
       const canvas = await html2canvas(printRef.current);
@@ -152,13 +167,17 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} /> 연장수당</label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#ff6b6b', fontWeight: 'bold' }}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} /> 휴일(특근)수당</label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'orange' }}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게시간 차감</label>
+            
+            {/* ✅ [추가] 모달 내 세금 공제 안 함 버튼 */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'crimson', fontWeight: 'bold' }}>
+                <input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함(실수령 100%)
+            </label>
           </div>
         </div>
 
         <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff' }}>
-          {/* ... (명세서 UI 부분은 동일하므로 생략, 그대로 유지하세요) ... */}
           <div ref={printRef} style={{ padding: 30, backgroundColor: '#fff', color: '#000', minHeight: 400 }}>
-             {/* ... 기존 내용 ... */}
+             {/* ... (명세서 내용은 이전과 동일하게 렌더링) ... */}
              <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24 }}>
                {year}년 {month}월 급여 명세서
              </h2>
@@ -166,9 +185,9 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                 <span>성명: <strong>{data.name}</strong></span>
                 <span>지급일: {year}.{month}.{new Date().getDate()}</span>
              </div>
-             
-             {/* 테이블 및 계산 결과 표시 영역 (기존 코드 유지) */}
+
              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25 }}>
+                {/* ... (테이블 내용 동일, 생략) ... */}
                 <thead>
                    <tr style={{ backgroundColor: '#f0f0f0', borderTop: '2px solid #000', borderBottom: '1px solid #000' }}>
                       <th style={thStyle}>날짜</th>
@@ -207,7 +226,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                 </tbody>
              </table>
 
-             {/* 하단 합계 영역 */}
              <div style={{ border: '2px solid #000', padding: 20, borderRadius: 4 }}>
                   <div style={rowStyle}><span>기본급 (시급 {data.wage.toLocaleString()}원)</span> <span>{newBasePay.toLocaleString()}원</span></div>
                   <div style={rowStyle}><span style={{color: useWeekly?'#000':'#ccc'}}>+ 주휴수당</span> <span style={{color: useWeekly?'#000':'#ccc'}}>{newWeeklyPay.toLocaleString()}원</span></div>
@@ -217,45 +235,53 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                   
                   <hr style={{ margin: '12px 0', borderTop: '1px dashed #aaa' }} />
                   <div style={rowStyle}><span style={{fontWeight: 'bold'}}>세전 총액</span> <span style={{fontWeight: 'bold'}}>{currentTotal.toLocaleString()}원</span></div>
-                  <div style={{ ...rowStyle, color: 'red' }}><span>- 공제 (세금 등)</span> <span>{currentTax.toLocaleString()}원</span></div>
+                  
+                  {/* ✅ [UI] 공제 안 함 체크 시 텍스트 변경 또는 0원 표시 */}
+                  <div style={{ ...rowStyle, color: 'red' }}>
+                    <span>- 공제 ({noTax ? '공제 안 함' : '세금 등'})</span> 
+                    <span>{currentTax.toLocaleString()}원</span>
+                  </div>
+                  
                   <hr style={{ margin: '12px 0', borderTop: '2px solid #000' }} />
                   <div style={{ ...rowStyle, fontSize: 20, fontWeight: 'bold', color: 'blue', marginTop: 10 }}>
                     <span>실수령액</span> <span>{currentFinalPay.toLocaleString()}원</span>
                   </div>
              </div>
-             
-             {/* 공제 내역 상세 */}
+
              <div style={{ marginTop: 25, borderTop: '1px solid #eee', paddingTop: 15 }}>
                 <p style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 8, color: '#333' }}>[참고] 공제 내역 상세 (원단위 절사)</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px', fontSize: 11, color: '#666' }}>
-                   {data.type && data.type.includes('four') ? (
-                     <>
-                       <div style={{display:'flex', justifyContent:'space-between'}}><span>국민연금</span> <span>{(Math.floor(safeTotal * 0.045 / 10) * 10).toLocaleString()}원</span></div>
-                       <div style={{display:'flex', justifyContent:'space-between'}}><span>건강보험</span> <span>{(Math.floor(safeTotal * 0.03545 / 10) * 10).toLocaleString()}원</span></div>
-                       <div style={{display:'flex', justifyContent:'space-between'}}><span>장기요양</span> <span>{(Math.floor((safeTotal * 0.03545) * 0.1295 / 10) * 10).toLocaleString()}원</span></div>
-                       <div style={{display:'flex', justifyContent:'space-between'}}><span>고용보험</span> <span>{(Math.floor(safeTotal * 0.009 / 10) * 10).toLocaleString()}원</span></div>
-                     </>
-                   ) : (
-                     <>
-                       <div style={{display:'flex', justifyContent:'space-between'}}><span>소득세(3%)</span> <span>{(Math.floor(safeTotal * 0.03 / 10) * 10).toLocaleString()}원</span></div>
-                       <div style={{display:'flex', justifyContent:'space-between'}}><span>지방세(0.3%)</span> <span>{(Math.floor(safeTotal * 0.003 / 10) * 10).toLocaleString()}원</span></div>
-                     </>
-                   )}
-                </div>
+                {/* ✅ [UI] 공제 안 함 체크 시 상세 내역도 0원으로 보여주거나 가림 */}
+                {noTax ? (
+                    <p style={{ fontSize: 11, color: '#999' }}>* '공제 안 함' 설정이 적용되어 세금이 계산되지 않았습니다.</p>
+                ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px', fontSize: 11, color: '#666' }}>
+                       {data.type && data.type.includes('four') ? (
+                         <>
+                           <div style={{display:'flex', justifyContent:'space-between'}}><span>국민연금</span> <span>{(Math.floor(safeTotal * 0.045 / 10) * 10).toLocaleString()}원</span></div>
+                           <div style={{display:'flex', justifyContent:'space-between'}}><span>건강보험</span> <span>{(Math.floor(safeTotal * 0.03545 / 10) * 10).toLocaleString()}원</span></div>
+                           <div style={{display:'flex', justifyContent:'space-between'}}><span>장기요양</span> <span>{(Math.floor((safeTotal * 0.03545) * 0.1295 / 10) * 10).toLocaleString()}원</span></div>
+                           <div style={{display:'flex', justifyContent:'space-between'}}><span>고용보험</span> <span>{(Math.floor(safeTotal * 0.009 / 10) * 10).toLocaleString()}원</span></div>
+                         </>
+                       ) : (
+                         <>
+                           <div style={{display:'flex', justifyContent:'space-between'}}><span>소득세(3%)</span> <span>{(Math.floor(safeTotal * 0.03 / 10) * 10).toLocaleString()}원</span></div>
+                           <div style={{display:'flex', justifyContent:'space-between'}}><span>지방세(0.3%)</span> <span>{(Math.floor(safeTotal * 0.003 / 10) * 10).toLocaleString()}원</span></div>
+                         </>
+                       )}
+                    </div>
+                )}
              </div>
+
           </div>
         </div>
 
         <div style={{ padding: 16, backgroundColor: '#333', borderTop: '1px solid #444', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} style={{ padding: '10px 20px', background: '#555', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>닫기</button>
-          
-          {/* ✅ [추가] 설정 저장 버튼 */}
           {onSave && (
             <button onClick={handleSaveSettings} disabled={isSaving} style={{ padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
               {isSaving ? '저장 중...' : '설정 저장'}
             </button>
           )}
-
           <button onClick={handleSaveImage} style={{ padding: '10px 20px', background: 'seagreen', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>이미지 저장</button>
         </div>
       </div>

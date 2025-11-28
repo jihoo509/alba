@@ -18,6 +18,9 @@ export default function StoreSettings({ storeId, onUpdate }: Props) {
   const [payHoliday, setPayHoliday] = useState(false);
   const [payOvertime, setPayOvertime] = useState(false);
   const [autoDeductBreak, setAutoDeductBreak] = useState(true);
+  
+  // ✅ [추가] 세금 공제 안 함 상태
+  const [noTaxDeduction, setNoTaxDeduction] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -34,6 +37,8 @@ export default function StoreSettings({ storeId, onUpdate }: Props) {
         setPayHoliday(data.pay_holiday);
         setPayOvertime(data.pay_overtime);
         setAutoDeductBreak(data.auto_deduct_break ?? true);
+        // ✅ [추가] DB에서 값 로드
+        setNoTaxDeduction(data.no_tax_deduction || false);
       }
     };
     loadSettings();
@@ -50,6 +55,8 @@ export default function StoreSettings({ storeId, onUpdate }: Props) {
         pay_holiday: payHoliday,
         pay_overtime: payOvertime,
         auto_deduct_break: autoDeductBreak,
+        // ✅ [추가] DB 저장 시 포함
+        no_tax_deduction: noTaxDeduction,
       })
       .eq('id', storeId);
 
@@ -77,9 +84,6 @@ export default function StoreSettings({ storeId, onUpdate }: Props) {
   };
 
   return (
-    // ✅ [수정] 배경 흰색, 테두리 연하게, 그림자 추가 (카드 스타일)
-    // 만약 상위 컴포넌트(PayrollSection)에서 이미 카드 박스로 감쌌다면 border/boxShadow는 제거해도 됩니다.
-    // 여기서는 독립적으로 예쁘게 보이도록 설정했습니다.
     <div style={{ 
         width: '100%',
         padding: 24, 
@@ -91,10 +95,8 @@ export default function StoreSettings({ storeId, onUpdate }: Props) {
     }}>
       <h3 style={{ marginTop: 0, marginBottom: 16, color: '#000' }}>매장 급여/수당 설정</h3>
       
-      {/* 구분선 색상 변경 */}
       <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px dashed #ddd' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 'bold', cursor: 'pointer', color: '#000' }}>
-          {/* 체크박스 크기 조정 */}
           <input type="checkbox" checked={isFivePlus} onChange={handleFivePlusChange} style={{ width: 18, height: 18, cursor: 'pointer' }} />
           5인 이상 사업장입니다.
         </label>
@@ -124,12 +126,23 @@ export default function StoreSettings({ storeId, onUpdate }: Props) {
           <input type="checkbox" checked={payOvertime} onChange={(e) => setPayOvertime(e.target.checked)} style={checkboxStyle} />
           연장수당 지급 (1.5배)
         </label>
+
+        {/* ✅ [추가] 세금 공제 안 함 옵션 */}
+        <label style={{ ...checkboxLabelStyle, color: 'crimson', fontWeight: 'bold' }}>
+          <input 
+            type="checkbox" 
+            checked={noTaxDeduction} 
+            onChange={(e) => setNoTaxDeduction(e.target.checked)} 
+            style={checkboxStyle} 
+          />
+          세금(4대보험/소득세) 공제 안 함
+        </label>
       </div>
 
       <div style={{ marginTop: 24, textAlign: 'right' }}>
         <button onClick={handleSave} disabled={loading} style={{ 
             padding: '10px 24px', 
-            background: 'dodgerblue', // 버튼 색상 통일 (royalblue -> dodgerblue)
+            background: 'dodgerblue',
             color: 'white', 
             border: 'none', 
             borderRadius: 4, 
@@ -145,17 +158,17 @@ export default function StoreSettings({ storeId, onUpdate }: Props) {
   );
 }
 
-// ✅ 스타일 분리 (재사용 및 가독성)
+// 스타일
 const checkboxLabelStyle = {
     display: 'flex', 
     alignItems: 'center', 
     gap: 8, 
     cursor: 'pointer',
-    color: '#333', // 글자색 검정
+    color: '#333',
     fontSize: '14px'
 };
 
 const checkboxStyle = {
-    transform: 'scale(1.1)', // 체크박스 살짝 키움
+    transform: 'scale(1.1)', 
     cursor: 'pointer'
 };
