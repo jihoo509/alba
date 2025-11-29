@@ -10,463 +10,140 @@ body {
 /* =========================================
    2. 🖥️ 반응형 숨김 처리 (광고 배너 등)
    ========================================= */
-
-/* 화면 너비가 1620px 이하일 때 (노트북 등) -> 광고 숨김 */
 @media (max-width: 1620px) {
-  .responsive-banner {
-    display: none !important;
-  }
-  .desktop-only {
-    display: none !important;
-  }
+  .responsive-banner { display: none !important; }
+  .desktop-only { display: none !important; }
 }
-
-/* 화면 너비가 769px 이상일 때 (PC) -> 모바일 전용 요소 숨김 */
 @media (min-width: 769px) {
-  .mobile-only {
-    display: none !important;
-  }
+  .mobile-only { display: none !important; }
 }
 
 /* =========================================
    3. 📱 모바일 전용 스타일 (화면 768px 이하)
    ========================================= */
 @media (max-width: 768px) {
-  
-  html, body {
-    font-size: 14px;
-  }
-
-  /* 본문 상단 여백 */
-  .mobile-top-padding {
-    padding-top: 135px !important;
-  }
-
-  /* 헤더 관련 */
-  .mobile-header-padding {
-    padding: 10px 16px !important;
-  }
-  .mobile-logo-text {
-    font-size: 20px !important;
-  }
-  .mobile-tab-btn {
-    font-size: 13px !important;
-    padding: 6px 12px !important;
-  }
-  .mobile-tab-container {
-    gap: 10px !important;
-    margin-top: 8px !important;
-    padding-bottom: 8px !important;
-  }
-
-  /* [스케줄 달력] 모바일용 버튼 그룹 */
-  .calendar-header-mobile {
-    flex-direction: column;
-    gap: 12px;
-    align-items: stretch !important;
-  }
-  
-  /* 버튼들 크기 작게 */
-  .mobile-sm-btn {
-    padding: 6px 10px !important;
-    font-size: 11px !important;
-    height: 32px !important;
-    line-height: 1 !important;
-    white-space: nowrap;
-  }
+  html, body { font-size: 14px; }
+  .mobile-top-padding { padding-top: 135px !important; }
+  .mobile-header-padding { padding: 10px 16px !important; }
+  .mobile-logo-text { font-size: 20px !important; }
+  .mobile-tab-btn { font-size: 13px !important; padding: 6px 12px !important; }
+  .mobile-tab-container { gap: 10px !important; margin-top: 8px !important; padding-bottom: 8px !important; }
+  .calendar-header-mobile { flex-direction: column; gap: 12px; align-items: stretch !important; }
+  .mobile-sm-btn { padding: 6px 10px !important; font-size: 11px !important; height: 32px !important; line-height: 1 !important; white-space: nowrap; }
 }
 
 /* =========================================
    4. 📊 테이블 가로 스크롤
    ========================================= */
-.table-wrapper {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 10px;
-  border-right: 1px solid #ddd; 
-}
+.table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 10px; border-right: 1px solid #ddd; }
+.table-wrapper table { min-width: 800px; border-right: none; }
 
-.table-wrapper table {
-  min-width: 800px; 
-  border-right: none;
+/* =========================================
+   5. 🚀 헤더 동작 분리
+   ========================================= */
+.header-wrapper { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/dashboard-bg.jpg'); background-size: cover; background-position: top center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.15); }
+.content-spacer { padding-top: 190px; }
+
+@media (max-width: 768px) {
+  .header-wrapper { position: static !important; box-shadow: none !important; border-bottom: none !important; }
+  .mobile-sticky-nav { position: sticky; top: 0; z-index: 100; background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/dashboard-bg.jpg'); background-size: cover; background-position: top center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .content-spacer { padding-top: 0 !important; }
 }
 
 /* =========================================
-   5. 🚀 헤더 동작 분리 (PC: 고정 / 모바일: 메뉴만 고정)
+   6. 🕒 근무 패턴 생성기
    ========================================= */
+.pattern-day-row { display: flex; align-items: center; gap: 16px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+.day-label { display: flex; align-items: center; gap: 8px; min-width: 80px; cursor: pointer; font-size: 14px; }
+.time-input-area { flex: 1; display: flex; align-items: center; gap: 8px; }
+.time-row { display: flex; align-items: center; gap: 4px; }
 
-/* [PC용] 헤더 전체를 화면에 박제 (기본) */
-.header-wrapper {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 100;
-  background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/dashboard-bg.jpg');
-  background-size: cover;
-  background-position: top center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-  border-bottom: 1px solid rgba(255,255,255,0.15);
-}
-
-.content-spacer {
-  padding-top: 190px; 
-}
-
-/* 📱 [모바일용] 동작 변경 (768px 이하) */
 @media (max-width: 768px) {
-  
-  /* 1. 헤더 고정 해제 */
-  .header-wrapper {
-    position: static !important;
-    box-shadow: none !important;
-    border-bottom: none !important;
-  }
-
-  /* 2. 메뉴(탭) 부분만 Sticky */
-  .mobile-sticky-nav {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/dashboard-bg.jpg');
-    background-size: cover;
-    background-position: top center; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-  }
-
-  /* 3. 콘텐츠 여백 제거 */
-  .content-spacer {
-    padding-top: 0 !important;
-  }
-}
-
-/* =========================================
-   6. 🕒 근무 패턴 생성기 (반응형 레이아웃)
-   ========================================= */
-
-/* 🖥️ PC 기본 스타일 (가로 배치) */
-.pattern-day-row {
-  display: flex;
-  align-items: center;
-  gap: 16px; 
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.day-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 80px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.time-input-area {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.time-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* 📱 모바일 전용 스타일 (768px 이하) */
-@media (max-width: 768px) {
-  
-  .pattern-day-row {
-    flex-direction: column;       /* 세로 배치 */
-    align-items: stretch;         /* 가로 꽉 채우기 */
-    gap: 12px;
-    background-color: #f9f9f9;    
-    border: 1px solid #eee;
-    border-radius: 12px;          
-    padding: 16px;
-    margin-bottom: 12px;          
-    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-  }
-
-  .day-label {
-    width: 100%;
-    font-size: 16px;
-    font-weight: bold;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 8px;
-    margin-bottom: 4px;
-    color: #333;
-  }
-
-  .time-input-area {
-    flex-direction: column;
-    gap: 12px;
-    width: 100%;
-  }
-
-  .time-row {
-    display: flex;
-    justify-content: space-between; 
-    align-items: center;
-    width: 100%;
-  }
-
-  .time-label-badge {
-    font-size: 13px;
-    color: #555;
-    background: #fff;
-    padding: 4px 10px;
-    border-radius: 6px;
-    border: 1px solid #ddd;
-    font-weight: 500;
-    min-width: 40px;
-    text-align: center;
-  }
-
-  /* 선택창 스타일 강제 지정 */
-  select {
-    height: 40px !important;
-    font-size: 15px !important;
-    color: #333 !important;
-    background-color: #fff !important;
-    padding-left: 8px !important;
-    border: 1px solid #ccc !important;
-    border-radius: 6px !important;
-    -webkit-appearance: none;
-  }
+  .pattern-day-row { flex-direction: column; align-items: stretch; gap: 12px; background-color: #f9f9f9; border: 1px solid #eee; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
+  .day-label { width: 100%; font-size: 16px; font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 4px; color: #333; }
+  .time-input-area { flex-direction: column; gap: 12px; width: 100%; }
+  .time-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+  .time-label-badge { font-size: 13px; color: #555; background: #fff; padding: 4px 10px; border-radius: 6px; border: 1px solid #ddd; font-weight: 500; min-width: 40px; text-align: center; }
+  select { height: 40px !important; font-size: 15px !important; color: #333 !important; background-color: #fff !important; padding-left: 8px !important; border: 1px solid #ccc !important; border-radius: 6px !important; -webkit-appearance: none; }
 }
 
 /* =========================================
    7. 📋 주간 스케줄 관리 레이아웃 (반응형)
    ========================================= */
 
-/* 자동 생성기 카드 스타일 */
+/* ✅ PC: 중앙 정렬 및 적당한 간격 */
 .auto-generator-card {
-  margin-top: 10px;
-  padding: 24px;
-  background-color: #fff;
-  border-radius: 12px;
-  border: 1px solid #ddd;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
+  margin-top: 10px; padding: 24px; background-color: #fff; border-radius: 12px; border: 1px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  display: flex; justify-content: center; /* 중앙 정렬 */
+  align-items: center; flex-wrap: wrap; gap: 32px; /* 간격 넓게 */
 }
 
-.auto-gen-inputs {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+.auto-gen-inputs { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.auto-gen-btn { padding: 10px 24px; background-color: #27ae60; color: #fff; border: none; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; }
 
-.auto-gen-btn {
-  padding: 10px 24px;
-  background-color: #27ae60;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  font-size: 15px;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  white-space: nowrap;
-}
+.weekly-container { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.pattern-maker-panel { flex: 0 0 400px; max-width: 100%; position: sticky; top: 200px; background-color: #ffffff; border-radius: 12px; padding: 24px; border: 1px solid #ddd; box-shadow: 0 4px 12px rgba(0,0,0,0.05); z-index: 10; box-sizing: border-box; }
+.pattern-list-panel { flex: 1; min-width: 300px; }
 
-.weekly-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-/* 왼쪽 패널 (패턴 생성) */
-.pattern-maker-panel {
-  flex: 0 0 400px;
-  max-width: 100%;
-  position: sticky;
-  top: 200px;
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #ddd;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  z-index: 10;
-  box-sizing: border-box; 
-}
-
-/* 오른쪽 패널 (직원 배정) */
-.pattern-list-panel {
-  flex: 1;
-  min-width: 300px;
-}
-
-/* 📱 모바일 전용 스타일 (768px 이하) */
+/* 📱 모바일 */
 @media (max-width: 768px) {
-  .weekly-container {
-    flex-direction: column;
-  }
+  .weekly-container { flex-direction: column; }
+  .pattern-maker-panel { flex: none; width: 100% !important; max-width: 100vw; position: relative; top: 0; padding: 16px; box-sizing: border-box; }
+  .pattern-list-panel { width: 100%; min-width: 0; }
 
-  .pattern-maker-panel {
-    flex: none;
-    width: 100% !important;
-    max-width: 100vw;
-    position: relative;       
-    top: 0;
-    padding: 16px;
-    box-sizing: border-box;
+  /* ✅ 모바일 날짜 선택기 튀어나옴 해결 */
+  .auto-generator-card { 
+    flex-direction: column; align-items: stretch; gap: 16px; padding: 16px 12px; /* 패딩 축소 */
   }
-
-  .pattern-list-panel {
-    width: 100%;
-    min-width: 0;
+  .auto-gen-inputs { 
+    flex-direction: column; align-items: stretch; width: 100%; gap: 10px; 
   }
-
-  .auto-generator-card {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-    padding: 16px;
+  .auto-gen-inputs > div { 
+    width: 100%; justify-content: space-between; gap: 4px; /* 간격 축소 */
   }
-  
-  .auto-gen-inputs {
-    flex-direction: column;
-    align-items: flex-start;
-    width: 100%;
+  /* 날짜 박스 강제 축소 (튀어나옴 방지) */
+  .auto-gen-inputs > div > div {
+    min-width: 0 !important; flex: 1;
   }
-  
-  .auto-gen-inputs > div {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .auto-gen-btn {
-    width: 100%;
-    padding: 12px 0;
-  }
+  .auto-gen-btn { width: 100%; padding: 12px 0; }
 }
 
 /* =========================================
-   8. 🛠️ 유틸리티 클래스 (인라인 표시 제어)
+   8. 🛠️ 유틸리티 클래스
    ========================================= */
-
 @media (max-width: 768px) {
-  .mobile-only-inline {
-    display: inline-block !important;
-  }
-  .desktop-only-inline {
-    display: none !important;
-  }
+  .mobile-only-inline { display: inline-block !important; }
+  .desktop-only-inline { display: none !important; }
 }
-
 @media (min-width: 769px) {
-  .mobile-only-inline {
-    display: none !important;
-  }
-  .desktop-only-inline {
-    display: inline-block !important;
-  }
+  .mobile-only-inline { display: none !important; }
+  .desktop-only-inline { display: inline-block !important; }
 }
 
 /* =========================================
-   9. 📱 모바일 캘린더 & 텍스트 최적화 (핵심)
+   9. 📱 모바일 캘린더 & 텍스트 최적화
    ========================================= */
-
 @media (max-width: 768px) {
+  .table-wrapper { width: 100% !important; padding: 0 !important; overflow-x: hidden !important; margin: 0 !important; border: none !important; }
+  .table-wrapper table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; }
+  .table-wrapper td > div:first-child { font-size: 10px !important; margin-bottom: 2px !important; font-weight: bold; }
+  .schedule-box { text-align: center; padding: 4px 2px !important; margin: 1px 0 !important; border-radius: 3px !important; }
+  .schedule-emp-name { font-size: 11px !important; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   
-  /* 1. 캘린더 강제 맞춤 (스크롤 제거, 100% 핏) */
-  .table-wrapper {
-    width: 100% !important;
-    padding: 0 !important;
-    overflow-x: hidden !important;
-    margin: 0 !important;
-    border: none !important;
-  }
-  .table-wrapper table {
-    width: 100% !important;
-    min-width: 0 !important;
-    table-layout: fixed !important;
-  }
+  /* 🚫 모바일: 시간 숨김 */
+  .schedule-time { display: none; }
+  /* ✅ 모바일: 패턴 이름 보이기 */
+  .schedule-pattern-only { display: block !important; font-size: 10px; margin-top: 1px; white-space: nowrap; overflow: hidden; }
 
-  /* 2. 날짜 숫자 스타일 */
-  .table-wrapper td > div:first-child {
-    font-size: 10px !important;
-    margin-bottom: 2px !important;
-    font-weight: bold;
-  }
+  /* 📷 이미지 저장 시 PC 모드 */
+  .force-pc-view .schedule-time { display: block !important; font-size: 10px; margin-top: 2px; }
+  .force-pc-view .schedule-box { text-align: left !important; }
+  .force-pc-view .schedule-pattern-only { display: none !important; }
 
-  /* 3. 스케줄 박스 (이름만 표시) */
-  .schedule-box {
-    text-align: center; /* 이름 가운데 정렬 */
-    padding: 4px 2px !important;
-    margin: 1px 0 !important;
-    border-radius: 3px !important;
-  }
-
-  .schedule-emp-name {
-    font-size: 11px !important;
-    font-weight: bold;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis; /* 길면 ... 처리 */
-  }
-
-  /* 🚫 [중요] 모바일에서는 '시간'을 아예 숨김! (공간 확보) */
-  .schedule-time {
-    display: none; 
-  }
-
-  /* ✅ 모바일: 패턴 이름 (오픈, 마감 등) 보이기 */
-  .schedule-pattern-only {
-    display: block !important;
-    font-size: 10px;
-    margin-top: 1px;
-    white-space: nowrap;
-    overflow: hidden;
-  }
-
-  /* 📷 [예외] "이미지 저장" 중일 때는 PC 스타일 강제 적용 */
-  .force-pc-view .schedule-time {
-    display: block !important;
-    font-size: 10px;
-    margin-top: 2px;
-  }
-  .force-pc-view .schedule-box {
-    text-align: left !important;
-  }
-  .force-pc-view .schedule-pattern-only {
-    display: none !important;
-  }
-
-  /* 4. 자동 생성 날짜 '일' 줄바꿈 방지 */
-  .auto-gen-inputs {
-    flex-wrap: nowrap !important;
-    width: 100%;
-  }
-  .auto-gen-inputs > div {
-    flex: 1;
-  }
-  
-  /* 5. 안내 문구 줄바꿈 */
-  .instruction-text br {
-    display: block !important;
-    content: "";
-    margin-top: 4px;
-  }
+  .instruction-text br { display: block !important; content: ""; margin-top: 4px; }
 }
 
-/* 🖥️ PC에서는 시간 항상 보임 */
 @media (min-width: 769px) {
-  .schedule-time {
-    display: block;
-    font-size: 11px;
-    opacity: 0.9;
-  }
-  .schedule-pattern-only {
-    display: none;
-  }
+  .schedule-time { display: block; font-size: 11px; opacity: 0.9; }
+  .schedule-pattern-only { display: none; }
 }
