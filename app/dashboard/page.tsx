@@ -195,8 +195,17 @@ function DashboardContent() {
 
     if (currentTab === 'home') {
       return (
-        <div style={{ maxWidth: 750, margin: '0 auto', width: '100%' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+          {/* ✅ [수정] 반응형 그리드 & 높이 자동 조절 */}
+          {/* PC: 2열, 모바일: 1열 / align-items: start (내용물만큼만 높이 차지) */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+            gap: 24, 
+            alignItems: 'start' // ✅ 핵심: 내용물 높이에 맞춤 (늘어지지 않음)
+          }}>
+            
+            {/* 카드 1: 오늘 근무자 */}
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #eee', paddingBottom: 8, color: '#000' }}>
                 📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
@@ -219,10 +228,33 @@ function DashboardContent() {
                 </ul>
               )}
             </div>
+
+            {/* 카드 2: 급여 지출 */}
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#555' }}>💰 11월 예상 급여 지출 (세전)</h3>
               <div style={{ fontSize: 32, fontWeight: 'bold', color: '#000' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
             </div>
+
+<div style={cardStyle}>
+  <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#e67e22' }}>💡 사장님 필수 상식</h3>
+  <p style={{ color: '#333', lineHeight: '1.6' }}>
+    <strong>주휴수당이란?</strong><br/>
+    1주일에 15시간 이상 근무하고 개근한 근로자에게는 하루치 임금을 추가로 지급해야 합니다.
+  </p>
+</div>
+
+            {/* ✅ [추가] 꿀팁/법령 카드 예시 (사장님을 위한 공간) */}
+            {/* 아래 div 덩어리를 복사해서 내용만 바꾸면 계속 추가됩니다! */}
+            {/* <div style={cardStyle}>
+              <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#e67e22' }}>💡 사장님 필수 상식</h3>
+              <p style={{ color: '#333', lineHeight: '1.6' }}>
+                <strong>해고 예고 제도:</strong><br/>
+                근로자를 해고하려면 적어도 30일 전에 예고해야 하며, 30일 전에 예고하지 않았을 경우 30일분 이상의 통상임금(해고예고수당)을 지급해야 합니다.
+                <br/><span style={{ fontSize: 12, color: '#999' }}>(단, 근로기간 3개월 미만 등 예외 있음)</span>
+              </p>
+            </div>
+            */}
+
           </div>
         </div>
       );
@@ -260,14 +292,10 @@ function DashboardContent() {
   return (
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
       
-      {/* 🔴 [헤더 영역] 클래스 적용 (.header-wrapper) */}
+      {/* 🔴 [헤더 영역] */}
       <div className="header-wrapper">
-        <div style={{ 
-          width: '100%', maxWidth: '750px', margin: '0 auto', 
-          boxSizing: 'border-box' 
-        }}>
+        <div style={{ width: '100%', maxWidth: '750px', margin: '0 auto', boxSizing: 'border-box' }}>
           
-          {/* 상단 로고 & 유저바 & 매장선택 (모바일에서는 스크롤과 함께 사라짐) */}
           <div style={{ padding: '12px 20px 0 20px' }}>
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <h1 className="mobile-logo-text" style={{ fontSize: 28, color: '#fff', fontWeight: '900', letterSpacing: '-1px', margin: 0, fontFamily: 'sans-serif' }}>
@@ -288,13 +316,12 @@ function DashboardContent() {
             />
           </div>
 
-          {/* 🟢 [메뉴 탭] 모바일에서 여기에만 'Sticky'가 적용됨 (.mobile-sticky-nav) */}
+          {/* 🟢 [메뉴 탭] */}
           {stores.length > 0 && currentStoreId && (
             <div className="mobile-sticky-nav">
               <div className="mobile-tab-container" style={{ 
                 display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 15, 
-                padding: '12px 20px', // 패딩을 여기로 이동
-                maxWidth: '750px', margin: '0 auto' // 중앙 정렬 유지
+                padding: '12px 20px', maxWidth: '750px', margin: '0 auto' 
               }}>
                 {[
                   { key: 'home', label: '🏠 홈' },
@@ -323,7 +350,7 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* 🔵 [콘텐츠 영역] 클래스 적용 (.content-spacer) */}
+      {/* 🔵 [콘텐츠 영역] */}
       <div 
         className="content-spacer"
         style={{ 
