@@ -86,13 +86,17 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // ✅ [수정] 이미지 저장 (PC 버전으로 캡처)
+  // ✅ [이미지 저장] PC 버전 스타일 강제 적용 후 캡처
   const handleDownloadImage = async () => {
     if (!calendarRef.current) return;
     try {
       // 1. 복제본 생성
       const originalElement = calendarRef.current;
       const clone = originalElement.cloneNode(true) as HTMLElement;
+      
+      // ✅ [중요] force-pc-view 클래스 추가 (globals.css에서 시간 표시 제어)
+      clone.classList.add('force-pc-view');
+      
       document.body.appendChild(clone);
 
       // 2. PC 스타일 강제 적용 (1200px)
@@ -250,7 +254,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   return (
     <div style={{ backgroundColor: '#ffffff', padding: 24, borderRadius: 12, border: '1px solid #ddd', position: 'relative', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
       
-      {/* 상단 컨트롤 영역 (모바일 대응: calendar-header-mobile) */}
+      {/* 상단 컨트롤 영역 */}
       <div className="calendar-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         
         {/* 월 이동 */}
@@ -260,7 +264,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} style={btnStyle}>&gt;</button>
         </div>
 
-        {/* 기능 버튼들 (모바일에서 2줄 배치 & 작은 버튼) */}
+        {/* 기능 버튼들 */}
         <div className="mobile-btn-group" style={{ display: 'flex', gap: 8 }}>
            {!isDeleteMode && (
             <button 
@@ -287,17 +291,16 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         </div>
       </div>
 
+      {/* 요일 헤더 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 10, textAlign: 'center' }}>
         {weeks.map((day, idx) => (
           <div key={day} style={{ color: idx === 5 ? 'dodgerblue' : idx === 6 ? 'salmon' : '#666', fontWeight: 'bold', fontSize: 16 }}>{day}</div>
         ))}
       </div>
 
-      {/* ✅ 가로 스크롤 적용 (table-wrapper) */}
-      {/* ref={calendarRef}를 여기로 옮김 (캡처 시 테이블 전체가 포함되도록) */}
+      {/* 캘린더 그리드 */}
       <div className="table-wrapper" ref={calendarRef} style={{ backgroundColor: '#fff' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-          {/* thead 생략 (위쪽 div로 대체함) - 캡처 시엔 필요할 수 있으니 추가 */}
           <thead>
              <tr>
                {weeks.map(day => (
@@ -305,17 +308,10 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                ))}
              </tr>
           </thead>
-          <tbody>
-             {/* 그리드 방식 대신 테이블(TR/TD) 방식으로 변환해도 되지만, 
-                 기존 그리드(div) 방식을 유지하면서 스크롤 컨테이너에 넣었으므로
-                 여기서는 기존 코드를 div grid -> table로 바꾸지 않고 div grid를 유지하겠습니다.
-                 (테이블로 바꾸면 코드가 너무 많이 바뀝니다.)
-             */}
-          </tbody>
+          <tbody></tbody>
         </table>
 
-        {/* 🚨 기존 그리드(div) 방식 유지 + 스크롤 적용을 위해 min-width 설정 */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderTop: '1px solid #ddd', borderLeft: '1px solid #ddd', minWidth: '800px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderTop: '1px solid #ddd', borderLeft: '1px solid #ddd' }}>
           {calendarDays.map((day, idx) => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const isCurrentMonth = isSameMonth(day, monthStart);
@@ -356,6 +352,8 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                       <div 
                         key={sch.id}
                         onClick={(e) => handleScheduleClick(e, sch)}
+                        // ✅ className 추가 (CSS 제어용)
+                        className="schedule-box"
                         style={{
                           backgroundColor: isDeleteMode ? (isSelectedForDelete ? 'darkred' : '#eee') : bgColor,
                           color: isDeleteMode && !isSelectedForDelete ? '#aaa' : '#fff',
@@ -369,12 +367,17 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                         }}
                       >
-                        <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 2 }}>
+                        {/* ✅ 이름과 시간을 분리해서 표시 */}
+                        <div className="schedule-emp-name" style={{ fontWeight: 'bold', fontSize: 13 }}>
                           {empName || '❓ 미배정'}
                           {sch.is_holiday_work && <span style={{fontSize: 10, marginLeft: 4}}>🔴</span>}
                           {sch.exclude_holiday_pay && <span style={{fontSize: 10, marginLeft: 4}}>🚫</span>}
                         </div>
-                        <div style={{ fontSize: 11, opacity: 0.9 }}>{start} ~ {end}</div>
+                        
+                        {/* ✅ 모바일에서 숨겨질 시간 부분 (className: schedule-time) */}
+                        <div className="schedule-time" style={{ fontSize: 11, opacity: 0.9 }}>
+                          {start} ~ {end}
+                        </div>
                       </div>
                     );
                   })}
@@ -394,19 +397,17 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
             backgroundColor: '#ffffff', padding: 24, borderRadius: 12, border: '1px solid #ccc', width: 360,
             boxShadow: '0 10px 25px rgba(0,0,0,0.2)', color: '#333'
           }}>
-            {/* 팝업 내용은 기존과 동일 */}
             <h3 style={{ marginTop: 0, marginBottom: 20, color: '#333', textAlign: 'center' }}>
               {isNew ? '새 스케줄 추가' : '스케줄 수정'} ({editDate})
             </h3>
-            {/* ... (TimeSelector, Select 등 기존 팝업 내용 유지) ... */}
-            {/* (코드가 너무 길어지니 팝업 내부 내용은 기존 코드를 그대로 두셔도 됩니다. 기능 변경 없음) */}
             
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8 }}>근무 시간</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <TimeSelector value={editStartTime} onChange={setEditStartTime} />
                 <span>~</span>
-                <TimeSelector value={editEndTime} onChange={setEditEndTime} />
+                {/* ✅ isLast 추가 (마지막 입력) */}
+                <TimeSelector value={editEndTime} onChange={setEditEndTime} isLast={true} />
               </div>
             </div>
 

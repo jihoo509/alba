@@ -21,6 +21,9 @@ const DAYS = [
   { num: 0, label: '일요일' },
 ];
 
+// ✅ 사장님 아이디어: 미리 정해둔 패턴 이름들
+const PRESET_NAMES = ['오픈', '미들', '마감', '야간', '파트', '풀타임', '주말'];
+
 type ShiftPattern = {
   id: string;
   name: string;
@@ -39,7 +42,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   const [newPatternName, setNewPatternName] = useState('');
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [timeRules, setTimeRules] = useState<Record<number, { start: string; end: string }>>({});
-  // 기본값 설정
   const [lastInputTime, setLastInputTime] = useState({ start: '10:00', end: '16:00' });
   
   const [editingPatternId, setEditingPatternId] = useState<string | null>(null);
@@ -120,14 +122,12 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
       setTimeRules(newRules);
     } else {
       setSelectedDays(prev => [...prev, day]);
-      // 체크 시 기본값(lastInputTime)으로 시간 설정
       setTimeRules(prev => ({ ...prev, [day]: { start: lastInputTime.start, end: lastInputTime.end } }));
     }
   };
 
   const handleTimeChange = (day: number, type: 'start' | 'end', value: string) => {
     setTimeRules(prev => ({ ...prev, [day]: { ...prev[day], [type]: value } }));
-    // 마지막 입력값 업데이트 (다음 요일 체크 시 사용)
     setLastInputTime(prev => ({ ...prev, [type]: value }));
   };
 
@@ -172,13 +172,11 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     setTimeRules(pattern.weekly_rules);
     setSelectedDays(Object.keys(pattern.weekly_rules).map(Number));
     
-    // 첫 번째 규칙을 찾아서 lastInputTime 업데이트 (입력 편의성)
     const firstRule = Object.values(pattern.weekly_rules)[0];
     if (firstRule) {
         setLastInputTime({ start: firstRule.start, end: firstRule.end });
     }
 
-    // 모바일 자동 스크롤
     if (window.innerWidth <= 768 && patternMakerRef.current) {
         const yOffset = -150; 
         const element = patternMakerRef.current;
@@ -308,13 +306,12 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   return (
     <div style={{ marginTop: 32, borderTop: '1px solid #ddd', paddingTop: 24 }}>
       <h3 style={{ fontSize: 20, marginBottom: 16, color: '#fff' }}>🔄 주간 반복 스케줄 설정 (패턴 배정)</h3>
-      {/* 클래스 추가: instruction-text (globals.css에서 제어) */}
       <p className="instruction-text" style={{ color: '#ddd', marginBottom: 24, fontSize: 14, lineHeight: '1.6' }}>
         1. 근무 패턴(요일별 시간)을 만들고 <br className="mobile-only" /> 
         → 2. 해당 패턴으로 근무할 직원을 체크하세요.
       </p>
 
-      {/* ✅ [수정1 & 3] 스마트 날짜 선택기 (위로 이동 및 반응형 클래스 적용) */}
+      {/* 스마트 날짜 선택기 */}
       <div className="auto-generator-card">
         <div className="auto-gen-inputs">
           <label style={{ color: '#333', fontSize: 14, fontWeight: 'bold' }}>생성 기간:</label>
@@ -334,7 +331,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
         * 체크된 패턴에 대해서만 스케줄이 생성됩니다.
       </p>
 
-      {/* weekly-container: PC는 가로, 모바일은 세로 배치 */}
       <div className="weekly-container">
         
         {/* 왼쪽: 패턴 생성기 */}
@@ -343,11 +339,35 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
             {editingPatternId ? '🛠️ 패턴 수정하기' : '1. 근무 패턴 만들기'}
           </h4>
           
+          {/* ✅ [신규] 패턴 이름 입력 (버튼 선택식 + 직접 입력) */}
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4 }}>패턴 이름</label>
+            <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6 }}>패턴 이름 (캘린더에 표시될 이름)</label>
+            
+            {/* 프리셋 버튼들 */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {PRESET_NAMES.map(name => (
+                <button 
+                  key={name} 
+                  onClick={() => setNewPatternName(name)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 20,
+                    border: newPatternName === name ? '1px solid dodgerblue' : '1px solid #ddd',
+                    backgroundColor: newPatternName === name ? '#e6f7ff' : '#f9f9f9',
+                    color: newPatternName === name ? 'dodgerblue' : '#555',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    fontWeight: newPatternName === name ? 'bold' : 'normal'
+                  }}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+
             <input 
               type="text" 
-              placeholder="예: 평일 오픈조" 
+              placeholder="직접 입력 (예: 평일 오픈조)" 
               value={newPatternName} 
               onChange={(e) => setNewPatternName(e.target.value)} 
               style={inputStyle} 
@@ -374,7 +394,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                       <span style={{ color: isChecked ? 'dodgerblue' : '#555', fontWeight: isChecked ? 'bold' : 'normal' }}>{day.label}</span>
                     </label>
                     
-<div className="time-input-area">
+                    <div className="time-input-area">
                         <div className="time-row">
                             <span className="time-label-badge mobile-only-inline">시작</span>
                             <TimeSelector 
@@ -386,7 +406,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                         <span className="desktop-only-inline" style={{ color: '#aaa', margin: '0 4px' }}>~</span>
                         <div className="time-row">
                             <span className="time-label-badge mobile-only-inline">종료</span>
-                            {/* ✅ 여기에 isLast={true} 추가! */}
                             <TimeSelector 
                                 value={timeRules[day.num]?.end || lastInputTime.end} 
                                 onChange={(val) => handleTimeChange(day.num, 'end', val)} 
@@ -413,7 +432,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
           </div>
         </div>
 
-        {/* 오른쪽: 직원 배정 */}
+        {/* 오른쪽: 직원 배정 (기존 유지) */}
         <div className="pattern-list-panel">
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#fff' }}>2. 직원 배정하기</h4>
           
