@@ -420,6 +420,15 @@ body {
     display: none; 
   }
 
+  /* ✅ 모바일: 패턴 이름 (오픈, 마감 등) 보이기 */
+  .schedule-pattern-only {
+    display: block !important;
+    font-size: 10px;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
   /* 📷 [예외] "이미지 저장" 중일 때는 PC 스타일 강제 적용 */
   .force-pc-view .schedule-time {
     display: block !important;
@@ -428,6 +437,9 @@ body {
   }
   .force-pc-view .schedule-box {
     text-align: left !important;
+  }
+  .force-pc-view .schedule-pattern-only {
+    display: none !important;
   }
 
   /* 4. 자동 생성 날짜 '일' 줄바꿈 방지 */
@@ -453,5 +465,8 @@ body {
     display: block;
     font-size: 11px;
     opacity: 0.9;
+  }
+  .schedule-pattern-only {
+    display: none;
   }
 }

@@ -214,7 +214,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     }
   };
 
-  const handleAutoGenerate = async () => {
+const handleAutoGenerate = async () => {
     if (!genStartDate || !genEndDate) return alert('시작일과 종료일을 설정해주세요.');
     if (genStartDate > genEndDate) return alert('시작일이 종료일보다 늦을 수 없습니다.');
     if (selectedPatternIds.length === 0) return alert('생성할 패턴을 하나 이상 체크해주세요.');
@@ -257,7 +257,9 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
             date: dateStr,
             start_time: rule.start,
             end_time: rule.end,
-            color: pattern.color || '#4ECDC4'
+            color: pattern.color || '#4ECDC4',
+            // ✅ [핵심 수정] 패턴 이름을 'memo' 칸에 저장합니다!
+            memo: pattern.name 
           });
         }
       }

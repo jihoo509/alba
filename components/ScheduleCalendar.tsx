@@ -27,6 +27,7 @@ type Schedule = {
   employees?: { name: string };
   exclude_holiday_pay?: boolean;
   is_holiday_work?: boolean;
+  memo?: string; // ✅ 패턴 이름(오픈, 마감 등)이 들어갈 필드
 };
 
 const getEmployeeColor = (empId: string | null, employees: Employee[]) => {
@@ -86,43 +87,50 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // ✅ [이미지 저장] PC 버전 스타일 강제 적용 후 캡처
+  // ✅ [이미지 저장] 모바일에서도 PC 버전처럼(시간 포함) 저장되도록 강제 설정
   const handleDownloadImage = async () => {
     if (!calendarRef.current) return;
     try {
-      // 1. 복제본 생성
+      // 1. 현재 캘린더 요소를 복제합니다.
       const originalElement = calendarRef.current;
       const clone = originalElement.cloneNode(true) as HTMLElement;
       
-      // ✅ [중요] force-pc-view 클래스 추가 (globals.css에서 시간 표시 제어)
+      // ✅ [핵심] CSS에서 'PC 화면'으로 인식하게 하는 클래스 추가
       clone.classList.add('force-pc-view');
       
+      // 화면 밖 안 보이는 곳에 붙입니다.
       document.body.appendChild(clone);
 
-      // 2. PC 스타일 강제 적용 (1200px)
+      // 2. 강제로 PC 스타일(넓은 너비) 적용
       clone.style.position = 'fixed';
       clone.style.top = '-10000px';
       clone.style.left = '-10000px';
-      clone.style.width = '1200px'; 
+      clone.style.width = '1200px'; // 1200px 강제
       clone.style.height = 'auto';
       clone.style.zIndex = '-1';
       clone.style.backgroundColor = '#ffffff';
       
+      // 테이블 너비도 강제
       const tables = clone.getElementsByTagName('table');
       if (tables.length > 0) {
         tables[0].style.width = '100%';
+        tables[0].style.minWidth = '1200px';
         tables[0].style.fontSize = '14px';
       }
 
-      // 3. 캡처
+      // 3. 캡처 실행 (windowWidth를 속여서 PC처럼 찍음)
       const canvas = await html2canvas(clone, {
-        scale: 2, 
+        scale: 2, // 고화질
         backgroundColor: '#ffffff',
-        useCORS: true
+        useCORS: true,
+        windowWidth: 1600, // 브라우저가 넓은 것처럼 속임
+        width: 1200
       });
 
+      // 복제본 삭제
       document.body.removeChild(clone);
 
+      // 다운로드
       const link = document.createElement('a');
       link.href = canvas.toDataURL('image/png');
       link.download = `${format(currentDate, 'yyyy-MM')}_스케줄표.png`;
@@ -347,12 +355,14 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                     const empName = sch.employees?.name;
                     const bgColor = getEmployeeColor(sch.employee_id, employees); 
                     const isSelectedForDelete = selectedDeleteIds.includes(sch.id);
+                    // ✅ DB에서 패턴 이름(memo)을 가져옵니다.
+                    const patternName = sch.memo; 
 
                     return (
                       <div 
                         key={sch.id}
                         onClick={(e) => handleScheduleClick(e, sch)}
-                        // ✅ className 추가 (CSS 제어용)
+                        // ✅ globals.css에서 스타일을 제어하기 위해 클래스 이름 추가
                         className="schedule-box"
                         style={{
                           backgroundColor: isDeleteMode ? (isSelectedForDelete ? 'darkred' : '#eee') : bgColor,
@@ -367,16 +377,22 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                         }}
                       >
-                        {/* ✅ 이름과 시간을 분리해서 표시 */}
+                        {/* 1. 이름 표시 (항상 보임) */}
                         <div className="schedule-emp-name" style={{ fontWeight: 'bold', fontSize: 13 }}>
                           {empName || '❓ 미배정'}
                           {sch.is_holiday_work && <span style={{fontSize: 10, marginLeft: 4}}>🔴</span>}
                           {sch.exclude_holiday_pay && <span style={{fontSize: 10, marginLeft: 4}}>🚫</span>}
                         </div>
                         
-                        {/* ✅ 모바일에서 숨겨질 시간 부분 (className: schedule-time) */}
+                        {/* 2. 시간 표시 (모바일에서는 CSS로 숨김 / PC&이미지 저장에서는 보임) */}
                         <div className="schedule-time" style={{ fontSize: 11, opacity: 0.9 }}>
                           {start} ~ {end}
+                        </div>
+
+                        {/* 3. 패턴 이름 표시 (모바일에서만 보임 - CSS 제어) */}
+                        {/* 패턴 이름이 있으면 보여주고, 없으면 그냥 비워둡니다 */}
+                        <div className="schedule-pattern-only mobile-only-block" style={{ fontSize: 11, fontWeight: 'bold' }}>
+                          {patternName || ''}
                         </div>
                       </div>
                     );
@@ -406,7 +422,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <TimeSelector value={editStartTime} onChange={setEditStartTime} />
                 <span>~</span>
-                {/* ✅ isLast 추가 (마지막 입력) */}
+                {/* 종료 시간 '분' 선택 시 닫히도록 isLast 추가 */}
                 <TimeSelector value={editEndTime} onChange={setEditEndTime} isLast={true} />
               </div>
             </div>

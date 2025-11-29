@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 
 type Props = {
   value: string; // "YYYY-MM-DD"
@@ -10,7 +10,7 @@ type Props = {
 export default function DateSelector({ value, onChange }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // 현재 선택된 날짜 파싱
+  // 날짜 파싱 (유틸리티)
   const parseDate = (dateStr: string) => {
     if (!dateStr) {
       const today = new Date();
@@ -25,24 +25,18 @@ export default function DateSelector({ value, onChange }: Props) {
   const [selectedMonth, setSelectedMonth] = useState(initM);
   const [selectedDay, setSelectedDay] = useState(initD);
 
-  // 모달이 열릴 때 선택된 날짜로 스크롤 이동 (핵심 로직)
+  // 모달 열릴 때 자동 스크롤
   useEffect(() => {
     if (isOpen) {
-      // 0.1초 뒤 실행 (모달 렌더링 후 찾기 위해)
       setTimeout(() => {
-        const yearEl = document.getElementById(`picker-year-${selectedYear}`);
-        const monthEl = document.getElementById(`picker-month-${selectedMonth}`);
-        const dayEl = document.getElementById(`picker-day-${selectedDay}`);
-
-        // 부드럽게 가운데로 스크롤
-        yearEl?.scrollIntoView({ behavior: 'auto', block: 'center' });
-        monthEl?.scrollIntoView({ behavior: 'auto', block: 'center' });
-        dayEl?.scrollIntoView({ behavior: 'auto', block: 'center' });
+        document.getElementById(`picker-year-${selectedYear}`)?.scrollIntoView({ behavior: 'auto', block: 'center' });
+        document.getElementById(`picker-month-${selectedMonth}`)?.scrollIntoView({ behavior: 'auto', block: 'center' });
+        document.getElementById(`picker-day-${selectedDay}`)?.scrollIntoView({ behavior: 'auto', block: 'center' });
       }, 50);
     }
   }, [isOpen]);
 
-  // 값 변경 시 업데이트
+  // 부모 값 변경 시 동기화
   useEffect(() => {
     const { y, m, d } = parseDate(value);
     setSelectedYear(y);
@@ -58,15 +52,24 @@ export default function DateSelector({ value, onChange }: Props) {
     setIsOpen(false);
   };
 
-  // 날짜 데이터 생성
-  const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i); // 전후 5년
+  // ✅ [핵심 기능] 월 클릭 시 1일로 리셋 & 스크롤 이동
+  const handleMonthClick = (m: number) => {
+    setSelectedMonth(m);
+    setSelectedDay(1); // 1일로 강제 변경
+    
+    // 1일 위치로 스크롤 (살짝 딜레이 줘야 DOM 반영 후 이동됨)
+    setTimeout(() => {
+      document.getElementById(`picker-day-1`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  };
+
+  const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   return (
     <>
-      {/* 1. 입력창 (클릭 시 모달 열림) */}
       <div 
         onClick={() => setIsOpen(true)}
         style={{
@@ -78,7 +81,6 @@ export default function DateSelector({ value, onChange }: Props) {
         {value || '날짜 선택'}
       </div>
 
-      {/* 2. 모달 (중앙 정렬) */}
       {isOpen && (
         <div style={modalOverlayStyle} onClick={() => setIsOpen(false)}>
           <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
@@ -86,14 +88,13 @@ export default function DateSelector({ value, onChange }: Props) {
               날짜 선택
             </h3>
 
-            {/* 3단 컬럼 (년/월/일) */}
             <div style={{ display: 'flex', height: 200, borderTop: '1px solid #eee', borderBottom: '1px solid #eee' }}>
               {/* 년 */}
               <div style={columnStyle}>
                 {years.map(y => (
                   <div 
                     key={y} 
-                    id={`picker-year-${y}`} // ✅ ID 부여 (스크롤 타겟)
+                    id={`picker-year-${y}`} 
                     onClick={() => setSelectedYear(y)}
                     style={itemStyle(y === selectedYear)}
                   >
@@ -101,13 +102,13 @@ export default function DateSelector({ value, onChange }: Props) {
                   </div>
                 ))}
               </div>
-              {/* 월 */}
+              {/* 월 (여기서 handleMonthClick 사용!) */}
               <div style={columnStyle}>
                 {months.map(m => (
                   <div 
                     key={m} 
-                    id={`picker-month-${m}`} // ✅ ID 부여
-                    onClick={() => setSelectedMonth(m)}
+                    id={`picker-month-${m}`} 
+                    onClick={() => handleMonthClick(m)} 
                     style={itemStyle(m === selectedMonth)}
                   >
                     {m}월
@@ -119,7 +120,7 @@ export default function DateSelector({ value, onChange }: Props) {
                 {days.map(d => (
                   <div 
                     key={d} 
-                    id={`picker-day-${d}`} // ✅ ID 부여
+                    id={`picker-day-${d}`} 
                     onClick={() => setSelectedDay(d)}
                     style={itemStyle(d === selectedDay)}
                   >
@@ -129,7 +130,6 @@ export default function DateSelector({ value, onChange }: Props) {
               </div>
             </div>
 
-            {/* 버튼 그룹 */}
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={() => setIsOpen(false)} style={cancelBtnStyle}>취소</button>
               <button onClick={handleConfirm} style={confirmBtnStyle}>선택 완료</button>
@@ -145,7 +145,7 @@ export default function DateSelector({ value, onChange }: Props) {
 const modalOverlayStyle: React.CSSProperties = {
   position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
   backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999,
-  display: 'flex', justifyContent: 'center', alignItems: 'center' // ✅ 중앙 정렬
+  display: 'flex', justifyContent: 'center', alignItems: 'center'
 };
 
 const modalContentStyle: React.CSSProperties = {
