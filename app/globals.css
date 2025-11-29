@@ -245,6 +245,42 @@ body {
 /* =========================================
    7. 📋 주간 스케줄 관리 레이아웃 (반응형)
    ========================================= */
+
+/* ✅ [신규] 자동 생성기 카드 스타일 (수정3 해결) */
+.auto-generator-card {
+  margin-top: 10px;
+  padding: 24px;
+  background-color: #fff;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.auto-gen-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.auto-gen-btn {
+  padding: 10px 24px;
+  background-color: #27ae60;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  white-space: nowrap;
+}
+
 .weekly-container {
   display: flex;
   flex-wrap: wrap;
@@ -264,6 +300,8 @@ body {
   border: 1px solid #ddd;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   z-index: 10;
+  /* ✅ 박스 크기 계산 방식 명시 (중요) */
+  box-sizing: border-box; 
 }
 
 /* 오른쪽 패널 (직원 배정) */
@@ -278,17 +316,44 @@ body {
     flex-direction: column; /* 세로 배치로 변경 */
   }
 
+  /* ✅ [수정5] 모바일에서 튀어나가는 현상 해결 */
   .pattern-maker-panel {
     flex: none;
-    width: 100%; /* 너비 100% 꽉 채움 */
-    position: relative; /* 스티키 해제 (자연스럽게 스크롤) */
+    width: 100% !important;   /* 너비 강제 100% */
+    max-width: 100vw;         /* 화면 너비 넘지 않게 */
+    position: relative;       
     top: 0;
-    padding: 16px;
+    padding: 16px;            /* 패딩 포함해서 100%가 되도록 box-sizing 필수 */
+    box-sizing: border-box;
   }
 
   .pattern-list-panel {
     width: 100%;
     min-width: 0;
+  }
+
+  /* ✅ [수정3] 모바일 자동 생성기 UI 개선 */
+  .auto-generator-card {
+    flex-direction: column;   /* 세로 배치 */
+    align-items: stretch;     /* 가로 꽉 채우기 */
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .auto-gen-inputs {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+  }
+  
+  .auto-gen-inputs > div { /* 날짜 선택기 감싸는 div */
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .auto-gen-btn {
+    width: 100%;              /* 버튼 꽉 채우기 */
+    padding: 12px 0;
   }
 }
 

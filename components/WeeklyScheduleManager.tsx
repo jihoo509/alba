@@ -312,6 +312,26 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
         1. 근무 패턴(요일별 시간)을 만들고 → 2. 해당 패턴으로 근무할 직원을 체크하세요.
       </p>
 
+      {/* ✅ [수정1 & 3] 스마트 날짜 선택기 (위로 이동 및 반응형 클래스 적용) */}
+      <div className="auto-generator-card">
+        <div className="auto-gen-inputs">
+          <label style={{ color: '#333', fontSize: 14, fontWeight: 'bold' }}>생성 기간:</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <DateSelector value={genStartDate} onChange={handleStartDateChange} />
+            <span style={{ color: '#888' }}>~</span>
+            <DateSelector value={genEndDate} onChange={setGenEndDate} />
+          </div>
+        </div>
+        <button onClick={handleAutoGenerate} className="auto-gen-btn">
+          스케줄 자동 생성
+        </button>
+      </div>
+
+      <p style={{ textAlign: 'right', fontSize: 13, color: '#bbb', marginTop: 8, marginBottom: 24 }}>
+        * 직원의 퇴사일 이후 날짜는 자동으로 제외됩니다. <br/>
+        * 체크된 패턴에 대해서만 스케줄이 생성됩니다.
+      </p>
+
       {/* weekly-container: PC는 가로, 모바일은 세로 배치 */}
       <div className="weekly-container">
         
@@ -346,18 +366,15 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
               {DAYS.map(day => {
                 const isChecked = selectedDays.includes(day.num);
                 return (
-                  // ✅ [수정] globals.css의 .pattern-day-row 적용
                   <div key={day.num} className="pattern-day-row" style={{ opacity: isChecked ? 1 : 0.6 }}>
                     <label className="day-label">
                       <input type="checkbox" checked={isChecked} onChange={() => toggleDay(day.num)} style={{ accentColor: 'dodgerblue', transform: 'scale(1.2)' }} />
                       <span style={{ color: isChecked ? 'dodgerblue' : '#555', fontWeight: isChecked ? 'bold' : 'normal' }}>{day.label}</span>
                     </label>
                     
-                    {/* ✅ [수정] globals.css의 .time-input-area 적용 */}
                     <div className="time-input-area">
                         <div className="time-row">
                             <span className="time-label-badge mobile-only-inline">시작</span>
-                            {/* ✅ value가 없을 때 기본값(lastInputTime) 사용하도록 안전장치 */}
                             <TimeSelector 
                                 value={timeRules[day.num]?.start || lastInputTime.start} 
                                 onChange={(val) => handleTimeChange(day.num, 'start', val)} 
@@ -476,21 +493,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
           )}
         </div>
       </div>
-
-      {/* 스마트 날짜 선택기 */}
-      <div style={{ marginTop: 40, padding: 24, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, backgroundColor: '#fff', borderRadius: 12, border: '1px solid #ddd', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <label style={{ color: '#333', fontSize: 14, fontWeight: 'bold' }}>생성 기간:</label>
-          <DateSelector value={genStartDate} onChange={handleStartDateChange} />
-          <span style={{ color: '#888' }}>~</span>
-          <DateSelector value={genEndDate} onChange={setGenEndDate} />
-        </div>
-        <button onClick={handleAutoGenerate} style={{ padding: '10px 24px', backgroundColor: '#27ae60', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', fontSize: 15, cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>스케줄 자동 생성</button>
-      </div>
-      <p style={{ textAlign: 'right', fontSize: 13, color: '#bbb', marginTop: 8 }}>
-        * 직원의 퇴사일 이후 날짜는 자동으로 제외됩니다. <br/>
-        * 체크된 패턴에 대해서만 스케줄이 생성됩니다.
-      </p>
     </div>
   );
 }
