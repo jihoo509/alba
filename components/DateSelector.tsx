@@ -3,150 +3,137 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 type Props = {
-  value: string;
-  onChange: (val: string) => void;
+  value: string; // "YYYY-MM-DD"
+  onChange: (value: string) => void;
 };
 
 export default function DateSelector({ value, onChange }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // 내부에서 임시로 선택 중인 날짜 (완료 누르기 전까지 저장용)
-  const [tempYear, setTempYear] = useState(new Date().getFullYear());
-  const [tempMonth, setTempMonth] = useState(new Date().getMonth() + 1);
-  const [tempDay, setTempDay] = useState(new Date().getDate());
-
-  // 스크롤 위치 조정을 위한 Refs
-  const yearRef = useRef<HTMLDivElement>(null);
-  const monthRef = useRef<HTMLDivElement>(null);
-  const dayRef = useRef<HTMLDivElement>(null);
-
-  // 1. 초기값 세팅 및 모달 열릴 때 값 동기화
-  useEffect(() => {
-    if (value) {
-      const [y, m, d] = value.split('-').map(Number);
-      setTempYear(y);
-      setTempMonth(m);
-      setTempDay(d);
+  // 현재 선택된 날짜 파싱
+  const parseDate = (dateStr: string) => {
+    if (!dateStr) {
+      const today = new Date();
+      return { y: today.getFullYear(), m: today.getMonth() + 1, d: today.getDate() };
     }
-  }, [value, isOpen]);
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return { y, m, d };
+  };
 
-  // 2. 날짜 목록 생성
-  const currentYear = new Date().getFullYear();
-  // 작년 ~ 내후년까지 (필요하면 범위 조절하세요)
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - 1 + i); 
-  const months = Array.from({ length: 12 }, (_, i) => i + 1);
-  
-  // 해당 연/월의 마지막 날짜 계산
-  const daysInMonth = new Date(tempYear, tempMonth, 0).getDate();
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const { y: initY, m: initM, d: initD } = parseDate(value);
+  const [selectedYear, setSelectedYear] = useState(initY);
+  const [selectedMonth, setSelectedMonth] = useState(initM);
+  const [selectedDay, setSelectedDay] = useState(initD);
 
-  // 월/년 변경 시 일이 범위를 넘어가면 조정 (예: 31일 -> 2월 선택 시 28일로)
+  // 모달이 열릴 때 선택된 날짜로 스크롤 이동 (핵심 로직)
   useEffect(() => {
-    if (tempDay > daysInMonth) {
-      setTempDay(daysInMonth);
+    if (isOpen) {
+      // 0.1초 뒤 실행 (모달 렌더링 후 찾기 위해)
+      setTimeout(() => {
+        const yearEl = document.getElementById(`picker-year-${selectedYear}`);
+        const monthEl = document.getElementById(`picker-month-${selectedMonth}`);
+        const dayEl = document.getElementById(`picker-day-${selectedDay}`);
+
+        // 부드럽게 가운데로 스크롤
+        yearEl?.scrollIntoView({ behavior: 'auto', block: 'center' });
+        monthEl?.scrollIntoView({ behavior: 'auto', block: 'center' });
+        dayEl?.scrollIntoView({ behavior: 'auto', block: 'center' });
+      }, 50);
     }
-  }, [tempYear, tempMonth, daysInMonth, tempDay]);
+  }, [isOpen]);
+
+  // 값 변경 시 업데이트
+  useEffect(() => {
+    const { y, m, d } = parseDate(value);
+    setSelectedYear(y);
+    setSelectedMonth(m);
+    setSelectedDay(d);
+  }, [value]);
 
   const handleConfirm = () => {
-    const str = `${tempYear}-${String(tempMonth).padStart(2,'0')}-${String(tempDay).padStart(2,'0')}`;
-    onChange(str);
+    const yStr = String(selectedYear);
+    const mStr = String(selectedMonth).padStart(2, '0');
+    const dStr = String(selectedDay).padStart(2, '0');
+    onChange(`${yStr}-${mStr}-${dStr}`);
     setIsOpen(false);
   };
 
+  // 날짜 데이터 생성
+  const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i); // 전후 5년
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
   return (
     <>
-      {/* 🟢 1. 날짜 표시 버튼 */}
-      <button 
+      {/* 1. 입력창 (클릭 시 모달 열림) */}
+      <div 
         onClick={() => setIsOpen(true)}
         style={{
-          padding: '8px 12px',
-          border: '1px solid #ccc',
-          borderRadius: 6,
-          backgroundColor: '#fff',
-          cursor: 'pointer',
-          fontSize: '14px',
-          minWidth: '120px',
-          textAlign: 'center',
+          padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6,
+          backgroundColor: '#fff', cursor: 'pointer', fontSize: 14, minWidth: 120, textAlign: 'center',
           color: '#333'
         }}
       >
-        {value ? `${value.split('-')[0]}년 ${value.split('-')[1]}월 ${value.split('-')[2]}일` : '날짜 선택'}
-      </button>
+        {value || '날짜 선택'}
+      </div>
 
-      {/* 🔵 2. 모달창 */}
+      {/* 2. 모달 (중앙 정렬) */}
       {isOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999,
-          display: 'flex', justifyContent: 'center', alignItems: 'center'
-        }}>
-          <div style={{ 
-            backgroundColor: '#fff', 
-            borderRadius: 12, 
-            width: '90%', 
-            maxWidth: 340, 
-            overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
-          }}>
-            
-            {/* 헤더 */}
-            <div style={{ padding: '16px', background: '#f8f9fa', borderBottom: '1px solid #eee', textAlign: 'center', fontWeight: 'bold', color: '#333' }}>
+        <div style={modalOverlayStyle} onClick={() => setIsOpen(false)}>
+          <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, marginBottom: 16, textAlign: 'center', fontSize: 16, fontWeight: 'bold', color: '#333' }}>
               날짜 선택
-            </div>
+            </h3>
 
-            {/* 선택 영역 (3단 컬럼) */}
-            <div style={{ padding: '10px', display: 'flex', height: '220px', backgroundColor: '#fff' }}>
-              
+            {/* 3단 컬럼 (년/월/일) */}
+            <div style={{ display: 'flex', height: 200, borderTop: '1px solid #eee', borderBottom: '1px solid #eee' }}>
               {/* 년 */}
-              <div ref={yearRef} style={scrollBoxStyle}>
+              <div style={columnStyle}>
                 {years.map(y => (
-                  <div key={y} 
-                    onClick={() => setTempYear(y)}
-                    style={getItemStyle(y === tempYear)}>
+                  <div 
+                    key={y} 
+                    id={`picker-year-${y}`} // ✅ ID 부여 (스크롤 타겟)
+                    onClick={() => setSelectedYear(y)}
+                    style={itemStyle(y === selectedYear)}
+                  >
                     {y}년
                   </div>
                 ))}
               </div>
-
               {/* 월 */}
-              <div ref={monthRef} style={{ ...scrollBoxStyle, borderLeft: '1px solid #f0f0f0', borderRight: '1px solid #f0f0f0' }}>
+              <div style={columnStyle}>
                 {months.map(m => (
-                  <div key={m} 
-                    onClick={() => setTempMonth(m)}
-                    style={getItemStyle(m === tempMonth)}>
+                  <div 
+                    key={m} 
+                    id={`picker-month-${m}`} // ✅ ID 부여
+                    onClick={() => setSelectedMonth(m)}
+                    style={itemStyle(m === selectedMonth)}
+                  >
                     {m}월
                   </div>
                 ))}
               </div>
-
               {/* 일 */}
-              <div ref={dayRef} style={scrollBoxStyle}>
+              <div style={columnStyle}>
                 {days.map(d => (
-                  <div key={d} 
-                    onClick={() => setTempDay(d)}
-                    style={getItemStyle(d === tempDay)}>
+                  <div 
+                    key={d} 
+                    id={`picker-day-${d}`} // ✅ ID 부여
+                    onClick={() => setSelectedDay(d)}
+                    style={itemStyle(d === selectedDay)}
+                  >
                     {d}일
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* 하단 버튼 (취소 / 완료) */}
-            <div style={{ display: 'flex', padding: '12px', gap: 10, borderTop: '1px solid #eee', backgroundColor: '#f8f9fa' }}>
-              <button 
-                onClick={() => setIsOpen(false)}
-                style={{ flex: 1, padding: '12px', background: '#e0e0e0', color: '#333', border: 'none', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                취소
-              </button>
-              <button 
-                onClick={handleConfirm}
-                style={{ flex: 1, padding: '12px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                선택 완료
-              </button>
+            {/* 버튼 그룹 */}
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button onClick={() => setIsOpen(false)} style={cancelBtnStyle}>취소</button>
+              <button onClick={handleConfirm} style={confirmBtnStyle}>선택 완료</button>
             </div>
-
           </div>
         </div>
       )}
@@ -154,21 +141,28 @@ export default function DateSelector({ value, onChange }: Props) {
   );
 }
 
-// 스타일 헬퍼
-const scrollBoxStyle: React.CSSProperties = {
-  flex: 1, 
-  overflowY: 'auto', 
-  textAlign: 'center',
-  scrollbarWidth: 'none', // 파이어폭스 스크롤 숨김
-  msOverflowStyle: 'none',  // IE 스크롤 숨김
+// 스타일
+const modalOverlayStyle: React.CSSProperties = {
+  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+  backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999,
+  display: 'flex', justifyContent: 'center', alignItems: 'center' // ✅ 중앙 정렬
 };
 
-const getItemStyle = (isSelected: boolean): React.CSSProperties => ({
-  padding: '10px 0',
-  cursor: 'pointer',
+const modalContentStyle: React.CSSProperties = {
+  width: 320, backgroundColor: '#fff', borderRadius: 12, padding: 20,
+  boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+};
+
+const columnStyle: React.CSSProperties = {
+  flex: 1, overflowY: 'auto', textAlign: 'center', scrollBehavior: 'smooth'
+};
+
+const itemStyle = (isSelected: boolean): React.CSSProperties => ({
+  padding: '10px 0', cursor: 'pointer',
   fontWeight: isSelected ? 'bold' : 'normal',
-  color: isSelected ? 'dodgerblue' : '#888',
-  backgroundColor: isSelected ? '#f0f8ff' : 'transparent',
-  borderRadius: 6,
-  margin: '2px 4px'
+  color: isSelected ? 'dodgerblue' : '#333',
+  backgroundColor: isSelected ? '#f0f9ff' : 'transparent'
 });
+
+const cancelBtnStyle = { flex: 1, padding: 12, borderRadius: 8, border: 'none', background: '#f0f0f0', color: '#333', fontWeight: 'bold', cursor: 'pointer' };
+const confirmBtnStyle = { flex: 1, padding: 12, borderRadius: 8, border: 'none', background: 'dodgerblue', color: '#fff', fontWeight: 'bold', cursor: 'pointer' };
