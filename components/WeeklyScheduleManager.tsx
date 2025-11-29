@@ -437,7 +437,10 @@ const handleAutoGenerate = async () => {
         {/* 오른쪽: 직원 배정 (기존 유지) */}
         <div className="pattern-list-panel">
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#fff' }}>2. 직원 배정하기</h4>
-          
+                <p className="instruction-text" style={{ color: '#ddd', marginBottom: 24, fontSize: 14, lineHeight: '1.6' }}>
+        만들어 둔 패턴에 근무할 직원을 배정하세요.
+      </p>
+
           {patterns.length === 0 ? (
              <div style={{ padding: 40, textAlign: 'center', color: '#ccc', border: '1px dashed #666', borderRadius: 8 }}>
                생성된 패턴이 없습니다. 왼쪽에서 패턴을 만들어주세요.
