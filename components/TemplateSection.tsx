@@ -10,6 +10,7 @@ type Props = {
   currentStoreId: string;
 };
 
+// 다른 컴포넌트에서 쓸 수도 있으므로 타입 정의 유지
 export type ScheduleTemplate = {
   id: string;
   name: string;
@@ -22,6 +23,7 @@ export default function TemplateSection({ currentStoreId }: Props) {
   const supabase = createSupabaseBrowserClient();
   const [employees, setEmployees] = useState<Employee[]>([]);
 
+  // 직원 데이터 불러오는 로직 (유지)
   const fetchEmployees = useCallback(async () => {
     const { data, error } = await supabase
       .from('employees')
@@ -30,7 +32,6 @@ export default function TemplateSection({ currentStoreId }: Props) {
       .eq('is_active', true);
 
     if (!error && data) {
-      // 데이터 매핑 (필요시)
       const mappedData: Employee[] = data.map((row: any) => ({
         id: String(row.id),
         name: row.name,
@@ -54,25 +55,21 @@ export default function TemplateSection({ currentStoreId }: Props) {
 
   return (
     <div>
-      {/* ✅ [수정 완료] 
-          기존에 있던 "월간 스케줄을 확인하고 관리합니다." 텍스트 div를 삭제했습니다.
-          이제 page.tsx의 타이틀과 중복되지 않습니다.
-      */}
-
-      {/* 주간 스케줄 설정 */}
-      <div style={{ marginBottom: 40 }}>
-        <WeeklyScheduleManager 
-          currentStoreId={currentStoreId} 
-          employees={employees} 
-        />
-      </div>
-
-      {/* 캘린더 */}
+      {/* 🟢 1. 스케줄 캘린더를 맨 위로 이동 (요청사항 반영) */}
       <ScheduleCalendar 
         currentStoreId={currentStoreId} 
         selectedTemplate={null} 
         employees={employees} 
       />
+
+      {/* 🔵 2. 주간 스케줄 설정(패턴 배정)을 아래로 내림 */}
+      {/* 위쪽 캘린더와 간격을 두기 위해 marginTop 사용 */}
+      <div style={{ marginTop: 40 }}>
+        <WeeklyScheduleManager 
+          currentStoreId={currentStoreId} 
+          employees={employees} 
+        />
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import type { Employee } from '@/app/dashboard/page';
 import TimeSelector from './TimeSelector';
@@ -11,7 +11,6 @@ type Props = {
   employees: Employee[];
 };
 
-// 라벨을 조금 더 명확하게 변경
 const DAYS = [
   { num: 1, label: '월요일' },
   { num: 2, label: '화요일' },
@@ -32,6 +31,9 @@ type ShiftPattern = {
 export default function WeeklyScheduleManager({ currentStoreId, employees }: Props) {
   const supabase = createSupabaseBrowserClient();
   
+  // 스크롤 이동을 위한 Ref (패턴 생성기 박스를 가리킴)
+  const patternMakerRef = useRef<HTMLDivElement>(null);
+
   const [patterns, setPatterns] = useState<ShiftPattern[]>([]); 
   const [assignments, setAssignments] = useState<Record<string, string>>({}); 
   const [loading, setLoading] = useState(false);
@@ -42,7 +44,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   const [lastInputTime, setLastInputTime] = useState({ start: '10:00', end: '16:00' });
   
   const [editingPatternId, setEditingPatternId] = useState<string | null>(null);
-  
   const [minuteInterval, setMinuteInterval] = useState(30);
   const [selectedPatternIds, setSelectedPatternIds] = useState<string[]>([]);
 
@@ -174,6 +175,15 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     if (firstRule) {
         setLastInputTime({ start: firstRule.start, end: firstRule.end });
     }
+
+    // ✅ [수정] 모바일에서 수정 버튼 누르면 위쪽 입력폼으로 스크롤 이동
+    if (window.innerWidth <= 768 && patternMakerRef.current) {
+        // 약간의 오차를 두고 부드럽게 이동
+        const yOffset = -200; // 헤더 높이만큼 보정
+        const element = patternMakerRef.current;
+        const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+    }
   };
 
   const resetForm = () => {
@@ -304,8 +314,8 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
       {/* weekly-container: PC는 가로, 모바일은 세로 배치 */}
       <div className="weekly-container">
         
-        {/* 왼쪽: 패턴 생성기 */}
-        <div className="pattern-maker-panel">
+        {/* 왼쪽: 패턴 생성기 (ref 추가) */}
+        <div className="pattern-maker-panel" ref={patternMakerRef}>
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#333' }}>
             {editingPatternId ? '🛠️ 패턴 수정하기' : '1. 근무 패턴 만들기'}
           </h4>
@@ -335,27 +345,19 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
               {DAYS.map(day => {
                 const isChecked = selectedDays.includes(day.num);
                 return (
-                  // ✅ [수정] pattern-day-row 클래스 적용
+                  // pattern-day-row 클래스 적용
                   <div key={day.num} className="pattern-day-row" style={{ opacity: isChecked ? 1 : 0.6 }}>
-                    {/* 요일 체크박스 (day-label 클래스 추가) */}
                     <label className="day-label">
                       <input type="checkbox" checked={isChecked} onChange={() => toggleDay(day.num)} style={{ accentColor: 'dodgerblue', transform: 'scale(1.2)' }} />
                       <span style={{ color: isChecked ? 'dodgerblue' : '#555', fontWeight: isChecked ? 'bold' : 'normal' }}>{day.label}</span>
                     </label>
                     
-                    {/* 시간 입력 영역 (time-input-area 클래스 추가 및 인라인 스타일 제거) */}
                     <div className="time-input-area">
-                        
-                        {/* 1. 시작 시간 */}
                         <div className="time-row">
                             <span className="time-label-badge mobile-only-inline">시작</span>
                             <TimeSelector value={timeRules[day.num]?.start || '10:00'} onChange={(val) => handleTimeChange(day.num, 'start', val)} interval={minuteInterval} />
                         </div>
-
-                        {/* PC에서만 보이는 물결 */}
                         <span className="desktop-only-inline" style={{ color: '#aaa', margin: '0 4px' }}>~</span>
-
-                        {/* 2. 종료 시간 */}
                         <div className="time-row">
                             <span className="time-label-badge mobile-only-inline">종료</span>
                             <TimeSelector value={timeRules[day.num]?.end || '16:00'} onChange={(val) => handleTimeChange(day.num, 'end', val)} interval={minuteInterval} />
@@ -379,7 +381,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
           </div>
         </div>
 
-        {/* 오른쪽: 직원 배정 (기존 코드 유지) */}
+        {/* 오른쪽: 직원 배정 */}
         <div className="pattern-list-panel">
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#fff' }}>2. 직원 배정하기</h4>
           
@@ -388,9 +390,11 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                생성된 패턴이 없습니다. 왼쪽에서 패턴을 만들어주세요.
              </div>
           ) : (
+             // ✅ [수정] Grid Layout 개선: 모바일에서 오른쪽 쏠림 없이 꽉 채우기
              <div style={{ 
                  display: 'grid', 
-                 gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
+                 // 모바일(좁은화면)에서는 1fr(1열), 조금 넓어지면 minmax(300px, 1fr)로 자동 조절
+                 gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
                  gap: 16 
              }}>
                {patterns.map(pattern => {
