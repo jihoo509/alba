@@ -5,10 +5,11 @@ import React, { useEffect, useState, useMemo } from 'react';
 type Props = {
   value: string; // "HH:mm" (24시간제)
   onChange: (value: string) => void;
-  interval?: number; // ✅ [추가] 분 단위 설정 (기본값 30)
+  interval?: number; // 분 단위 (기본 30)
+  isLast?: boolean;  // ✅ [신규] 마지막 입력칸인지 여부 (모바일 '다음' 버튼 제어용)
 };
 
-export default function TimeSelector({ value, onChange, interval = 30 }: Props) {
+export default function TimeSelector({ value, onChange, interval = 30, isLast = false }: Props) {
   const [ampm, setAmpm] = useState('AM');
   const [hour, setHour] = useState('12');
   const [minute, setMinute] = useState('00');
@@ -55,7 +56,7 @@ export default function TimeSelector({ value, onChange, interval = 30 }: Props) 
     onChange(finalTime);
   };
 
-  // ✅ [수정] interval에 따라 분 목록 동적 생성
+  // interval에 따라 분 목록 동적 생성
   const minutes = useMemo(() => {
     const list = [];
     for (let i = 0; i < 60; i += interval) {
@@ -95,6 +96,8 @@ export default function TimeSelector({ value, onChange, interval = 30 }: Props) 
         value={minute}
         onChange={(e) => handleChange('minute', e.target.value)}
         style={{ ...selectStyle, width: 50 }}
+        // ✅ [핵심] 마지막 요소일 경우 '다음' 대신 '완료(Done)' 동작 유도
+        enterKeyHint={isLast ? 'done' : 'next'}
       >
         {minutes.map((m) => (
           <option key={m} value={m}>{m}</option>

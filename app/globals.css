@@ -380,3 +380,43 @@ body {
     display: inline-block !important;
   }
 }
+
+/* =========================================
+   9. 📅 [수정4] 모바일 캘린더 한 화면 맞춤
+   ========================================= */
+
+@media (max-width: 768px) {
+  /* 1. 테이블 강제 축소 (스크롤 없애기) */
+  .table-wrapper {
+    overflow-x: visible !important; /* 스크롤 기능 끔 */
+  }
+
+  .table-wrapper table {
+    min-width: 0 !important;      /* 최소 너비 제한 해제 */
+    width: 100% !important;       /* 화면에 딱 맞게 */
+    table-layout: fixed !important; /* 칸 너비 균등 분배 */
+  }
+
+  /* 2. 칸 내부 여백과 글자 크기 다이어트 */
+  .table-wrapper th, 
+  .table-wrapper td {
+    padding: 4px 2px !important;  /* 여백 최소화 */
+    font-size: 11px !important;   /* 글자 크기 축소 */
+    word-break: break-all;        /* 긴 이름은 줄바꿈 */
+    height: auto !important;      /* 높이 자동 조절 */
+  }
+
+  /* 3. 날짜 숫자 크기 조절 */
+  .table-wrapper td > div:first-child {
+    font-size: 10px !important;
+    margin-bottom: 2px !important;
+  }
+
+  /* 4. 스케줄 바(색깔 박스) 크기 조절 */
+  .table-wrapper td > div:not(:first-child) {
+    padding: 2px !important;
+    margin-bottom: 2px !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+}

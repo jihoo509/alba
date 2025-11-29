@@ -372,7 +372,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                       <span style={{ color: isChecked ? 'dodgerblue' : '#555', fontWeight: isChecked ? 'bold' : 'normal' }}>{day.label}</span>
                     </label>
                     
-                    <div className="time-input-area">
+<div className="time-input-area">
                         <div className="time-row">
                             <span className="time-label-badge mobile-only-inline">시작</span>
                             <TimeSelector 
@@ -384,10 +384,12 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                         <span className="desktop-only-inline" style={{ color: '#aaa', margin: '0 4px' }}>~</span>
                         <div className="time-row">
                             <span className="time-label-badge mobile-only-inline">종료</span>
+                            {/* ✅ 여기에 isLast={true} 추가! */}
                             <TimeSelector 
                                 value={timeRules[day.num]?.end || lastInputTime.end} 
                                 onChange={(val) => handleTimeChange(day.num, 'end', val)} 
                                 interval={minuteInterval} 
+                                isLast={true} 
                             />
                         </div>
                     </div>
