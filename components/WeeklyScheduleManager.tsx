@@ -11,8 +11,9 @@ type Props = {
   employees: Employee[];
 };
 
+// 라벨을 조금 더 명확하게 변경
 const DAYS = [
-  { num: 1, label: '월요일' }, // 라벨을 좀 더 길게 수정 (선택사항)
+  { num: 1, label: '월요일' },
   { num: 2, label: '화요일' },
   { num: 3, label: '수요일' },
   { num: 4, label: '목요일' },
@@ -336,27 +337,27 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                 return (
                   // ✅ [수정] pattern-day-row 클래스 적용
                   <div key={day.num} className="pattern-day-row" style={{ opacity: isChecked ? 1 : 0.6 }}>
-                    {/* 요일 체크박스 */}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', minWidth: '70px' }}>
+                    {/* 요일 체크박스 (day-label 클래스 추가) */}
+                    <label className="day-label">
                       <input type="checkbox" checked={isChecked} onChange={() => toggleDay(day.num)} style={{ accentColor: 'dodgerblue', transform: 'scale(1.2)' }} />
                       <span style={{ color: isChecked ? 'dodgerblue' : '#555', fontWeight: isChecked ? 'bold' : 'normal' }}>{day.label}</span>
                     </label>
                     
-                    {/* 시간 입력 (모바일에서는 2줄로 나뉨) */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%' }}>
+                    {/* 시간 입력 영역 (time-input-area 클래스 추가 및 인라인 스타일 제거) */}
+                    <div className="time-input-area">
                         
                         {/* 1. 시작 시간 */}
                         <div className="time-row">
-                            <span className="time-label-badge mobile-only-inline" style={{ display: 'none' }}>시작</span>
+                            <span className="time-label-badge mobile-only-inline">시작</span>
                             <TimeSelector value={timeRules[day.num]?.start || '10:00'} onChange={(val) => handleTimeChange(day.num, 'start', val)} interval={minuteInterval} />
                         </div>
 
                         {/* PC에서만 보이는 물결 */}
-                        <span style={{ margin: '0 4px', color: '#aaa' }} className="desktop-only-inline">~</span>
+                        <span className="desktop-only-inline" style={{ color: '#aaa', margin: '0 4px' }}>~</span>
 
                         {/* 2. 종료 시간 */}
                         <div className="time-row">
-                            <span className="time-label-badge mobile-only-inline" style={{ display: 'none' }}>종료</span>
+                            <span className="time-label-badge mobile-only-inline">종료</span>
                             <TimeSelector value={timeRules[day.num]?.end || '16:00'} onChange={(val) => handleTimeChange(day.num, 'end', val)} interval={minuteInterval} />
                         </div>
                     </div>

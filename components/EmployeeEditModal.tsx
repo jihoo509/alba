@@ -21,7 +21,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         name: employee.name,
         hourly_wage: employee.hourly_wage,
         employment_type: employee.employment_type,
-        // undefined 방지: 값이 없으면 빈 문자열('')로 초기화
+        // 값이 없으면(undefined/null) 빈 문자열('')로 초기화해서 에러 방지
         hire_date: employee.hire_date || '',
         end_date: employee.end_date || '',
         phone_number: employee.phone_number || '',
@@ -44,35 +44,33 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   };
 
   const handleDateChange = (field: keyof Employee, value: string) => {
+    // DateSelector에서 받은 값을 formData에 업데이트
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const toggleResignation = () => {
     const today = new Date().toISOString().split('T')[0];
     if (formData.end_date) {
-      // 퇴사 취소
       setFormData(prev => ({ ...prev, end_date: '', is_active: true }));
     } else {
-      // 퇴사 처리 (오늘 날짜)
       setFormData(prev => ({ ...prev, end_date: today, is_active: false }));
     }
   };
 
   const handleSave = async () => {
     setSaving(true);
-    
     const isActive = !formData.end_date; 
 
     const updates = {
       ...formData,
       is_active: isActive,
-      // 빈 문자열은 null로 변환해서 저장 (DB 깔끔하게 유지)
-      hire_date: formData.hire_date === '' ? undefined : formData.hire_date,
-      end_date: formData.end_date === '' ? undefined : formData.end_date,
-      birth_date: formData.birth_date === '' ? undefined : formData.birth_date,
-      phone_number: formData.phone_number === '' ? undefined : formData.phone_number,
-      bank_name: formData.bank_name === '' ? undefined : formData.bank_name,
-      account_number: formData.account_number === '' ? undefined : formData.account_number,
+      // 저장할 때는 빈 문자열을 다시 null로 변환 (DB에 깔끔하게 저장)
+      hire_date: formData.hire_date === '' ? null : formData.hire_date,
+      end_date: formData.end_date === '' ? null : formData.end_date,
+      birth_date: formData.birth_date === '' ? null : formData.birth_date,
+      phone_number: formData.phone_number === '' ? null : formData.phone_number,
+      bank_name: formData.bank_name === '' ? null : formData.bank_name,
+      account_number: formData.account_number === '' ? null : formData.account_number,
     };
     
     // @ts-ignore
@@ -83,7 +81,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
 
   const getStatusLabel = () => {
     if (!formData.end_date) return { text: '재직 중 🟢', color: '#4caf50' };
-    
     const today = new Date().toISOString().split('T')[0];
     if (formData.end_date > today) {
       return { text: `퇴사 예정 (${formData.end_date}) 🟡`, color: '#ff9800' };
@@ -103,7 +100,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
           {/* 1행 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>이름</label>
-            {/* ?? '' 처리로 undefined 에러 방지 */}
+            {/* 🔴 여기 확인: value에 ?? '' 가 있어야 합니다 */}
             <input name="name" value={formData.name ?? ''} onChange={handleChange} style={styles.input} />
           </div>
           <div style={styles.inputGroup}>
@@ -123,7 +120,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
           {/* 3행 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>생년월일</label>
-            {/* DateSelector에도 ?? '' 적용 */}
+            {/* 🔴 여기 확인: DateSelector에도 ?? '' 가 있어야 합니다 */}
             <DateSelector value={formData.birth_date ?? ''} onChange={(val) => handleDateChange('birth_date', val)} />
           </div>
           <div style={styles.inputGroup}>
@@ -202,5 +199,5 @@ const styles = {
   },
   buttonContainer: { display: 'flex', gap: '12px', marginTop: '32px', justifyContent: 'flex-end' },
   cancelButton: { padding: '10px 20px', background: '#333', border: '1px solid #444', color: '#eee', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
-  saveButton: { padding: '10px 20px', background: 'royalblue', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
+  saveButton: { padding: '10px 20px', background: 'royalblue', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }
 };

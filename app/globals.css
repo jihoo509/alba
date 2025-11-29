@@ -146,95 +146,117 @@ body {
 }
 
 /* =========================================
-   6. 🕒 근무 패턴 생성기 (카드형 디자인)
+   6. 🕒 근무 패턴 생성기 (반응형 레이아웃)
    ========================================= */
 
-/* 기본(PC): 한 줄에 배치 */
+/* 🖥️ PC 기본 스타일 (가로 배치) */
 .pattern-day-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid #f5f5f5;
+  gap: 16px; /* 요일과 시간 입력란 사이 간격 */
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
 }
 
+/* 요일 라벨 (PC) */
+.day-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 80px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* 시간 입력 영역 전체 (PC: 가로 배열) */
+.time-input-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 시작/종료 시간 각각의 그룹 (PC) */
 .time-row {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-/* 📱 모바일 전용 (768px 이하) */
+
+/* 📱 모바일 전용 스타일 (768px 이하) - 카드형 디자인 */
 @media (max-width: 768px) {
   
-  /* 요일 한 줄을 '박스'로 만듦 */
+  /* 요일 한 줄을 '박스'로 만듦 (세로 배치) */
   .pattern-day-row {
     flex-direction: column;       /* 세로 배치 */
     align-items: stretch;         /* 가로 꽉 채우기 */
+    gap: 12px;
     background-color: #f9f9f9;    /* 회색 배경 */
     border: 1px solid #eee;
-    border-radius: 8px;           /* 둥근 모서리 */
-    padding: 12px;
-    margin-bottom: 10px;          /* 박스 간 간격 */
+    border-radius: 12px;          /* 둥근 모서리 */
+    padding: 16px;
+    margin-bottom: 12px;          /* 박스 간 간격 */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
   }
 
-  /* 요일 라벨 (체크박스 부분) */
-  .pattern-day-row label {
-    margin-bottom: 8px;
+  /* 요일 라벨 (모바일: 상단에 큼직하게) */
+  .day-label {
+    width: 100%;
+    font-size: 16px;
     font-weight: bold;
-    font-size: 15px;
     border-bottom: 1px solid #ddd;
-    padding-bottom: 6px;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+  }
+
+  /* 시간 입력 영역 전체 (모바일: 세로 배열) */
+  .time-input-area {
+    flex-direction: column;
+    gap: 12px;
     width: 100%;
   }
 
-  /* 시간 입력 줄 (시작/종료 각각 한 줄씩) */
+  /* 시작/종료 각각의 줄 (모바일: 양끝 정렬) */
   .time-row {
     display: flex;
     justify-content: space-between; /* 라벨과 입력창 양끝 정렬 */
     align-items: center;
-    margin-bottom: 6px;
     width: 100%;
   }
-  
-  /* 마지막 줄은 마진 제거 */
-  .time-row:last-child {
-    margin-bottom: 0;
-  }
 
-  /* '시작', '종료' 글씨 스타일 */
+  /* '시작', '종료' 글씨 뱃지 스타일 */
   .time-label-badge {
-    font-size: 12px;
-    color: #666;
+    font-size: 13px;
+    color: #555;
     background: #fff;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
     border: 1px solid #ddd;
-    margin-right: 8px;
-    min-width: 30px;
-    text-align: center;
+    font-weight: 500;
   }
 
-  /* [수정] 선택창(Select) 크기 및 가독성 확보 */
+  /* 선택창(Select) 크기 최적화 */
   select {
-    height: 36px !important;      /* 높이를 36px로 넉넉하게 키움 */
-    font-size: 13px !important;   /* 글자 크기 확보 */
+    height: 38px !important;      /* 터치하기 좋은 높이 */
+    font-size: 14px !important;   /* 글자 크기 확보 */
     background-color: #fff !important;
-    padding-left: 4px !important; /* 내부 여백 */
-    padding-right: 20px !important; /* 화살표 자리 확보 (글자 겹침 방지) */
+    padding-left: 8px !important;
+    padding-right: 24px !important; /* 화살표 공간 */
     
-    /* 모바일 브라우저 기본 스타일 초기화 (아이폰 등에서 둥글게 나오는 것 방지) */
+    /* 모바일 브라우저 기본 스타일 초기화 */
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
     
-    /* 커스텀 화살표 추가 (선택사항, 없어도 됨) */
+    border: 1px solid #ccc !important;
+    border-radius: 6px !important;
+    
+    /* 화살표 아이콘 */
     background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='gray' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
     background-repeat: no-repeat;
-    background-position: right 4px center;
+    background-position: right 8px center;
     background-size: 14px;
-    border: 1px solid #ccc !important;
-    border-radius: 4px !important;
   }
 }
 
