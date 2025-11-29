@@ -23,7 +23,7 @@ body {
    ========================================= */
 @media (max-width: 768px) {
   html, body { font-size: 14px; }
-  .mobile-top-padding { padding-top: 150px !important; }
+  .mobile-top-padding { padding-top: 2500px !important; }
   .mobile-header-padding { padding: 10px 16px !important; }
   .mobile-logo-text { font-size: 20px !important; }
   .mobile-tab-btn { font-size: 13px !important; padding: 6px 12px !important; }
