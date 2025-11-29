@@ -29,7 +29,7 @@ body {
 }
 
 /* =========================================
-   3. 📱 모바일 전용 기본 스타일 (화면 768px 이하)
+   3. 📱 모바일 전용 스타일 (화면 768px 이하)
    ========================================= */
 @media (max-width: 768px) {
   
@@ -37,22 +37,18 @@ body {
     font-size: 14px;
   }
 
-  /* 3-1. 본문 상단 여백 줄이기 (헤더 다이어트 대응) */
+  /* 본문 상단 여백 */
   .mobile-top-padding {
-    padding-top: 135px !important; /* PC 190px -> 모바일 135px */
+    padding-top: 135px !important;
   }
 
-  /* 3-2. 헤더 내부 간격 줄이기 */
+  /* 헤더 관련 */
   .mobile-header-padding {
     padding: 10px 16px !important;
   }
-  
-  /* 3-3. 로고 텍스트 크기 줄이기 */
   .mobile-logo-text {
     font-size: 20px !important;
   }
-
-  /* 3-4. 탭 메뉴 버튼 크기 및 간격 축소 */
   .mobile-tab-btn {
     font-size: 13px !important;
     padding: 6px 12px !important;
@@ -63,37 +59,37 @@ body {
     padding-bottom: 8px !important;
   }
 
-  /* 3-5. [스케줄 관리 전용] 강제 축소 스타일 (스크롤 없이 한눈에 보기) */
-  .shrink-on-mobile table,
-  .shrink-on-mobile th,
-  .shrink-on-mobile td,
-  .shrink-on-mobile div {
-    font-size: 11px !important; /* 글씨 작게 */
-    padding: 2px !important;    /* 여백 최소화 */
+  /* [스케줄 달력] 모바일용 버튼 그룹 (2줄 배치 등) */
+  .calendar-header-mobile {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch !important;
   }
   
-  .shrink-on-mobile table {
-    width: 100% !important;
-    table-layout: fixed !important; /* 칸 크기 균등 분할 */
+  /* 버튼들 크기 작게 */
+  .mobile-sm-btn {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    height: 36px !important;
   }
 }
 
 /* =========================================
-   4. 📊 테이블 가로 스크롤 (급여 대장용 & 스케줄용)
+   4. 📊 테이블 가로 스크롤
    ========================================= */
 .table-wrapper {
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 10px;
-  
-  /* ✅ [수정] 오른쪽 테두리 잘림 방지를 위한 여백 추가 */
-  padding-right: 1px; 
+  /* ✅ 선 튀어나옴 방지 (오른쪽 패딩 제거하고 보더 정리) */
+  border-right: 1px solid #ddd; 
 }
 
-/* 표의 최소 너비를 지정해서, 모바일에서도 찌그러지지 않게 함 */
 .table-wrapper table {
   min-width: 800px; 
+  /* 테이블 자체의 오른쪽 보더를 없애서 겹침 방지 */
+  border-right: none;
 }
 
 /* =========================================
@@ -156,12 +152,11 @@ body {
 .pattern-day-row {
   display: flex;
   align-items: center;
-  gap: 16px; /* 요일과 시간 입력란 사이 간격 */
+  gap: 16px; 
   padding: 8px 0;
   border-bottom: 1px solid #f0f0f0;
 }
 
-/* 요일 라벨 (PC) */
 .day-label {
   display: flex;
   align-items: center;
@@ -171,7 +166,6 @@ body {
   font-size: 14px;
 }
 
-/* 시간 입력 영역 전체 (PC: 가로 배열) */
 .time-input-area {
   flex: 1;
   display: flex;
@@ -179,31 +173,27 @@ body {
   gap: 8px;
 }
 
-/* 시작/종료 시간 각각의 그룹 (PC) */
 .time-row {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-
-/* 📱 모바일 전용 스타일 (768px 이하) - 카드형 디자인 */
+/* 📱 모바일 전용 스타일 (768px 이하) */
 @media (max-width: 768px) {
   
-  /* 요일 한 줄을 '박스'로 만듦 (세로 배치) */
   .pattern-day-row {
     flex-direction: column;       /* 세로 배치 */
     align-items: stretch;         /* 가로 꽉 채우기 */
     gap: 12px;
-    background-color: #f9f9f9;    /* 회색 배경 */
+    background-color: #f9f9f9;    
     border: 1px solid #eee;
-    border-radius: 12px;          /* 둥근 모서리 */
+    border-radius: 12px;          
     padding: 16px;
-    margin-bottom: 12px;          /* 박스 간 간격 */
+    margin-bottom: 12px;          
     box-shadow: 0 2px 4px rgba(0,0,0,0.03);
   }
 
-  /* 요일 라벨 (모바일: 상단에 큼직하게) */
   .day-label {
     width: 100%;
     font-size: 16px;
@@ -211,24 +201,22 @@ body {
     border-bottom: 1px solid #ddd;
     padding-bottom: 8px;
     margin-bottom: 4px;
+    color: #333;
   }
 
-  /* 시간 입력 영역 전체 (모바일: 세로 배열) */
   .time-input-area {
     flex-direction: column;
     gap: 12px;
     width: 100%;
   }
 
-  /* 시작/종료 각각의 줄 (모바일: 양끝 정렬) */
   .time-row {
     display: flex;
-    justify-content: space-between; /* 라벨과 입력창 양끝 정렬 */
+    justify-content: space-between; 
     align-items: center;
     width: 100%;
   }
 
-  /* '시작', '종료' 글씨 뱃지 스타일 */
   .time-label-badge {
     font-size: 13px;
     color: #555;
@@ -237,29 +225,20 @@ body {
     border-radius: 6px;
     border: 1px solid #ddd;
     font-weight: 500;
+    min-width: 40px;
+    text-align: center;
   }
 
-  /* 선택창(Select) 크기 최적화 */
+  /* ✅ [핵심] 선택창 스타일 강제 지정 */
   select {
-    height: 38px !important;      /* 터치하기 좋은 높이 */
-    font-size: 14px !important;   /* 글자 크기 확보 */
+    height: 40px !important;      /* 터치하기 좋은 높이 */
+    font-size: 15px !important;   /* 글자 크기 확보 */
+    color: #333 !important;       /* 글자색 검정 (필수) */
     background-color: #fff !important;
     padding-left: 8px !important;
-    padding-right: 24px !important; /* 화살표 공간 */
-    
-    /* 모바일 브라우저 기본 스타일 초기화 */
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    
     border: 1px solid #ccc !important;
     border-radius: 6px !important;
-    
-    /* 화살표 아이콘 */
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='gray' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-    background-size: 14px;
+    -webkit-appearance: none;     /* 아이폰 기본 스타일 제거 */
   }
 }
 

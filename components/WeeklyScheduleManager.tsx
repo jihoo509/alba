@@ -30,8 +30,6 @@ type ShiftPattern = {
 
 export default function WeeklyScheduleManager({ currentStoreId, employees }: Props) {
   const supabase = createSupabaseBrowserClient();
-  
-  // 스크롤 이동을 위한 Ref (패턴 생성기 박스를 가리킴)
   const patternMakerRef = useRef<HTMLDivElement>(null);
 
   const [patterns, setPatterns] = useState<ShiftPattern[]>([]); 
@@ -41,6 +39,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   const [newPatternName, setNewPatternName] = useState('');
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [timeRules, setTimeRules] = useState<Record<number, { start: string; end: string }>>({});
+  // 기본값 설정
   const [lastInputTime, setLastInputTime] = useState({ start: '10:00', end: '16:00' });
   
   const [editingPatternId, setEditingPatternId] = useState<string | null>(null);
@@ -121,12 +120,14 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
       setTimeRules(newRules);
     } else {
       setSelectedDays(prev => [...prev, day]);
+      // 체크 시 기본값(lastInputTime)으로 시간 설정
       setTimeRules(prev => ({ ...prev, [day]: { start: lastInputTime.start, end: lastInputTime.end } }));
     }
   };
 
   const handleTimeChange = (day: number, type: 'start' | 'end', value: string) => {
     setTimeRules(prev => ({ ...prev, [day]: { ...prev[day], [type]: value } }));
+    // 마지막 입력값 업데이트 (다음 요일 체크 시 사용)
     setLastInputTime(prev => ({ ...prev, [type]: value }));
   };
 
@@ -171,15 +172,15 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     setTimeRules(pattern.weekly_rules);
     setSelectedDays(Object.keys(pattern.weekly_rules).map(Number));
     
+    // 첫 번째 규칙을 찾아서 lastInputTime 업데이트 (입력 편의성)
     const firstRule = Object.values(pattern.weekly_rules)[0];
     if (firstRule) {
         setLastInputTime({ start: firstRule.start, end: firstRule.end });
     }
 
-    // ✅ [수정] 모바일에서 수정 버튼 누르면 위쪽 입력폼으로 스크롤 이동
+    // 모바일 자동 스크롤
     if (window.innerWidth <= 768 && patternMakerRef.current) {
-        // 약간의 오차를 두고 부드럽게 이동
-        const yOffset = -200; // 헤더 높이만큼 보정
+        const yOffset = -150; 
         const element = patternMakerRef.current;
         const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
         window.scrollTo({ top: y, behavior: 'smooth' });
@@ -314,7 +315,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
       {/* weekly-container: PC는 가로, 모바일은 세로 배치 */}
       <div className="weekly-container">
         
-        {/* 왼쪽: 패턴 생성기 (ref 추가) */}
+        {/* 왼쪽: 패턴 생성기 */}
         <div className="pattern-maker-panel" ref={patternMakerRef}>
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#333' }}>
             {editingPatternId ? '🛠️ 패턴 수정하기' : '1. 근무 패턴 만들기'}
@@ -345,22 +346,32 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
               {DAYS.map(day => {
                 const isChecked = selectedDays.includes(day.num);
                 return (
-                  // pattern-day-row 클래스 적용
+                  // ✅ [수정] globals.css의 .pattern-day-row 적용
                   <div key={day.num} className="pattern-day-row" style={{ opacity: isChecked ? 1 : 0.6 }}>
                     <label className="day-label">
                       <input type="checkbox" checked={isChecked} onChange={() => toggleDay(day.num)} style={{ accentColor: 'dodgerblue', transform: 'scale(1.2)' }} />
                       <span style={{ color: isChecked ? 'dodgerblue' : '#555', fontWeight: isChecked ? 'bold' : 'normal' }}>{day.label}</span>
                     </label>
                     
+                    {/* ✅ [수정] globals.css의 .time-input-area 적용 */}
                     <div className="time-input-area">
                         <div className="time-row">
                             <span className="time-label-badge mobile-only-inline">시작</span>
-                            <TimeSelector value={timeRules[day.num]?.start || '10:00'} onChange={(val) => handleTimeChange(day.num, 'start', val)} interval={minuteInterval} />
+                            {/* ✅ value가 없을 때 기본값(lastInputTime) 사용하도록 안전장치 */}
+                            <TimeSelector 
+                                value={timeRules[day.num]?.start || lastInputTime.start} 
+                                onChange={(val) => handleTimeChange(day.num, 'start', val)} 
+                                interval={minuteInterval} 
+                            />
                         </div>
                         <span className="desktop-only-inline" style={{ color: '#aaa', margin: '0 4px' }}>~</span>
                         <div className="time-row">
                             <span className="time-label-badge mobile-only-inline">종료</span>
-                            <TimeSelector value={timeRules[day.num]?.end || '16:00'} onChange={(val) => handleTimeChange(day.num, 'end', val)} interval={minuteInterval} />
+                            <TimeSelector 
+                                value={timeRules[day.num]?.end || lastInputTime.end} 
+                                onChange={(val) => handleTimeChange(day.num, 'end', val)} 
+                                interval={minuteInterval} 
+                            />
                         </div>
                     </div>
                   </div>
@@ -390,10 +401,8 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
                생성된 패턴이 없습니다. 왼쪽에서 패턴을 만들어주세요.
              </div>
           ) : (
-             // ✅ [수정] Grid Layout 개선: 모바일에서 오른쪽 쏠림 없이 꽉 채우기
              <div style={{ 
                  display: 'grid', 
-                 // 모바일(좁은화면)에서는 1fr(1열), 조금 넓어지면 minmax(300px, 1fr)로 자동 조절
                  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
                  gap: 16 
              }}>
