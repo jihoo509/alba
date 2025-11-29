@@ -52,12 +52,16 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   const [popupOpen, setPopupOpen] = useState(false);
   const [isNew, setIsNew] = useState(false);
 
+  // 폼 상태
   const [editDate, setEditDate] = useState('');
   const [editStartTime, setEditStartTime] = useState('09:00');
   const [editEndTime, setEditEndTime] = useState('18:00');
   const [editEmpId, setEditEmpId] = useState<string | null>(null);
   const [editExcludePay, setEditExcludePay] = useState(false);
   const [editIsHolidayWork, setEditIsHolidayWork] = useState(false);
+  
+  // ✅ [추가] 분 단위 선택 상태 (기본 30분)
+  const [minuteInterval, setMinuteInterval] = useState(30);
 
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedDeleteIds, setSelectedDeleteIds] = useState<string[]>([]);
@@ -102,7 +106,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
       clone.style.zIndex = '-1';
       clone.style.backgroundColor = '#ffffff';
       
-      // 복제된 요소 내부의 모든 테이블 너비 강제
       const tables = clone.getElementsByTagName('table');
       if (tables.length > 0) {
         tables[0].style.width = '100%';
@@ -167,6 +170,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
       setEditEmpId(sch.employee_id);
       setEditExcludePay(sch.exclude_holiday_pay || false);
       setEditIsHolidayWork(sch.is_holiday_work || false);
+      setMinuteInterval(30); // 팝업 열 때 30분 기본값 리셋
       setIsNew(false);
       setPopupOpen(true);
     }
@@ -181,6 +185,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     setEditEmpId(null);
     setEditExcludePay(false);
     setEditIsHolidayWork(false);
+    setMinuteInterval(30); // 팝업 열 때 30분 기본값 리셋
     setIsNew(true);
     setPopupOpen(true);
   };
@@ -248,7 +253,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         </div>
       </div>
 
-      {/* ✅ [수정] 캡처 영역 시작: 요일 헤더부터 그리드까지 감싸고 ref 할당 */}
+      {/* 캡처 영역 */}
       <div ref={calendarRef} style={{ backgroundColor: '#fff', paddingBottom: 10 }}>
         
         {/* 요일 헤더 */}
@@ -310,14 +315,25 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000}}>
           <div style={{backgroundColor: '#ffffff', padding: 24, borderRadius: 12, border: '1px solid #ccc', width: 360, boxShadow: '0 10px 25px rgba(0,0,0,0.2)', color: '#333'}}>
             <h3 style={{ marginTop: 0, marginBottom: 20, color: '#333', textAlign: 'center' }}>{isNew ? '새 스케줄 추가' : '스케줄 수정'} ({editDate})</h3>
+            
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8 }}>근무 시간</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <label style={{ fontSize: 13, color: '#666' }}>근무 시간</label>
+                {/* ✅ [추가] 분 단위 선택 버튼 */}
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {[30, 10, 5].map((min) => (
+                    <button key={min} onClick={() => setMinuteInterval(min)} style={{ padding: '2px 8px', fontSize: 11, borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer', backgroundColor: minuteInterval === min ? 'dodgerblue' : '#f0f0f0', color: minuteInterval === min ? '#fff' : '#666' }}>{min}분</button>
+                  ))}
+                </div>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <TimeSelector value={editStartTime} onChange={setEditStartTime} />
+                {/* ✅ interval 전달 */}
+                <TimeSelector value={editStartTime} onChange={setEditStartTime} interval={minuteInterval} />
                 <span>~</span>
-                <TimeSelector value={editEndTime} onChange={setEditEndTime} isLast={true} />
+                <TimeSelector value={editEndTime} onChange={setEditEndTime} interval={minuteInterval} isLast={true} />
               </div>
             </div>
+
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8 }}>근무자 (대타)</label>
               <select value={editEmpId || ''} onChange={(e) => setEditEmpId(e.target.value || null)} style={{ width: '100%', padding: 10, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', borderRadius: 6 }}>
