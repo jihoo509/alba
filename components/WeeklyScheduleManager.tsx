@@ -214,7 +214,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     }
   };
 
-const handleAutoGenerate = async () => {
+  const handleAutoGenerate = async () => {
     if (!genStartDate || !genEndDate) return alert('시작일과 종료일을 설정해주세요.');
     if (genStartDate > genEndDate) return alert('시작일이 종료일보다 늦을 수 없습니다.');
     if (selectedPatternIds.length === 0) return alert('생성할 패턴을 하나 이상 체크해주세요.');
@@ -258,7 +258,6 @@ const handleAutoGenerate = async () => {
             start_time: rule.start,
             end_time: rule.end,
             color: pattern.color || '#4ECDC4',
-            // ✅ [핵심 수정] 패턴 이름을 'memo' 칸에 저장합니다!
             memo: pattern.name 
           });
         }
@@ -333,6 +332,9 @@ const handleAutoGenerate = async () => {
         * 체크된 패턴에 대해서만 스케줄이 생성됩니다.
       </p>
 
+      {/* ✅ [추가] 구분선 (스케줄 설정 <-> 패턴 만들기 사이) */}
+      <div style={{ borderTop: '1px solid #ddd', margin: '40px 0' }}></div>
+
       <div className="weekly-container">
         
         {/* 왼쪽: 패턴 생성기 */}
@@ -341,7 +343,6 @@ const handleAutoGenerate = async () => {
             {editingPatternId ? '🛠️ 패턴 수정하기' : '1. 근무 패턴 만들기'}
           </h4>
           
-          {/* ✅ [신규] 패턴 이름 입력 (버튼 선택식 + 직접 입력) */}
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6 }}>패턴 이름 (캘린더에 표시될 이름)</label>
             
@@ -434,13 +435,13 @@ const handleAutoGenerate = async () => {
           </div>
         </div>
 
-        {/* 오른쪽: 직원 배정 (기존 유지) */}
+        {/* 오른쪽: 직원 배정 */}
         <div className="pattern-list-panel">
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#fff' }}>2. 직원 배정하기</h4>
-                <p className="instruction-text" style={{ color: '#ddd', marginBottom: 24, fontSize: 14, lineHeight: '1.6' }}>
-        만들어 둔 패턴에 근무할 직원을 배정하세요.
-      </p>
-
+          <p className="instruction-text" style={{ color: '#ddd', marginBottom: 24, fontSize: 14, lineHeight: '1.6' }}>
+            만들어 둔 패턴에 근무할 직원을 배정하세요.
+          </p>
+          
           {patterns.length === 0 ? (
              <div style={{ padding: 40, textAlign: 'center', color: '#ccc', border: '1px dashed #666', borderRadius: 8 }}>
                생성된 패턴이 없습니다. 왼쪽에서 패턴을 만들어주세요.
