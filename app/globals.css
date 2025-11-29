@@ -147,3 +147,200 @@ body {
   .schedule-time { display: block; font-size: 11px; opacity: 0.9; }
   .schedule-pattern-only { display: none; }
 }
+
+/* =========================================
+   10. 👥 직원 관리 스타일 (반응형 카드/리스트)
+   ========================================= */
+
+/* 1. 입력 폼 카드 */
+.new-employee-form-card {
+  margin-bottom: 32px;
+  padding: 24px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.form-grid {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: bold;
+  color: #555;
+}
+
+.form-group input, .form-group select {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  background-color: #fff;
+  min-width: 100px;
+}
+
+.form-group.date-group {
+  min-width: 140px;
+}
+
+.btn-add {
+  padding: 10px 24px;
+  background-color: dodgerblue;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  height: 40px;
+  white-space: nowrap;
+}
+
+/* 2. 직원 리스트 컨테이너 */
+.employee-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 3. 직원 카드 (PC 기본: 가로 배치) */
+.employee-card {
+  background-color: #fff;
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+  transition: transform 0.2s;
+}
+
+.employee-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.employee-card.retired {
+  background-color: #f5f5f5;
+  border: 1px dashed #ccc;
+}
+
+.emp-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 2;
+}
+
+.emp-name {
+  font-size: 16px;
+  color: #333;
+}
+
+.emp-type-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: bold;
+}
+
+.emp-wage {
+  font-size: 15px;
+  color: #555;
+  font-weight: 500;
+}
+
+.emp-info-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 3;
+  color: #666;
+  font-size: 14px;
+}
+
+.emp-phone {
+  font-family: monospace; /* 숫자 가독성 */
+  letter-spacing: 0.5px;
+}
+
+.emp-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-edit, .btn-delete {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  background: #fff;
+}
+
+.btn-edit:hover { background-color: #f0f0f0; }
+.btn-delete { color: #e74c3c; border-color: #fadbd8; background-color: #fdfefe; }
+.btn-delete:hover { background-color: #fdedec; }
+
+
+/* 📱 모바일 전용 스타일 (카드형 변환) */
+@media (max-width: 768px) {
+  
+  /* 폼: 세로 배치 */
+  .form-grid {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .btn-add { width: 100%; margin-top: 8px; }
+
+  /* 리스트: 카드형 (세로 쌓기) */
+  .employee-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .emp-header {
+    width: 100%;
+    justify-content: space-between; /* 이름 --- 시급 */
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+  }
+
+  .emp-name { font-size: 18px; }
+  .emp-wage { font-size: 16px; color: #000; font-weight: bold; }
+
+  .emp-info-row {
+    flex-direction: column; /* 정보 세로 배치 */
+    align-items: flex-start;
+    gap: 6px;
+    width: 100%;
+    font-size: 13px;
+  }
+
+  .emp-actions {
+    width: 100%;
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-edit, .btn-delete {
+    flex: 1; /* 버튼 꽉 채우기 */
+    padding: 10px 0;
+    font-size: 14px;
+  }
+}

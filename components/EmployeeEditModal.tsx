@@ -21,7 +21,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         name: employee.name,
         hourly_wage: employee.hourly_wage,
         employment_type: employee.employment_type,
-        // 값이 없으면(undefined/null) 빈 문자열('')로 초기화해서 에러 방지
         hire_date: employee.hire_date || '',
         end_date: employee.end_date || '',
         phone_number: employee.phone_number || '',
@@ -44,7 +43,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   };
 
   const handleDateChange = (field: keyof Employee, value: string) => {
-    // DateSelector에서 받은 값을 formData에 업데이트
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -64,7 +62,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     const updates = {
       ...formData,
       is_active: isActive,
-      // 저장할 때는 빈 문자열을 다시 null로 변환 (DB에 깔끔하게 저장)
       hire_date: formData.hire_date === '' ? null : formData.hire_date,
       end_date: formData.end_date === '' ? null : formData.end_date,
       birth_date: formData.birth_date === '' ? null : formData.birth_date,
@@ -80,13 +77,11 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   };
 
   const getStatusLabel = () => {
-    if (!formData.end_date) return { text: '재직 중 🟢', color: '#4caf50' };
+    if (!formData.end_date) return { text: '재직 중', color: 'green' };
     const today = new Date().toISOString().split('T')[0];
-    if (formData.end_date > today) {
-      return { text: `퇴사 예정 (${formData.end_date}) 🟡`, color: '#ff9800' };
-    } else {
-      return { text: `퇴사 함 (${formData.end_date}) 🔴`, color: '#f44336' };
-    }
+    return formData.end_date > today 
+      ? { text: `퇴사 예정 (${formData.end_date})`, color: 'orange' } 
+      : { text: `퇴사함 (${formData.end_date})`, color: 'red' };
   };
 
   const status = getStatusLabel();
@@ -94,13 +89,15 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
-        <h2 style={styles.title}>직원 정보 수정</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={styles.title}>직원 정보 수정</h2>
+          <button onClick={onClose} style={styles.closeBtn}>✕</button>
+        </div>
 
         <div style={styles.gridContainer}>
           {/* 1행 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>이름</label>
-            {/* 🔴 여기 확인: value에 ?? '' 가 있어야 합니다 */}
             <input name="name" value={formData.name ?? ''} onChange={handleChange} style={styles.input} />
           </div>
           <div style={styles.inputGroup}>
@@ -112,15 +109,14 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
           <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
             <label style={styles.label}>고용 형태</label>
             <select name="employment_type" value={formData.employment_type ?? 'freelancer'} onChange={handleChange} style={styles.input}>
-              <option value="freelancer">3.3% 프리랜서</option>
-              <option value="employee">4대 보험 직원</option>
+              <option value="freelancer_33">3.3% 프리랜서</option>
+              <option value="four_insurance">4대 보험 직원</option>
             </select>
           </div>
 
           {/* 3행 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>생년월일</label>
-            {/* 🔴 여기 확인: DateSelector에도 ?? '' 가 있어야 합니다 */}
             <DateSelector value={formData.birth_date ?? ''} onChange={(val) => handleDateChange('birth_date', val)} />
           </div>
           <div style={styles.inputGroup}>
@@ -145,27 +141,27 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
           </div>
 
           {/* 퇴사일 & 상태 표시 */}
-           <div style={{ ...styles.inputGroup, gridColumn: 'span 2', marginTop: 10, padding: 16, backgroundColor: '#333', borderRadius: 6, border: '1px solid #444' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: 15, fontWeight: 'bold', color: status.color }}>
-                  상태: {status.text}
-                </span>
-                <button 
-                  onClick={toggleResignation}
-                  style={{ 
-                    padding: '6px 12px', borderRadius: 4, border: 'none', 
-                    background: formData.end_date ? '#555' : '#d32f2f', 
-                    color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 'bold'
-                  }}
-                >
-                  {formData.end_date ? '퇴사 취소 (재직 처리)' : '퇴사 처리 하기'}
-                </button>
-              </div>
-              
-              <div style={{ opacity: formData.end_date ? 1 : 0.3, pointerEvents: formData.end_date ? 'auto' : 'none', transition: 'opacity 0.2s' }}>
-                <label style={{ ...styles.label, marginBottom: 6, display: 'block' }}>퇴사일 (날짜를 선택하세요)</label>
-                <DateSelector value={formData.end_date ?? ''} onChange={(val) => handleDateChange('end_date', val)} />
-              </div>
+           <div style={{ ...styles.inputGroup, gridColumn: 'span 2', marginTop: 10, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 8, border: '1px solid #eee' }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+               <span style={{ fontSize: 14, fontWeight: 'bold', color: status.color === 'green' ? '#2ecc71' : status.color === 'red' ? '#e74c3c' : '#f1c40f' }}>
+                 ● {status.text}
+               </span>
+               <button 
+                 onClick={toggleResignation}
+                 style={{ 
+                   padding: '6px 12px', borderRadius: 4, border: '1px solid #ddd', 
+                   background: '#fff', 
+                   color: '#555', cursor: 'pointer', fontSize: 12, fontWeight: 'bold'
+                 }}
+               >
+                 {formData.end_date ? '퇴사 취소' : '퇴사 처리'}
+               </button>
+             </div>
+             
+             <div style={{ opacity: formData.end_date ? 1 : 0.5, pointerEvents: formData.end_date ? 'auto' : 'none', transition: 'opacity 0.2s' }}>
+               <label style={{ ...styles.label, marginBottom: 6, display: 'block' }}>퇴사일 선택</label>
+               <DateSelector value={formData.end_date ?? ''} onChange={(val) => handleDateChange('end_date', val)} />
+             </div>
            </div>
         </div>
 
@@ -180,24 +176,26 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   );
 }
 
+// ✅ 스타일: 밝은 테마로 변경
 const styles = {
   overlay: {
     position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.75)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
   },
   modal: {
-    backgroundColor: '#1f1f1f', padding: '32px', borderRadius: '12px', width: '100%', maxWidth: '500px',
-    border: '1px solid #333', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', maxHeight: '90vh', overflowY: 'auto' as const
+    backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', width: '90%', maxWidth: '500px',
+    boxShadow: '0 10px 40px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' as const
   },
-  title: { marginTop: 0, marginBottom: 24, color: '#fff', fontSize: '20px', fontWeight: 700 },
+  title: { margin: 0, color: '#333', fontSize: '20px', fontWeight: 700 },
+  closeBtn: { background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#999' },
   gridContainer: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' },
   inputGroup: { display: 'flex', flexDirection: 'column' as const, gap: '6px' },
-  label: { fontSize: '13px', color: '#aaa', fontWeight: 500 },
+  label: { fontSize: '13px', color: '#666', fontWeight: 600 },
   input: {
-    width: '100%', padding: '10px 12px', backgroundColor: '#2a2a2a', border: '1px solid #444',
-    color: '#fff', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const
+    width: '100%', padding: '10px 12px', backgroundColor: '#fff', border: '1px solid #ddd',
+    color: '#333', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const
   },
   buttonContainer: { display: 'flex', gap: '12px', marginTop: '32px', justifyContent: 'flex-end' },
-  cancelButton: { padding: '10px 20px', background: '#333', border: '1px solid #444', color: '#eee', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 },
-  saveButton: { padding: '10px 20px', background: 'royalblue', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }
+  cancelButton: { padding: '12px 24px', background: '#f5f5f5', border: 'none', color: '#666', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },
+  saveButton: { padding: '12px 24px', background: 'dodgerblue', border: 'none', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }
 };
