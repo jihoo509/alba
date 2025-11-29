@@ -382,52 +382,78 @@ body {
 }
 
 /* =========================================
-   9. 📅 [수정4 - 재수정] 모바일 캘린더 강제 맞춤
+   9. 📱 모바일 최적화 (버튼, 캘린더, 텍스트)
    ========================================= */
 
 @media (max-width: 768px) {
-  /* 1. 테이블을 감싸는 박스의 여백 제거 (공간 확보) */
+  
+  /* 1. 버튼 크기 다이어트 (이미지 저장 등) */
+  .mobile-sm-btn {
+    padding: 6px 10px !important; /* 내부 여백 축소 */
+    font-size: 11px !important;   /* 글자 크기 축소 */
+    height: 32px !important;      /* 높이 고정 */
+    line-height: 1 !important;    /* 글자 수직 정렬 */
+    white-space: nowrap;          /* 줄바꿈 방지 */
+  }
+
+  /* 2. 캘린더 데이터 짤림 해결 (극한의 다이어트) */
   .table-wrapper {
     width: 100% !important;
-    overflow-x: hidden !important; /* 가로 스크롤 막기 */
     padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
+    overflow-x: hidden !important;
   }
-
-  /* 2. 테이블 칸 강제 고정 (7등분) */
   .table-wrapper table {
     width: 100% !important;
-    min-width: 0 !important;
-    table-layout: fixed !important; /* 무조건 1/n 등분 */
-    border-collapse: collapse;
+    table-layout: fixed !important; /* 칸 크기 고정 */
   }
-
-  /* 3. 칸 내부 여백 삭제 및 글자 강제 줄바꿈 */
-  .table-wrapper th, 
-  .table-wrapper td {
-    padding: 2px 0 !important;    /* 여백 거의 없앰 */
-    font-size: 10px !important;   /* 글자 크기 축소 */
-    word-wrap: break-word !important; /* 긴 단어 줄바꿈 */
-    word-break: break-all !important; /* 영어 이름도 강제 줄바꿈 */
-    letter-spacing: -0.5px !important; /* 자간 좁히기 */
+  .table-wrapper th, .table-wrapper td {
+    padding: 2px 0 !important;
     overflow: hidden; /* 넘치는 것 숨김 */
   }
 
-  /* 4. 날짜 숫자(1, 2, 3...) 스타일 */
+  /* 날짜 숫자 */
   .table-wrapper td > div:first-child {
     font-size: 10px !important;
     margin-bottom: 2px !important;
-    font-weight: bold;
   }
 
-  /* 5. 스케줄 바(색깔 박스) 스타일 최적화 */
+  /* 스케줄 박스 (이름, 시간) */
   .table-wrapper td > div:not(:first-child) {
-    padding: 2px 0 !important;
+    padding: 2px 1px !important;
     margin: 1px 0 !important;
-    font-size: 9px !important; /* 스케줄 텍스트 더 작게 */
-    line-height: 1.1 !important;
-    border-radius: 2px !important;
-    white-space: normal !important; /* 줄바꿈 허용 */
+    border-radius: 3px !important;
+  }
+  
+  /* 이름: 잘리면 안 됨 */
+  .table-wrapper td > div:not(:first-child) > div:first-child {
+    font-size: 10px !important;
+    font-weight: bold !important;
+    white-space: nowrap !important; /* 한 줄로 나오게 */
+    overflow: hidden;
+    text-overflow: ellipsis; /* 너무 길면 ... 처리 */
+  }
+
+  /* 시간: 12:00~17:00 -> 너무 길어서 폰트 확 줄임 */
+  .table-wrapper td > div:not(:first-child) > div:last-child {
+    font-size: 8px !important; /* 폰트 극소화 */
+    letter-spacing: -0.5px !important; /* 자간 좁힘 */
+    white-space: nowrap !important;
+    margin-top: -1px !important; /* 이름이랑 딱 붙이기 */
+  }
+
+  /* 3. 자동 생성 날짜 '일' 줄바꿈 방지 */
+  .auto-gen-inputs {
+    flex-wrap: nowrap !important; /* 줄바꿈 절대 금지 */
+    width: 100%;
+  }
+  .auto-gen-inputs > div {
+    flex: 1; /* 공간 공평하게 나눠먹기 */
+  }
+  
+  /* 4. 안내 문구 줄바꿈 처리 */
+  .instruction-text br {
+    display: block !important;
+    content: "";
+    margin-top: 4px;
   }
 }

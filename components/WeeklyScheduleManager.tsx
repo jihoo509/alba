@@ -308,8 +308,10 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
   return (
     <div style={{ marginTop: 32, borderTop: '1px solid #ddd', paddingTop: 24 }}>
       <h3 style={{ fontSize: 20, marginBottom: 16, color: '#fff' }}>🔄 주간 반복 스케줄 설정 (패턴 배정)</h3>
-      <p style={{ color: '#ddd', marginBottom: 24, fontSize: 14 }}>
-        1. 근무 패턴(요일별 시간)을 만들고 → 2. 해당 패턴으로 근무할 직원을 체크하세요.
+      {/* 클래스 추가: instruction-text (globals.css에서 제어) */}
+      <p className="instruction-text" style={{ color: '#ddd', marginBottom: 24, fontSize: 14, lineHeight: '1.6' }}>
+        1. 근무 패턴(요일별 시간)을 만들고 <br className="mobile-only" /> 
+        → 2. 해당 패턴으로 근무할 직원을 체크하세요.
       </p>
 
       {/* ✅ [수정1 & 3] 스마트 날짜 선택기 (위로 이동 및 반응형 클래스 적용) */}
