@@ -5,8 +5,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 type Props = {
   value: string; // "HH:mm" (24시간제)
   onChange: (value: string) => void;
-  interval?: number; // 분 단위 (기본 30)
-  isLast?: boolean;  // ✅ [신규] 마지막 입력칸인지 여부 (모바일 '다음' 버튼 제어용)
+  interval?: number; 
+  isLast?: boolean;  // 마지막 입력칸(종료 시간)인지 여부
 };
 
 export default function TimeSelector({ value, onChange, interval = 30, isLast = false }: Props) {
@@ -34,7 +34,12 @@ export default function TimeSelector({ value, onChange, interval = 30, isLast = 
   }, [value]);
 
   // 변경 핸들러
-  const handleChange = (type: 'ampm' | 'hour' | 'minute', val: string) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLSelectElement>, 
+    type: 'ampm' | 'hour' | 'minute'
+  ) => {
+    const val = e.target.value;
+    
     let newAmpm = ampm;
     let newHour = hour;
     let newMinute = minute;
@@ -54,6 +59,12 @@ export default function TimeSelector({ value, onChange, interval = 30, isLast = 
     if (type === 'minute') setMinute(val);
 
     onChange(finalTime);
+
+    // ✅ [핵심 해결책] '분'을 변경했고, 이것이 '종료 시간(isLast)'이라면?
+    // -> 강제로 포커스를 해제(blur)하여 모바일 키보드/피커를 닫아버림!
+    if (type === 'minute' && isLast) {
+      e.target.blur(); 
+    }
   };
 
   // interval에 따라 분 목록 동적 생성
@@ -72,7 +83,7 @@ export default function TimeSelector({ value, onChange, interval = 30, isLast = 
       {/* 오전/오후 */}
       <select
         value={ampm}
-        onChange={(e) => handleChange('ampm', e.target.value)}
+        onChange={(e) => handleChange(e, 'ampm')}
         style={{ ...selectStyle, width: 60 }}
       >
         <option value="AM">오전</option>
@@ -82,7 +93,7 @@ export default function TimeSelector({ value, onChange, interval = 30, isLast = 
       {/* 시 */}
       <select
         value={hour}
-        onChange={(e) => handleChange('hour', e.target.value)}
+        onChange={(e) => handleChange(e, 'hour')}
         style={{ ...selectStyle, width: 50 }}
       >
         {hours.map((h) => (
@@ -94,10 +105,8 @@ export default function TimeSelector({ value, onChange, interval = 30, isLast = 
       {/* 분 */}
       <select
         value={minute}
-        onChange={(e) => handleChange('minute', e.target.value)}
+        onChange={(e) => handleChange(e, 'minute')}
         style={{ ...selectStyle, width: 50 }}
-        // ✅ [핵심] 마지막 요소일 경우 '다음' 대신 '완료(Done)' 동작 유도
-        enterKeyHint={isLast ? 'done' : 'next'}
       >
         {minutes.map((m) => (
           <option key={m} value={m}>{m}</option>

@@ -382,41 +382,52 @@ body {
 }
 
 /* =========================================
-   9. 📅 [수정4] 모바일 캘린더 한 화면 맞춤
+   9. 📅 [수정4 - 재수정] 모바일 캘린더 강제 맞춤
    ========================================= */
 
 @media (max-width: 768px) {
-  /* 1. 테이블 강제 축소 (스크롤 없애기) */
+  /* 1. 테이블을 감싸는 박스의 여백 제거 (공간 확보) */
   .table-wrapper {
-    overflow-x: visible !important; /* 스크롤 기능 끔 */
+    width: 100% !important;
+    overflow-x: hidden !important; /* 가로 스크롤 막기 */
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
   }
 
+  /* 2. 테이블 칸 강제 고정 (7등분) */
   .table-wrapper table {
-    min-width: 0 !important;      /* 최소 너비 제한 해제 */
-    width: 100% !important;       /* 화면에 딱 맞게 */
-    table-layout: fixed !important; /* 칸 너비 균등 분배 */
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important; /* 무조건 1/n 등분 */
+    border-collapse: collapse;
   }
 
-  /* 2. 칸 내부 여백과 글자 크기 다이어트 */
+  /* 3. 칸 내부 여백 삭제 및 글자 강제 줄바꿈 */
   .table-wrapper th, 
   .table-wrapper td {
-    padding: 4px 2px !important;  /* 여백 최소화 */
-    font-size: 11px !important;   /* 글자 크기 축소 */
-    word-break: break-all;        /* 긴 이름은 줄바꿈 */
-    height: auto !important;      /* 높이 자동 조절 */
+    padding: 2px 0 !important;    /* 여백 거의 없앰 */
+    font-size: 10px !important;   /* 글자 크기 축소 */
+    word-wrap: break-word !important; /* 긴 단어 줄바꿈 */
+    word-break: break-all !important; /* 영어 이름도 강제 줄바꿈 */
+    letter-spacing: -0.5px !important; /* 자간 좁히기 */
+    overflow: hidden; /* 넘치는 것 숨김 */
   }
 
-  /* 3. 날짜 숫자 크기 조절 */
+  /* 4. 날짜 숫자(1, 2, 3...) 스타일 */
   .table-wrapper td > div:first-child {
     font-size: 10px !important;
     margin-bottom: 2px !important;
+    font-weight: bold;
   }
 
-  /* 4. 스케줄 바(색깔 박스) 크기 조절 */
+  /* 5. 스케줄 바(색깔 박스) 스타일 최적화 */
   .table-wrapper td > div:not(:first-child) {
-    padding: 2px !important;
-    margin-bottom: 2px !important;
-    font-size: 10px !important;
-    line-height: 1.2 !important;
+    padding: 2px 0 !important;
+    margin: 1px 0 !important;
+    font-size: 9px !important; /* 스케줄 텍스트 더 작게 */
+    line-height: 1.1 !important;
+    border-radius: 2px !important;
+    white-space: normal !important; /* 줄바꿈 허용 */
   }
 }
