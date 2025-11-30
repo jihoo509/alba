@@ -129,7 +129,7 @@ export function EmployeeSection({
             </div>
             <div className="form-group">
               <label>시급 (원)</label>
-              <input type="number" value={newEmpWage} onChange={(e) => setNewEmpWage(e.target.value)} placeholder="9860" />
+              <input type="number" value={newEmpWage} onChange={(e) => setNewEmpWage(e.target.value)} placeholder="10030" />
             </div>
             <div className="form-group">
               <label>고용 형태</label>
