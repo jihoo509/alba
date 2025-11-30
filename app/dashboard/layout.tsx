@@ -77,7 +77,7 @@ export default function DashboardLayout({
         boxShadow: '0 -2px 10px rgba(0,0,0,0.1)'
       }}>
         {/* 여기에 실제 광고 컴포넌트나 이미지를 넣으시면 됩니다 */}
-        <span style={{ fontSize: '13px' }}>광고 문의 010.4554.5587 (320x50)</span>
+        <span style={{ fontSize: '13px' }}>광고 문의 010.4554.5587</span>
       </div>
 
     </div>

@@ -25,7 +25,10 @@ export default function PayrollSection({ currentStoreId }: Props) {
     setLoading(true);
     const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
     const { data: empData } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
+    
+    // 퇴직금 계산기용 전체 목록 (퇴사자 포함해서 넘겨줌)
     if (empData) setEmployees(empData);
+    
     const { data: overData } = await supabase.from('employee_settings').select('*');
     
     const startStr = `${year}-${String(month - 1).padStart(2,'0')}-20`;
@@ -33,7 +36,22 @@ export default function PayrollSection({ currentStoreId }: Props) {
     const { data: schedules } = await supabase.from('schedules').select('*').eq('store_id', currentStoreId).gte('date', startStr).lte('date', endStr);
 
     if (empData && schedules && storeData) {
-      const result = calculateMonthlyPayroll(year, month, empData, schedules, storeData, overData || []);
+      
+      // ✅ [필터링 추가] 해당 월에 근무 자격이 있는 직원만 추리기
+      // 조건: 입사일이 해당 월 말일 이전 AND (퇴사일이 없거나 OR 퇴사일이 해당 월 1일 이후)
+      const targetMonthStart = new Date(year, month - 1, 1);
+      const targetMonthEnd = new Date(year, month, 0);
+      const targetMonthStartStr = format(targetMonthStart, 'yyyy-MM-dd');
+      const targetMonthEndStr = format(targetMonthEnd, 'yyyy-MM-dd');
+
+      const activeEmps = empData.filter(emp => {
+        const joined = !emp.hire_date || emp.hire_date <= targetMonthEndStr; // 해당 월 안에 입사했거나 그 전 입사
+        const notLeft = !emp.end_date || emp.end_date >= targetMonthStartStr; // 퇴사일이 없거나, 해당 월 1일 이후에 퇴사
+        return joined && notLeft;
+      });
+
+      // 필터링된 직원 목록(activeEmps)만 계산기로 전달
+      const result = calculateMonthlyPayroll(year, month, activeEmps, schedules, storeData, overData || []);
       setPayrollData(result);
     }
     setLoading(false);
