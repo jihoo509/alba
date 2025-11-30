@@ -14,6 +14,7 @@ export default function AdBanner({ position, href }: Props) {
     ? "https://policy-funding.ba-damda.com/" 
     : (href || '#');
 
+    
   // 공통 스타일
   const baseStyle: React.CSSProperties = {
     width: '300px',
