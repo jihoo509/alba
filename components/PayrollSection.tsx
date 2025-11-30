@@ -84,22 +84,31 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
       <div style={cardStyle}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
+          
+          {/* 헤더: 제목 & 엑셀 다운 버튼 */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-             <h2 style={{ fontSize: 20, margin: 0, color: '#333', fontWeight: 'bold' }}>💰 월 급여 대장</h2>
-             <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: '#27ae60', color: '#fff', border: 'none', fontSize: 13 }}>📊 엑셀 다운</button>
+             <h2 style={{ fontSize: 20, margin: 0, color: '#333', fontWeight: 'bold' }}>💰 급여 대장</h2>
+             <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: '#27ae60', color: '#fff', border: 'none', fontSize: 13 }}>
+               {/* 모바일에서는 '엑셀', PC에서는 '엑셀 다운' */}
+               <span className="mobile-text">엑셀</span>
+               <span className="desktop-text">엑셀 다운로드</span>
+             </button>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f5f5f5', padding: '12px', borderRadius: 8 }}>
+          
+          {/* 월 선택 & 총액 */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f5f5f5', padding: '12px', borderRadius: 8, flexWrap: 'wrap', gap: 10 }}>
              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                <button onClick={() => setMonth(m => m === 1 ? 12 : m - 1)} style={navBtnStyle}>◀</button>
                <span style={{ fontSize: 18, fontWeight: 'bold', color: '#333' }}>{month}월</span>
                <button onClick={() => setMonth(m => m === 12 ? 1 : m + 1)} style={navBtnStyle}>▶</button>
              </div>
-             <div style={{ textAlign: 'right' }}>
+             <div style={{ textAlign: 'right', flex: 1 }}>
                <div style={{ fontSize: 12, color: '#666' }}>총 지급액</div>
                <div style={{ fontSize: 18, fontWeight: 'bold', color: 'dodgerblue' }}>{totalMonthlyCost.toLocaleString()}원</div>
              </div>
           </div>
         </div>
+
 
         {loading ? <p style={{color:'#666', textAlign:'center'}}>계산 중...</p> : (
           <div className="table-wrapper" style={{ boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)' }}>

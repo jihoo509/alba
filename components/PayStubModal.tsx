@@ -169,26 +169,54 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   };
 
-  // ✅ 1. 설정 모드
+// ✅ 1. 설정 모드 (Mobile - Settings)
   if (mode === 'settings') {
     return (
         <div style={overlayStyle}>
-            <div style={{ ...modalStyle, maxWidth: '400px', height: 'auto', paddingBottom: '20px' }}>
-                <h3 style={{ margin: '0 0 20px 0', textAlign: 'center', color: '#333' }}>⚙️ {data.name}님 급여 설정</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <label style={checkboxLabel}><input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} style={checkInput} /> 주휴수당 지급</label>
-                    <label style={checkboxLabel}><input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} style={checkInput} /> 야간수당 지급</label>
-                    <label style={checkboxLabel}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} style={checkInput} /> 연장수당 지급</label>
-                    <label style={checkboxLabel}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} style={checkInput} /> 휴일(특근)수당 지급</label>
-                    <label style={checkboxLabel}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} style={checkInput} /> 휴게시간 자동 차감</label>
-                    <div style={{ borderTop: '1px dashed #ddd', margin: '8px 0' }}></div>
-                    <label style={{ ...checkboxLabel, color: 'crimson', fontWeight: 'bold' }}>
-                        <input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} style={checkInput} /> 세금 공제 안 함 (실수령 100%)
+            <div style={{ ...modalStyle, maxWidth: '340px', height: 'auto', padding: '24px', borderRadius: '16px' }}>
+                
+                {/* 제목 */}
+                <h3 style={{ margin: '0 0 24px 0', textAlign: 'center', color: '#333', fontSize: '18px', borderBottom: '2px solid #f0f0f0', paddingBottom: '12px' }}>
+                  ⚙️ <strong>{data.name} 님</strong> 급여 설정
+                </h3>
+
+                {/* 체크박스 목록 */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <label style={checkboxLabelMobile}>
+                      <input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} style={checkInput} /> 
+                      <span>주휴수당 <span style={{fontSize:11, color:'#888'}}>(15h↑)</span></span>
+                    </label>
+                    <label style={checkboxLabelMobile}>
+                      <input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} style={checkInput} /> 
+                      <span>야간수당 <span style={{fontSize:11, color:'#888'}}>(1.5배)</span></span>
+                    </label>
+                    <label style={checkboxLabelMobile}>
+                      <input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} style={checkInput} /> 
+                      <span>연장수당 <span style={{fontSize:11, color:'#888'}}>(1.5배)</span></span>
+                    </label>
+                    <label style={checkboxLabelMobile}>
+                      <input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} style={checkInput} /> 
+                      <span>휴일수당 <span style={{fontSize:11, color:'#ff6b6b'}}>(1.5배)</span></span>
+                    </label>
+                    <label style={checkboxLabelMobile}>
+                      <input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} style={checkInput} /> 
+                      <span>휴게시간 자동 차감</span>
+                    </label>
+                    
+                    <div style={{ borderTop: '1px dashed #ddd', margin: '4px 0' }}></div>
+                    
+                    <label style={{ ...checkboxLabelMobile, color: 'crimson', fontWeight: 'bold' }}>
+                        <input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} style={checkInput} /> 
+                        <span>세금 공제 안 함 <span style={{fontSize:11}}>(100%)</span></span>
                     </label>
                 </div>
-                <div style={{ marginTop: 24, display: 'flex', gap: 10 }}>
-                    <button onClick={onClose} style={btnCancel}>취소</button>
-                    <button onClick={handleSaveSettings} disabled={isSaving} style={btnSave}>{isSaving ? '저장 중...' : '저장하기'}</button>
+
+                {/* 버튼 그룹 (작게) */}
+                <div style={{ marginTop: 28, display: 'flex', gap: 10, justifyContent: 'center' }}>
+                    <button onClick={onClose} style={btnCancelSmall}>취소</button>
+                    <button onClick={handleSaveSettings} disabled={isSaving} style={btnSaveSmall}>
+                      {isSaving ? '...' : '저장'}
+                    </button>
                 </div>
             </div>
         </div>
@@ -354,3 +382,14 @@ const checkboxLabel = { display: 'flex', alignItems: 'center', gap: '8px', curso
 const checkInput = { transform: 'scale(1.2)' };
 const btnCancel = { flex: 1, padding: '12px', background: '#f5f5f5', border: 'none', color: '#333', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' };
 const btnSave = { flex: 1, padding: '12px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' };
+
+// 스타일 추가 (PayStubModal.tsx 맨 아래)
+const checkboxLabelMobile = { 
+  display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '15px', color: '#444' 
+};
+const btnCancelSmall = { 
+  padding: '10px 20px', background: '#f5f5f5', border: '1px solid #ddd', color: '#666', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px'
+};
+const btnSaveSmall = { 
+  padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px'
+};

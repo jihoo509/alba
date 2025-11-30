@@ -206,3 +206,12 @@ body {
   .mobile-cell { display: none !important; }
   .desktop-cell { display: table-cell !important; }
 }
+/* 버튼 텍스트 반응형 */
+@media (max-width: 768px) {
+  .desktop-text { display: none; }
+  .mobile-text { display: inline; }
+}
+@media (min-width: 769px) {
+  .mobile-text { display: none; }
+  .desktop-text { display: inline; }
+}
