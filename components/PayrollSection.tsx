@@ -6,198 +6,128 @@ import StoreSettings from './StoreSettings';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
 import * as XLSX from 'xlsx';
 import PayStubModal from './PayStubModal';
-// ✅ [확인] 퇴직금 계산기 import
 import SeveranceCalculator from './SeveranceCalculator';
 
-type Props = {
-  currentStoreId: string;
-};
+type Props = { currentStoreId: string; };
 
 export default function PayrollSection({ currentStoreId }: Props) {
   const supabase = createSupabaseBrowserClient();
-  
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
-
   const [payrollData, setPayrollData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [storeSettings, setStoreSettings] = useState<any>(null);
-  const [selectedPayStub, setSelectedPayStub] = useState<any>(null);
-
-  // ✅ [수정 1] 직원 목록을 자식 컴포넌트(퇴직금 계산기)에 넘겨주기 위해 state로 승격
   const [employees, setEmployees] = useState<any[]>([]);
-
-  // 개별 설정(overrides)을 담을 state
-  const [overrides, setOverrides] = useState<any[]>([]);
+  const [selectedPayStub, setSelectedPayStub] = useState<any>(null);
 
   const loadAndCalculate = useCallback(async () => {
     if (!currentStoreId) return;
     setLoading(true);
-
-    // 1. 매장 정보 가져오기
     const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
-    setStoreSettings(storeData);
-
-    // 2. 직원 목록 가져오기
     const { data: empData } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
-    
-    // ✅ [수정 2] 가져온 직원 데이터를 state에 저장 (퇴직금 계산기용)
-    if (empData) {
-        setEmployees(empData);
-    }
-
-    // 3. 개별 설정 가져오기
+    if (empData) setEmployees(empData);
     const { data: overData } = await supabase.from('employee_settings').select('*');
-    if (overData) setOverrides(overData);
-
+    
     const startStr = `${year}-${String(month - 1).padStart(2,'0')}-20`;
     const endStr = `${year}-${String(month + 1).padStart(2,'0')}-10`;
-    
-    // 4. 스케줄 가져오기
-    const { data: schedules } = await supabase
-      .from('schedules')
-      .select('*')
-      .eq('store_id', currentStoreId)
-      .gte('date', startStr)
-      .lte('date', endStr);
+    const { data: schedules } = await supabase.from('schedules').select('*').eq('store_id', currentStoreId).gte('date', startStr).lte('date', endStr);
 
     if (empData && schedules && storeData) {
-      // calculateMonthlyPayroll 호출
-      const result = calculateMonthlyPayroll(
-        year, 
-        month, 
-        empData, // 여기서는 로컬 변수 empData 사용 (state 업데이트 전일 수 있으므로)
-        schedules, 
-        storeData, 
-        overData || [] 
-      );
+      const result = calculateMonthlyPayroll(year, month, empData, schedules, storeData, overData || []);
       setPayrollData(result);
     }
     setLoading(false);
   }, [currentStoreId, year, month, supabase]);
 
-  useEffect(() => {
-    loadAndCalculate();
-  }, [loadAndCalculate]);
+  useEffect(() => { loadAndCalculate(); }, [loadAndCalculate]);
 
-  // 모달에서 '설정 저장' 버튼을 눌렀을 때 실행될 함수
   const handleSaveOverride = async (settings: any) => {
-    const { error } = await supabase
-      .from('employee_settings')
-      .upsert(settings, { onConflict: 'employee_id' });
-
-    if (error) {
-      console.error(error);
-      alert('설정 저장 중 오류가 발생했습니다.');
-      return;
-    }
-    await loadAndCalculate();
+    const { error } = await supabase.from('employee_settings').upsert(settings, { onConflict: 'employee_id' });
+    if (!error) await loadAndCalculate();
   };
 
-  const totalMonthlyCost = useMemo(() => {
-    return payrollData.reduce((acc, curr) => acc + curr.totalPay, 0);
-  }, [payrollData]);
+  const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => acc + curr.totalPay, 0), [payrollData]);
 
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
-
     const excelRows = payrollData.map(p => ({
-      '이름': p.name,
-      '생년월일': p.birthDate || '-',
-      '전화번호': p.phoneNumber || '-',
-      '은행': p.details.bank || '-',
-      '계좌번호': p.details.account || '-',
-      '총지급급여': fmt(p.totalPay),
-      '세후지급급여': fmt(p.finalPay),
-      '기본급': fmt(p.basePay),
-      '주휴수당': fmt(p.weeklyHolidayPay),
-      '야간수당': fmt(p.nightPay),
-      '연장수당': fmt(p.overtimePay),
-      '휴일수당': fmt(p.holidayWorkPay),
-      '소득세': fmt(p.taxDetails.incomeTax),
-      '지방소득세': fmt(p.taxDetails.localTax),
-      '국민연금': fmt(p.taxDetails.pension),
-      '건강보험': fmt(p.taxDetails.health),
-      '장기요양': fmt(p.taxDetails.care),
-      '고용보험': fmt(p.taxDetails.employment),
+      '이름': p.name, '총지급': fmt(p.totalPay), '세후지급': fmt(p.finalPay),
+      '기본급': fmt(p.basePay), '주휴': fmt(p.weeklyHolidayPay), '야간': fmt(p.nightPay),
+      '소득세': fmt(p.taxDetails.incomeTax), '국민연금': fmt(p.taxDetails.pension),
     }));
-
     const ws = XLSX.utils.json_to_sheet(excelRows);
-    ws['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "급여대장");
-    XLSX.writeFile(wb, `${year}년_${month}월_세무용_급여대장.xlsx`);
+    XLSX.writeFile(wb, `${year}년_${month}월_급여대장.xlsx`);
   };
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
       
-      {/* 설정 박스 */}
+      {/* 1. 설정 박스 */}
       <div style={cardStyle}>
           <StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} />
       </div>
 
+      {/* 2. 급여 대장 */}
       <div style={cardStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <h2 style={{ fontSize: 24, margin: 0, color: '#333' }}>💰 {year}년 {month}월 급여 대장</h2>
-            <span style={{ fontSize: 16, color: '#666' }}>
-              총 지급액: <strong style={{ color: 'dodgerblue', fontSize: 20 }}>{totalMonthlyCost.toLocaleString()}원</strong>
-            </span>
+        {/* 헤더: 월 선택 & 총액 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+             <h2 style={{ fontSize: 20, margin: 0, color: '#333', fontWeight: 'bold' }}>💰 월 급여 대장</h2>
+             <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: '#27ae60', color: '#fff', border: 'none', fontSize: 13 }}>
+               📊 엑셀 다운
+             </button>
           </div>
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setMonth(m => m === 1 ? 12 : m - 1)} style={btnStyle}>◀ 전월</button>
-            <span style={{ fontSize: 18, fontWeight: 'bold', alignSelf: 'center', minWidth: 60, textAlign: 'center', color: '#333' }}>{month}월</span>
-            <button onClick={() => setMonth(m => m === 12 ? 1 : m + 1)} style={btnStyle}>익월 ▶</button>
-            <div style={{ width: 10 }}></div>
-            <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: '#27ae60', color: '#fff', border: 'none' }}>
-              📊 세무용 엑셀 다운
-            </button>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f5f5f5', padding: '12px', borderRadius: 8 }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+               <button onClick={() => setMonth(m => m === 1 ? 12 : m - 1)} style={navBtnStyle}>◀</button>
+               <span style={{ fontSize: 18, fontWeight: 'bold', color: '#333' }}>{month}월</span>
+               <button onClick={() => setMonth(m => m === 12 ? 1 : m + 1)} style={navBtnStyle}>▶</button>
+             </div>
+             <div style={{ textAlign: 'right' }}>
+               <div style={{ fontSize: 12, color: '#666' }}>총 지급액</div>
+               <div style={{ fontSize: 18, fontWeight: 'bold', color: 'dodgerblue' }}>{totalMonthlyCost.toLocaleString()}원</div>
+             </div>
           </div>
         </div>
 
-        {loading ? <p style={{color:'#333'}}>계산 중...</p> : (
-          <div style={{ overflowX: 'auto', position: 'relative' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200, tableLayout: 'fixed' }}>
+        {/* 테이블 (가로 스크롤 적용) */}
+        {loading ? <p style={{color:'#666', textAlign:'center'}}>계산 중...</p> : (
+          <div className="table-wrapper" style={{ boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
               <thead>
-                <tr style={{ background: '#f5f5f5', color: '#333', fontSize: '15px', borderBottom: '2px solid #ddd', height: 50 }}>
-                  <th style={{ ...thStyle, ...stickyLeftStyle, left: 0, width: 80, zIndex: 10 }}>이름</th>
-                  <th style={{ ...thStyle, ...stickyLeftStyle, left: 80, width: 100, zIndex: 10, borderRight: '2px solid #ddd' }}>총 지급</th>
-                  
-                  <th style={{ ...thStyle, width: 100 }}>세후 지급</th>
-                  <th style={{ ...thStyle, background: '#f0f0f0', width: 80 }}>소득세</th>
-                  <th style={{ ...thStyle, background: '#f0f0f0', width: 80 }}>지방세</th>
-                  <th style={{ ...thStyle, background: '#e9e9e9', width: 80 }}>국민</th>
-                  <th style={{ ...thStyle, background: '#e9e9e9', width: 80 }}>건강</th>
-                  <th style={{ ...thStyle, background: '#e9e9e9', width: 80 }}>요양</th>
-                  <th style={{ ...thStyle, background: '#e9e9e9', width: 80 }}>고용</th>
-                  <th style={{ ...thStyle, width: 90 }}>기본급</th>
-                  <th style={{ ...thStyle, width: 90 }}>주휴수당</th>
-                  
-                  <th style={{ ...thStyle, ...stickyRightStyle, right: 0, width: 100, zIndex: 10, borderLeft: '2px solid #ddd' }}>상세보기</th>
+                <tr style={{ background: '#f5f5f5', color: '#555', fontSize: '13px', borderBottom: '1px solid #ddd', height: 40 }}>
+                  <th style={{ ...thStyle, ...stickyLeftStyle, left: 0, width: 70, zIndex: 10 }}>이름</th>
+                  <th style={{ ...thStyle, ...stickyLeftStyle, left: 70, width: 90, zIndex: 10, borderRight: '1px solid #ddd' }}>총 지급</th>
+                  <th style={{ ...thStyle, width: 90, color: 'dodgerblue' }}>세후 지급</th>
+                  <th style={{ ...thStyle, width: 80 }}>기본급</th>
+                  <th style={{ ...thStyle, width: 80 }}>주휴</th>
+                  <th style={{ ...thStyle, width: 70 }}>야간</th>
+                  <th style={{ ...thStyle, width: 70 }}>연장</th>
+                  <th style={{ ...thStyle, width: 70 }}>휴일</th>
+                  <th style={{ ...thStyle, width: 70 }}>소득세</th>
+                  <th style={{ ...thStyle, width: 70 }}>4대보험</th>
+                  <th style={{ ...thStyle, ...stickyRightStyle, right: 0, width: 80, zIndex: 10, borderLeft: '1px solid #ddd' }}>명세서</th>
                 </tr>
               </thead>
               <tbody>
                 {payrollData.map(p => (
-                  <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '15px', backgroundColor: '#fff', height: 50 }}>
+                  <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '13px', backgroundColor: '#fff', height: 46 }}>
                     <td style={{ ...tdStyle, ...stickyLeftStyle, left: 0, fontWeight: 'bold', zIndex: 5 }}>{p.name}</td>
-                    <td style={{ ...tdStyle, ...stickyLeftStyle, left: 80, fontWeight: 'bold', zIndex: 5, borderRight: '2px solid #eee' }}>{p.totalPay.toLocaleString()}</td>
-                    
+                    <td style={{ ...tdStyle, ...stickyLeftStyle, left: 70, fontWeight: 'bold', zIndex: 5, borderRight: '1px solid #eee' }}>{p.totalPay.toLocaleString()}</td>
                     <td style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
-                    <td style={{...tdStyle, color: '#666'}}>{p.taxDetails.incomeTax > 0 ? p.taxDetails.incomeTax.toLocaleString() : '-'}</td>
-                    <td style={{...tdStyle, color: '#666'}}>{p.taxDetails.localTax > 0 ? p.taxDetails.localTax.toLocaleString() : '-'}</td>
-                    <td style={{...tdStyle, color: '#888'}}>{p.taxDetails.pension > 0 ? p.taxDetails.pension.toLocaleString() : '-'}</td>
-                    <td style={{...tdStyle, color: '#888'}}>{p.taxDetails.health > 0 ? p.taxDetails.health.toLocaleString() : '-'}</td>
-                    <td style={{...tdStyle, color: '#888'}}>{p.taxDetails.care > 0 ? p.taxDetails.care.toLocaleString() : '-'}</td>
-                    <td style={{...tdStyle, color: '#888'}}>{p.taxDetails.employment > 0 ? p.taxDetails.employment.toLocaleString() : '-'}</td>
-                    <td style={{...tdStyle, color: '#aaa'}}>{p.basePay.toLocaleString()}</td>
-                    <td style={{...tdStyle, color: '#aaa'}}>{p.weeklyHolidayPay.toLocaleString()}</td>
-
-                    <td style={{ ...tdStyle, ...stickyRightStyle, right: 0, zIndex: 5, borderLeft: '2px solid #eee' }}>
-                      <button onClick={() => setSelectedPayStub(p)} style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', background: '#fff', color: '#333', whiteSpace: 'nowrap' }}>명세서</button>
+                    <td style={tdStyle}>{p.basePay.toLocaleString()}</td>
+                    <td style={tdStyle}>{p.weeklyHolidayPay.toLocaleString()}</td>
+                    <td style={tdStyle}>{p.nightPay.toLocaleString()}</td>
+                    <td style={tdStyle}>{p.overtimePay.toLocaleString()}</td>
+                    <td style={tdStyle}>{p.holidayWorkPay.toLocaleString()}</td>
+                    <td style={tdStyle}>{p.taxDetails.incomeTax.toLocaleString()}</td>
+                    <td style={tdStyle}>{(p.taxDetails.pension + p.taxDetails.health + p.taxDetails.employment).toLocaleString()}</td>
+                    <td style={{ ...tdStyle, ...stickyRightStyle, right: 0, zIndex: 5, borderLeft: '1px solid #eee' }}>
+                      <button onClick={() => setSelectedPayStub(p)} style={detailBtnStyle}>보기</button>
                     </td>
                   </tr>
                 ))}
@@ -205,72 +135,28 @@ export default function PayrollSection({ currentStoreId }: Props) {
             </table>
           </div>
         )}
-        <p style={{ fontSize: 13, color: '#888', marginTop: 12 }}>
-          * 4대보험은 표준 요율(2024/25) 기준으로 자동 계산되었습니다.
-        </p>
       </div>
 
-      {/* ✅ [추가] 퇴직금 계산기 섹션 (맨 아래에 배치) */}
-      <SeveranceCalculator 
-        currentStoreId={currentStoreId} 
-        employees={employees} 
-      />
+      {/* 3. 퇴직금 계산기 */}
+      <SeveranceCalculator currentStoreId={currentStoreId} employees={employees} />
 
+      {/* 명세서 팝업 */}
       <PayStubModal 
         isOpen={!!selectedPayStub} 
         onClose={() => setSelectedPayStub(null)} 
         data={selectedPayStub} 
-        year={year} 
-        month={month}
+        year={year} month={month}
         onSave={handleSaveOverride}
       />
     </div>
   );
 }
 
-const cardStyle = {
-  backgroundColor: '#ffffff',
-  borderRadius: '12px',
-  padding: '24px',
-  border: '1px solid #ddd',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-  marginBottom: '24px'
-};
-
-const btnStyle = { 
-  padding: '8px 12px', 
-  background: '#fff', 
-  border: '1px solid #ccc', 
-  color: '#333', 
-  borderRadius: 4, 
-  cursor: 'pointer',
-  fontSize: '14px',
-  fontWeight: 'bold'
-};
-
-const thStyle = { 
-  padding: '0 10px', 
-  textAlign: 'center' as const, 
-  whiteSpace: 'nowrap' as const, 
-  fontWeight: 'bold',
-  color: '#333',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis'
-};
-
-const tdStyle = { 
-  padding: '0 10px', 
-  textAlign: 'center' as const,
-  color: '#333',
-  whiteSpace: 'nowrap' as const
-};
-
-const stickyLeftStyle = {
-  position: 'sticky' as const,
-  backgroundColor: '#fff', 
-};
-
-const stickyRightStyle = {
-  position: 'sticky' as const,
-  backgroundColor: '#fff',
-};
+const cardStyle = { backgroundColor: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #ddd', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', marginBottom: '24px' };
+const btnStyle = { padding: '8px 12px', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' };
+const navBtnStyle = { background: '#fff', border: '1px solid #ccc', borderRadius: 4, padding: '4px 10px', cursor: 'pointer' };
+const detailBtnStyle = { padding: '4px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', background: '#fff', color: '#333' };
+const thStyle = { padding: '0 8px', textAlign: 'center' as const, whiteSpace: 'nowrap' as const, fontWeight: 'bold' };
+const tdStyle = { padding: '0 8px', textAlign: 'center' as const, color: '#333', whiteSpace: 'nowrap' as const };
+const stickyLeftStyle = { position: 'sticky' as const, backgroundColor: '#fff' };
+const stickyRightStyle = { position: 'sticky' as const, backgroundColor: '#fff' };
