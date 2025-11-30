@@ -10,7 +10,7 @@ type Props = {
   onSave?: (settings: any) => void; 
   year: number;
   month: number;
-  mode?: 'full' | 'settings' | 'download'; // ✅ 모드 추가
+  mode?: 'full' | 'settings' | 'download'; 
 };
 
 export default function PayStubModal({ data, isOpen, onClose, onSave, year, month, mode = 'full' }: Props) {
@@ -34,7 +34,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
       setUseHolidayWork(s.pay_holiday ?? false);
       setUseBreakDeduct(s.auto_deduct_break !== false);
       
-      // 개별 설정값 (우선순위: 개별 > 매장)
       if (data.userSettings) {
           setNoTax(data.userSettings.no_tax_deduction || false);
       } else {
@@ -43,12 +42,10 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   }, [isOpen, data]);
 
-  // ✅ [자동 다운로드 로직] mode가 'download'일 때 실행
   useEffect(() => {
     if (isOpen && mode === 'download' && printRef.current) {
-        // 렌더링 직후 약간의 딜레이를 두고 다운로드 실행
         const timer = setTimeout(() => {
-            handleSaveImage(true); // true = 다운 후 자동 닫기
+            handleSaveImage(true); 
         }, 500);
         return () => clearTimeout(timer);
     }
@@ -56,7 +53,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
 
   if (!isOpen || !data) return null;
 
-  // --- 급여 계산 로직 (기존 유지) ---
   let newBasePay = 0;
   let newNightPay = 0;
   let newOvertimePay = 0;
@@ -99,7 +95,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   });
 
   const currentTotal = newBasePay + newWeeklyPay + newNightPay + newOvertimePay + newHolidayWorkPay;
-  const safeTotal = currentTotal || 0;
+  const safeTotal = currentTotal || 0; // ✅ 여기서 정의된 safeTotal을 아래 함수에 전달해야 함
 
   let currentTax = 0;
   if (noTax) {
@@ -165,7 +161,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
         link.href = canvas.toDataURL('image/png');
         link.click();
         
-        if (autoClose) onClose(); // 다운로드 후 자동 닫기
+        if (autoClose) onClose(); 
       } catch (e) {
           console.error(e);
           alert('이미지 저장 실패');
@@ -173,7 +169,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   };
 
-  // ✅ 1. 설정 모드 (Mobile - Settings)
+  // ✅ 1. 설정 모드
   if (mode === 'settings') {
     return (
         <div style={overlayStyle}>
@@ -199,25 +195,23 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     );
   }
 
-  // ✅ 2. 다운로드 모드 (Mobile - Download) : 화면엔 안 보이지만 렌더링은 됨
+  // ✅ 2. 다운로드 모드
   if (mode === 'download') {
       return (
         <div style={{ position: 'fixed', left: '-9999px', top: '-9999px' }}>
-            {/* 캡처용 UI (Full View) 렌더링 */}
-            {renderFullStub(printRef, year, month, data, filteredLedger, useWeekly, useNight, useOvertime, useHolidayWork, useBreakDeduct, noTax, newBasePay, newWeeklyPay, newNightPay, newOvertimePay, newHolidayWorkPay, currentTotal, currentTax, currentFinalPay)}
+            {/* safeTotal 전달 */}
+            {renderFullStub(printRef, year, month, data, filteredLedger, useWeekly, useNight, useOvertime, useHolidayWork, useBreakDeduct, noTax, newBasePay, newWeeklyPay, newNightPay, newOvertimePay, newHolidayWorkPay, currentTotal, currentTax, currentFinalPay, safeTotal)}
         </div>
       );
   }
 
-  // ✅ 3. 풀 모드 (PC - View)
+  // ✅ 3. 풀 모드
   return (
     <div style={overlayStyle}>
       <div style={modalStyle}>
-        {/* 상단 설정 영역 (PC에서는 여기서 바로 설정 가능하게 유지) */}
         <div style={{ padding: 16, borderBottom: '1px solid #444', backgroundColor: '#333', color: '#fff' }}>
           <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 개별 지급 옵션 설정</h3>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-             {/* ... 체크박스들 (PC용 가로 배치) ... */}
              <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} /> 주휴</label>
              <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} /> 야간</label>
              <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} /> 연장</label>
@@ -227,12 +221,11 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
           </div>
         </div>
 
-        {/* 본문 스크롤 */}
         <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff', paddingBottom: '80px' }}>
-           {renderFullStub(printRef, year, month, data, filteredLedger, useWeekly, useNight, useOvertime, useHolidayWork, useBreakDeduct, noTax, newBasePay, newWeeklyPay, newNightPay, newOvertimePay, newHolidayWorkPay, currentTotal, currentTax, currentFinalPay)}
+           {/* safeTotal 전달 */}
+           {renderFullStub(printRef, year, month, data, filteredLedger, useWeekly, useNight, useOvertime, useHolidayWork, useBreakDeduct, noTax, newBasePay, newWeeklyPay, newNightPay, newOvertimePay, newHolidayWorkPay, currentTotal, currentTax, currentFinalPay, safeTotal)}
         </div>
 
-        {/* 하단 버튼 */}
         <div style={{ padding: 16, backgroundColor: '#333', borderTop: '1px solid #444', display: 'flex', justifyContent: 'flex-end', gap: 10, paddingBottom: 20 }}>
           <button onClick={onClose} style={btnCancel}>닫기</button>
           {onSave && <button onClick={handleSaveSettings} disabled={isSaving} style={{...btnSave, background:'dodgerblue'}}>설정 저장</button>}
@@ -243,8 +236,8 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   );
 }
 
-// 📌 명세서 UI 렌더링 함수 (재사용)
-function renderFullStub(ref: any, year: number, month: number, data: any, filteredLedger: any, useWeekly: boolean, useNight: boolean, useOvertime: boolean, useHolidayWork: boolean, useBreakDeduct: boolean, noTax: boolean, newBasePay: number, newWeeklyPay: number, newNightPay: number, newOvertimePay: number, newHolidayWorkPay: number, currentTotal: number, currentTax: number, currentFinalPay: number) {
+// ✅ [수정] renderFullStub 함수에 safeTotal 인자 추가
+function renderFullStub(ref: any, year: number, month: number, data: any, filteredLedger: any, useWeekly: boolean, useNight: boolean, useOvertime: boolean, useHolidayWork: boolean, useBreakDeduct: boolean, noTax: boolean, newBasePay: number, newWeeklyPay: number, newNightPay: number, newOvertimePay: number, newHolidayWorkPay: number, currentTotal: number, currentTax: number, currentFinalPay: number, safeTotal: number) {
     return (
         <div ref={ref} style={{ padding: 30, backgroundColor: '#fff', color: '#000', minHeight: 400 }}>
             <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24 }}>
