@@ -377,4 +377,10 @@ body {
     padding: 8px 0;
     font-size: 13px;
   }
+  @media (max-width: 768px) {
+  .desktop-only-col { display: none !important; }
+}
+@media (min-width: 769px) {
+  .mobile-only-col { display: none !important; }
+}
 }

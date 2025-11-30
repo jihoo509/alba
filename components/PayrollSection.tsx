@@ -123,36 +123,42 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
         {loading ? <p style={{color:'#666', textAlign:'center'}}>계산 중...</p> : (
           <div className="table-wrapper" style={{ boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
+<table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '100%' }}>
               <thead>
                 <tr style={{ background: '#f5f5f5', color: '#555', fontSize: '13px', borderBottom: '1px solid #ddd', height: 40 }}>
-                  <th style={{ ...thStyle, ...stickyLeftStyle, left: 0, width: 70, zIndex: 10 }}>이름</th>
-                  <th style={{ ...thStyle, ...stickyLeftStyle, left: 70, width: 90, zIndex: 10, borderRight: '1px solid #ddd' }}>총 지급</th>
-                  <th style={{ ...thStyle, width: 90, color: 'dodgerblue' }}>세후 지급</th>
-                  <th style={{ ...thStyle, width: 80 }}>기본급</th>
-                  <th style={{ ...thStyle, width: 80 }}>주휴</th>
-                  <th style={{ ...thStyle, width: 70 }}>야간</th>
-                  <th style={{ ...thStyle, width: 70 }}>연장</th>
-                  <th style={{ ...thStyle, width: 70 }}>휴일</th>
-                  <th style={{ ...thStyle, width: 70 }}>소득세</th>
-                  <th style={{ ...thStyle, width: 70 }}>4대보험</th>
-                  <th style={{ ...thStyle, ...stickyRightStyle, right: 0, width: 80, zIndex: 10, borderLeft: '1px solid #ddd' }}>명세서</th>
+                  <th style={{ ...thStyle, width: 80 }}>이름</th>
+                  <th style={{ ...thStyle, width: 100 }}>총 지급</th>
+                  
+                  {/* PC 전용 컬럼들 */}
+                  <th className="desktop-only-col" style={{ ...thStyle, width: 90, color: 'dodgerblue' }}>세후 지급</th>
+                  <th className="desktop-only-col" style={{ ...thStyle, width: 80 }}>기본급</th>
+                  <th className="desktop-only-col" style={{ ...thStyle, width: 80 }}>주휴</th>
+                  <th className="desktop-only-col" style={{ ...thStyle, width: 70 }}>야간</th>
+                  <th className="desktop-only-col" style={{ ...thStyle, width: 70 }}>연장</th>
+                  <th className="desktop-only-col" style={{ ...thStyle, width: 70 }}>휴일</th>
+                  <th className="desktop-only-col" style={{ ...thStyle, width: 70 }}>소득세</th>
+                  <th className="desktop-only-col" style={{ ...thStyle, width: 70 }}>4대보험</th>
+                  
+                  <th style={{ ...thStyle, width: 80 }}>명세서</th>
                 </tr>
               </thead>
               <tbody>
                 {payrollData.map(p => (
                   <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '13px', backgroundColor: '#fff', height: 46 }}>
-                    <td style={{ ...tdStyle, ...stickyLeftStyle, left: 0, fontWeight: 'bold', zIndex: 5 }}>{p.name}</td>
-                    <td style={{ ...tdStyle, ...stickyLeftStyle, left: 70, fontWeight: 'bold', zIndex: 5, borderRight: '1px solid #eee' }}>{p.totalPay.toLocaleString()}</td>
-                    <td style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
-                    <td style={tdStyle}>{p.basePay.toLocaleString()}</td>
-                    <td style={tdStyle}>{p.weeklyHolidayPay.toLocaleString()}</td>
-                    <td style={tdStyle}>{p.nightPay.toLocaleString()}</td>
-                    <td style={tdStyle}>{p.overtimePay.toLocaleString()}</td>
-                    <td style={tdStyle}>{p.holidayWorkPay.toLocaleString()}</td>
-                    <td style={tdStyle}>{p.taxDetails.incomeTax.toLocaleString()}</td>
-                    <td style={tdStyle}>{(p.taxDetails.pension + p.taxDetails.health + p.taxDetails.employment).toLocaleString()}</td>
-                    <td style={{ ...tdStyle, ...stickyRightStyle, right: 0, zIndex: 5, borderLeft: '1px solid #eee' }}>
+                    <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.name}</td>
+                    <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.totalPay.toLocaleString()}</td>
+                    
+                    {/* PC 전용 데이터 */}
+                    <td className="desktop-only-col" style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
+                    <td className="desktop-only-col" style={tdStyle}>{p.basePay.toLocaleString()}</td>
+                    <td className="desktop-only-col" style={tdStyle}>{p.weeklyHolidayPay.toLocaleString()}</td>
+                    <td className="desktop-only-col" style={tdStyle}>{p.nightPay.toLocaleString()}</td>
+                    <td className="desktop-only-col" style={tdStyle}>{p.overtimePay.toLocaleString()}</td>
+                    <td className="desktop-only-col" style={tdStyle}>{p.holidayWorkPay.toLocaleString()}</td>
+                    <td className="desktop-only-col" style={tdStyle}>{p.taxDetails.incomeTax.toLocaleString()}</td>
+                    <td className="desktop-only-col" style={tdStyle}>{(p.taxDetails.pension + p.taxDetails.health + p.taxDetails.employment).toLocaleString()}</td>
+                    
+                    <td style={tdStyle}>
                       <button onClick={() => setSelectedPayStub(p)} style={detailBtnStyle}>보기</button>
                     </td>
                   </tr>

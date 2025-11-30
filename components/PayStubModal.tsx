@@ -33,7 +33,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
       setUseHolidayWork(s.pay_holiday ?? false);
       setUseBreakDeduct(s.auto_deduct_break !== false);
       
-      // 개별 설정값 불러오기
       if (data.userSettings) {
           setNoTax(data.userSettings.no_tax_deduction || false);
       } else {
@@ -50,7 +49,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   let newHolidayWorkPay = 0;
   let newWeeklyPay = 0;
 
-  // ✅ 기존 계산 로직 유지
   const filteredLedger = (data.ledger || []).map((row: any) => {
     if (row.type === 'WORK') {
         const valDeducted = row.basePayDeducted ?? row.basePay;
@@ -96,7 +94,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   const currentTotal = newBasePay + newWeeklyPay + newNightPay + newOvertimePay + newHolidayWorkPay;
   const safeTotal = currentTotal || 0;
 
-  // 세금 계산
   let currentTax = 0;
   if (noTax) {
       currentTax = 0;
@@ -139,7 +136,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   };
 
-  // ✅ 이미지 저장 (PC 뷰 강제)
+  // ✅ [수정] 이미지 저장 (PC 뷰 강제 & 짤림 방지)
   const handleSaveImage = async () => {
     if (printRef.current) {
       try {
@@ -149,19 +146,29 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
         clone.classList.add('force-pc-view');
         document.body.appendChild(clone);
 
+        // 스타일 강제 (너비 800px 고정, 패딩 넉넉히)
         clone.style.position = 'fixed';
         clone.style.top = '-10000px';
         clone.style.left = '-10000px';
         clone.style.width = '800px'; 
+        clone.style.minWidth = '800px'; // 최소 너비 보장
         clone.style.backgroundColor = '#ffffff';
         clone.style.padding = '40px';
+        clone.style.boxSizing = 'border-box';
+
+        // 내부 테이블 너비 강제
+        const tables = clone.getElementsByTagName('table');
+        if (tables.length > 0) {
+            tables[0].style.width = '100%';
+            tables[0].style.tableLayout = 'fixed';
+        }
 
         const canvas = await html2canvas(clone, {
             scale: 2,
             backgroundColor: '#ffffff',
             useCORS: true,
-            windowWidth: 1000,
-            width: 800
+            windowWidth: 1200, // 브라우저 너비 속임
+            width: 800 // 캔버스 너비
         });
 
         document.body.removeChild(clone);
@@ -182,24 +189,28 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000
     }}>
-      <div style={{ backgroundColor: '#222', color: '#fff', borderRadius: 8, maxWidth: 750, width: '95%', maxHeight: '95vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ 
+          backgroundColor: '#222', color: '#fff', borderRadius: 8, 
+          maxWidth: 750, width: '95%', maxHeight: '95vh', 
+          display: 'flex', flexDirection: 'column' 
+      }}>
         
         {/* 상단 설정 영역 */}
         <div style={{ padding: 16, borderBottom: '1px solid #444', backgroundColor: '#333' }}>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 개별 지급 옵션 설정 (이 직원만 적용)</h3>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 개별 지급 옵션 설정</h3>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} /> 주휴수당</label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} /> 야간수당</label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} /> 연장수당</label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#ff6b6b', fontWeight: 'bold' }}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} /> 휴일(특근)수당</label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'orange' }}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게시간 차감</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#ff6b6b', fontWeight: 'bold' }}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} /> 휴일수당</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'orange' }}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게차감</label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'crimson', fontWeight: 'bold', marginLeft: 'auto' }}>
-                <input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함(실수령 100%)
+                <input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함
             </label>
           </div>
         </div>
 
-        {/* 본문 (스크롤 & 하단 여백) */}
+        {/* 본문 (스크롤) */}
         <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff', paddingBottom: '80px' }}>
           <div ref={printRef} style={{ padding: 30, backgroundColor: '#fff', color: '#000', minHeight: 400 }}>
               <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24 }}>
@@ -210,7 +221,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                 <span>지급일: {year}.{month}.{new Date().getDate()}</span>
               </div>
 
-              {/* 가로 스크롤 적용 */}
               <div className="table-wrapper" style={{ boxShadow: 'none', borderRight: 'none', overflowX: 'auto', width: '100%' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25, minWidth: '500px' }}>
                   <thead>
@@ -315,5 +325,5 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
 }
 
 const thStyle = { padding: '8px', textAlign: 'center' as const, fontWeight: 'bold', borderRight: '1px solid #ddd' };
-const tdStyle = { padding: '8px', textAlign: 'center' as const, borderRight: '1px solid #ddd' };
+const tdStyle = { padding: '8px', textAlign: 'center' as const, borderRight: '1px solid #ddd', whiteSpace: 'nowrap' as const };
 const rowStyle = { display: 'flex', justifyContent: 'space-between', marginBottom: 6 };
