@@ -42,7 +42,7 @@ export default function DashboardLayout({
         {/* 4. [정적] 모바일 하단 광고 (스크롤 끝에 박혀있는 광고) */}
         <div className="mobile-only" style={{
           width: '100%',
-          padding: '20px 20px 80px 20px', // 스티키 배너 위로 올라오도록 여백 확보
+          padding: '20px 20px 40px 20px', // 스티키 배너 위로 올라오도록 여백 확보
           boxSizing: 'border-box',
           display: 'flex',
           flexDirection: 'column',

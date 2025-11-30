@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 type Props = { currentStoreId: string; };
 
 export default function PayrollSection({ currentStoreId }: Props) {
+  // ... (위쪽 로직은 기존과 동일) ...
   const supabase = createSupabaseBrowserClient();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -20,7 +21,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
   
-  // ✅ 모달 상태 관리 (데이터 + 모드)
   const [modalState, setModalState] = useState<{ isOpen: boolean; data: any; mode: 'full' | 'settings' | 'download' }>({
     isOpen: false, data: null, mode: 'full'
   });
@@ -84,45 +84,40 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
       <div style={cardStyle}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
-          
-          {/* 헤더: 제목 & 엑셀 다운 버튼 */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-             <h2 style={{ fontSize: 20, margin: 0, color: '#333', fontWeight: 'bold' }}>💰 급여 대장</h2>
-             <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: '#27ae60', color: '#fff', border: 'none', fontSize: 13 }}>
-               {/* 모바일에서는 '엑셀', PC에서는 '엑셀 다운' */}
-               <span className="mobile-text">엑셀</span>
-               <span className="desktop-text">엑셀 다운로드</span>
-             </button>
+             <h2 style={{ fontSize: 20, margin: 0, color: '#333', fontWeight: 'bold' }}>💰 월 급여 대장</h2>
+             <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: '#27ae60', color: '#fff', border: 'none', fontSize: 13 }}>📊 엑셀 다운</button>
           </div>
-          
-          {/* 월 선택 & 총액 */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f5f5f5', padding: '12px', borderRadius: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f5f5f5', padding: '12px', borderRadius: 8 }}>
              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                <button onClick={() => setMonth(m => m === 1 ? 12 : m - 1)} style={navBtnStyle}>◀</button>
                <span style={{ fontSize: 18, fontWeight: 'bold', color: '#333' }}>{month}월</span>
                <button onClick={() => setMonth(m => m === 12 ? 1 : m + 1)} style={navBtnStyle}>▶</button>
              </div>
-             <div style={{ textAlign: 'right', flex: 1 }}>
+             <div style={{ textAlign: 'right' }}>
                <div style={{ fontSize: 12, color: '#666' }}>총 지급액</div>
                <div style={{ fontSize: 18, fontWeight: 'bold', color: 'dodgerblue' }}>{totalMonthlyCost.toLocaleString()}원</div>
              </div>
           </div>
         </div>
 
-
         {loading ? <p style={{color:'#666', textAlign:'center'}}>계산 중...</p> : (
           <div className="table-wrapper" style={{ boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '100%' }}>
               <thead>
                 <tr style={{ background: '#f5f5f5', color: '#555', fontSize: '13px', borderBottom: '1px solid #ddd', height: 40 }}>
-                  <th style={{ ...thStyle, width: 70, position: 'sticky', left: 0, zIndex: 10, background: '#f5f5f5' }}>이름</th>
-                  <th style={{ ...thStyle, width: 90 }}>총 지급</th>
+                  
+                  {/* 1. 이름 (고정) */}
+                  <th style={{ ...thStyle, width: 60, position: 'sticky', left: 0, zIndex: 10, background: '#f5f5f5' }}>이름</th>
+                  
+                  {/* 2. 총 지급 (너비 줄임) */}
+                  <th style={{ ...thStyle, width: 80 }}>총 지급</th>
 
-                  {/* 📱 모바일 전용 헤더 */}
-                  <th className="mobile-cell" style={{ ...thStyle, width: 60, color: '#e67e22' }}>설정</th>
-                  <th className="mobile-cell" style={{ ...thStyle, width: 60 }}>명세서</th>
+                  {/* 📱 모바일 전용: 설정 & 다운 (너비 최소화) */}
+                  <th className="mobile-cell" style={{ ...thStyle, width: 50, color: '#e67e22' }}>설정</th>
+                  <th className="mobile-cell" style={{ ...thStyle, width: 50 }}>명세서</th>
 
-                  {/* 🖥️ PC 전용 헤더 */}
+                  {/* 🖥️ PC 전용 헤더 (기존 유지) */}
                   <th className="desktop-cell" style={{ ...thStyle, width: 90, color: 'dodgerblue' }}>세후 지급</th>
                   <th className="desktop-cell" style={{ ...thStyle, width: 80 }}>기본급</th>
                   <th className="desktop-cell" style={{ ...thStyle, width: 70 }}>주휴</th>
@@ -136,16 +131,19 @@ export default function PayrollSection({ currentStoreId }: Props) {
               </thead>
               <tbody>
                 {payrollData.map(p => (
-                  <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '13px', backgroundColor: '#fff', height: 46 }}>
+                  <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '12px', backgroundColor: '#fff', height: 46 }}>
+                    {/* 이름 */}
                     <td style={{ ...tdStyle, fontWeight: 'bold', position: 'sticky', left: 0, background: '#fff', zIndex: 5 }}>{p.name}</td>
+                    
+                    {/* 총 지급 */}
                     <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.totalPay.toLocaleString()}</td>
 
-                    {/* 📱 모바일 전용 버튼 */}
+                    {/* 📱 모바일 전용 버튼 (작게) */}
                     <td className="mobile-cell" style={tdStyle}>
-                      <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'settings' })} style={{ ...detailBtnStyle, borderColor: '#e67e22', color: '#e67e22' }}>설정</button>
+                      <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'settings' })} style={{ ...detailBtnStyle, padding: '4px 8px', fontSize: '12px', borderColor: '#e67e22', color: '#e67e22' }}>설정</button>
                     </td>
                     <td className="mobile-cell" style={tdStyle}>
-                      <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'download' })} style={detailBtnStyle}>다운</button>
+                      <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'download' })} style={{ ...detailBtnStyle, padding: '4px 8px', fontSize: '12px' }}>다운</button>
                     </td>
 
                     {/* 🖥️ PC 전용 데이터 */}
@@ -157,6 +155,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
                     <td className="desktop-cell" style={tdStyle}>{p.holidayWorkPay.toLocaleString()}</td>
                     <td className="desktop-cell" style={tdStyle}>{p.taxDetails.incomeTax.toLocaleString()}</td>
                     <td className="desktop-cell" style={tdStyle}>{(p.taxDetails.pension + p.taxDetails.health + p.taxDetails.employment).toLocaleString()}</td>
+                    
                     <td className="desktop-cell" style={tdStyle}>
                       <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'full' })} style={detailBtnStyle}>보기</button>
                     </td>
@@ -176,7 +175,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
         data={modalState.data} 
         year={year} month={month}
         onSave={handleSaveOverride}
-        mode={modalState.mode} // ✅ 모드 전달
+        mode={modalState.mode} 
       />
     </div>
   );
@@ -186,7 +185,7 @@ const cardStyle = { backgroundColor: '#fff', borderRadius: '12px', padding: '20p
 const btnStyle = { padding: '8px 12px', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' };
 const navBtnStyle = { background: '#fff', border: '1px solid #ccc', borderRadius: 4, padding: '4px 10px', cursor: 'pointer' };
 const detailBtnStyle = { padding: '4px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', background: '#fff', color: '#333' };
-const thStyle = { padding: '0 8px', textAlign: 'center' as const, whiteSpace: 'nowrap' as const, fontWeight: 'bold' };
-const tdStyle = { padding: '0 8px', textAlign: 'center' as const, color: '#333', whiteSpace: 'nowrap' as const };
+const thStyle = { padding: '0 4px', textAlign: 'center' as const, whiteSpace: 'nowrap' as const, fontWeight: 'bold' }; // padding 축소
+const tdStyle = { padding: '0 4px', textAlign: 'center' as const, color: '#333', whiteSpace: 'nowrap' as const }; // padding 축소
 const stickyLeftStyle = { position: 'sticky' as const, backgroundColor: '#fff' };
 const stickyRightStyle = { position: 'sticky' as const, backgroundColor: '#fff' };
