@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import StoreSettings from './StoreSettings';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
@@ -8,9 +8,13 @@ import * as XLSX from 'xlsx';
 import PayStubModal from './PayStubModal';
 import SeveranceCalculator from './SeveranceCalculator';
 import { format } from 'date-fns';
-import html2canvas from 'html2canvas'; // ✅ 이미지 캡처용
+import html2canvas from 'html2canvas'; // ✅ 추가
+import JSZip from 'jszip'; // ✅ 추가
+import { saveAs } from 'file-saver'; // ✅ 추가
 
-type Props = { currentStoreId: string; };
+type Props = {
+  currentStoreId: string;
+};
 
 export default function PayrollSection({ currentStoreId }: Props) {
   const supabase = createSupabaseBrowserClient();
@@ -21,16 +25,19 @@ export default function PayrollSection({ currentStoreId }: Props) {
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
   
-  // 전체 다운로드 진행 상태
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-  
+  // ✅ 모달 상태
   const [modalState, setModalState] = useState<{ isOpen: boolean; data: any; mode: 'full' | 'settings' | 'download' }>({
     isOpen: false, data: null, mode: 'full'
   });
 
+  // ✅ 전체 다운로드 상태
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+
   const loadAndCalculate = useCallback(async () => {
     if (!currentStoreId) return;
     setLoading(true);
+    
     const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
     const { data: empData } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
     if (empData) setEmployees(empData);
@@ -67,7 +74,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => acc + curr.totalPay, 0), [payrollData]);
 
-  // 엑셀 다운로드
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
@@ -82,60 +88,67 @@ export default function PayrollSection({ currentStoreId }: Props) {
     XLSX.writeFile(wb, `${year}년_${month}월_급여대장.xlsx`);
   };
 
-  // ✅ [신규] 전체 명세서 일괄 다운로드
+  // ✅ [추가] 전체 명세서 ZIP 다운로드 함수
   const handleDownloadAllStubs = async () => {
     if (payrollData.length === 0) return;
-    if (!confirm(`${payrollData.length}명의 명세서를 모두 다운로드하시겠습니까?\n(잠시 시간이 소요될 수 있습니다)`)) return;
+    if (!confirm(`${payrollData.length}명의 명세서를 압축(ZIP)하여 다운로드합니다.\n시간이 조금 걸릴 수 있습니다.`)) return;
 
-    setIsDownloadingAll(true);
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    const zip = new JSZip();
 
-    // 순차적으로 다운로드 (브라우저 부하 방지)
-    for (let i = 0; i < payrollData.length; i++) {
-      const p = payrollData[i];
-      const elementId = `hidden-stub-${p.empId}`;
-      const element = document.getElementById(elementId);
+    try {
+      for (let i = 0; i < payrollData.length; i++) {
+        const p = payrollData[i];
+        const elementId = `hidden-stub-${p.empId}`;
+        const element = document.getElementById(elementId);
 
-      if (element) {
-        try {
+        if (element) {
           const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff' });
-          const link = document.createElement('a');
-          link.download = `${p.name}_${year}년${month}월_급여명세서.png`;
-          link.href = canvas.toDataURL('image/png');
-          link.click();
-          
-          // 0.5초 대기 (너무 빠르면 브라우저가 막음)
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (e) {
-          console.error(e);
+          const dataUrl = canvas.toDataURL('image/png');
+          const base64Data = dataUrl.replace(/^data:image\/(png|jpg);base64,/, "");
+          zip.file(`${p.name}_${month}월_명세서.png`, base64Data, { base64: true });
         }
+        setDownloadProgress(Math.round(((i + 1) / payrollData.length) * 100));
+        await new Promise(r => setTimeout(r, 50));
       }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `${year}년_${month}월_급여명세서_모음.zip`);
+      alert('다운로드가 완료되었습니다!');
+
+    } catch (e) {
+      console.error(e);
+      alert('다운로드 중 오류가 발생했습니다.');
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgress(0);
     }
-    setIsDownloadingAll(false);
-    alert('모든 명세서 다운로드가 완료되었습니다!');
   };
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%' }}>
-      <div style={cardStyle}><StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} /></div>
+      
+      <div style={cardStyle}>
+          <StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} />
+      </div>
 
       <div style={cardStyle}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
-          
-          {/* 상단 헤더 버튼 그룹 */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
              <h2 style={{ fontSize: 20, margin: 0, color: '#333', fontWeight: 'bold' }}>💰 월 급여 대장</h2>
              <div style={{ display: 'flex', gap: 8 }}>
-                {/* ✅ 엑셀 다운 버튼 */}
+                {/* 엑셀 다운 버튼 */}
                 <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: '#27ae60', color: '#fff', border: 'none', fontSize: 13 }}>
                   <span className="mobile-text">엑셀</span>
                   <span className="desktop-text">엑셀 다운로드</span>
                 </button>
-                {/* ✅ 전체 명세서 다운 버튼 */}
-                <button onClick={handleDownloadAllStubs} disabled={isDownloadingAll} style={{ ...btnStyle, background: '#333', color: '#fff', border: 'none', fontSize: 13 }}>
-                  {isDownloadingAll ? '다운 중...' : (
+                {/* 전체 다운 버튼 */}
+                <button onClick={handleDownloadAllStubs} disabled={isDownloading} style={{ ...btnStyle, background: '#333', color: '#fff', border: 'none', fontSize: 13 }}>
+                  {isDownloading ? `생성 중 ${downloadProgress}%` : (
                     <>
-                      <span className="mobile-text">전체명세서</span>
-                      <span className="desktop-text">명세서 전체 다운</span>
+                      <span className="mobile-text">전체다운</span>
+                      <span className="desktop-text">명세서 전체 다운(ZIP)</span>
                     </>
                   )}
                 </button>
@@ -162,12 +175,8 @@ export default function PayrollSection({ currentStoreId }: Props) {
                 <tr style={{ background: '#f5f5f5', color: '#555', fontSize: '13px', borderBottom: '1px solid #ddd', height: 40 }}>
                   <th style={{ ...thStyle, width: 60, position: 'sticky', left: 0, zIndex: 10, background: '#f5f5f5' }}>이름</th>
                   <th style={{ ...thStyle, width: 80 }}>총 지급</th>
-
-                  {/* 📱 모바일 전용 */}
                   <th className="mobile-cell" style={{ ...thStyle, width: 50, color: '#e67e22' }}>설정</th>
                   <th className="mobile-cell" style={{ ...thStyle, width: 50 }}>명세서</th>
-
-                  {/* 🖥️ PC 전용 */}
                   <th className="desktop-cell" style={{ ...thStyle, width: 90, color: 'dodgerblue' }}>세후 지급</th>
                   <th className="desktop-cell" style={{ ...thStyle, width: 80 }}>기본급</th>
                   <th className="desktop-cell" style={{ ...thStyle, width: 70 }}>주휴</th>
@@ -185,7 +194,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
                     <td style={{ ...tdStyle, fontWeight: 'bold', position: 'sticky', left: 0, background: '#fff', zIndex: 5 }}>{p.name}</td>
                     <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.totalPay.toLocaleString()}</td>
 
-                    {/* 📱 모바일 버튼 */}
                     <td className="mobile-cell" style={tdStyle}>
                       <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'settings' })} style={{ ...detailBtnStyle, padding: '4px 8px', fontSize: '12px', borderColor: '#e67e22', color: '#e67e22' }}>설정</button>
                     </td>
@@ -193,7 +201,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
                       <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'download' })} style={{ ...detailBtnStyle, padding: '4px 8px', fontSize: '12px' }}>다운</button>
                     </td>
 
-                    {/* 🖥️ PC 데이터 */}
                     <td className="desktop-cell" style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
                     <td className="desktop-cell" style={tdStyle}>{p.basePay.toLocaleString()}</td>
                     <td className="desktop-cell" style={tdStyle}>{p.weeklyHolidayPay.toLocaleString()}</td>
@@ -213,10 +220,11 @@ export default function PayrollSection({ currentStoreId }: Props) {
         )}
       </div>
 
-      {/* ✅ [숨겨진 영역] 전체 다운로드용 명세서 렌더링 (화면 밖) */}
+      {/* ✅ [숨겨진 영역] 전체 다운로드용 상세 명세서 (PC 뷰 상세 버전) */}
       <div style={{ position: 'fixed', top: '-10000px', left: '-10000px' }}>
         {payrollData.map(p => (
-          <div key={p.empId} id={`hidden-stub-${p.empId}`} style={{ width: '800px', backgroundColor: '#fff', padding: '40px', boxSizing: 'border-box' }}>
+          <div key={p.empId} id={`hidden-stub-${p.empId}`} style={{ width: '800px', backgroundColor: '#fff', padding: '40px', boxSizing: 'border-box', fontFamily: 'sans-serif' }}>
+             
              <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24 }}>
                 {year}년 {month}월 급여 명세서
              </h2>
@@ -224,23 +232,66 @@ export default function PayrollSection({ currentStoreId }: Props) {
                 <span>성명: <strong>{p.name}</strong></span>
                 <span>지급일: {year}.{month}.{new Date().getDate()}</span>
              </div>
-             {/* 상세 내역 테이블 (PC 스타일 유지) */}
-             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25 }}>
+
+             {/* 상세 근무 내역 (일별) */}
+             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25, border: '1px solid #ddd' }}>
                 <thead>
-                    <tr style={{ backgroundColor: '#f0f0f0', borderTop: '2px solid #000', borderBottom: '1px solid #000' }}>
-                       <th style={thStyle}>항목</th><th style={thStyle}>금액</th><th style={thStyle}>항목</th><th style={thStyle}>금액</th>
-                    </tr>
+                   <tr style={{ backgroundColor: '#f0f0f0', borderBottom: '1px solid #000', height: 30 }}>
+                      <th style={thStyle}>날짜</th><th style={thStyle}>시간</th><th style={thStyle}>근무</th>
+                      <th style={thStyle}>기본급</th><th style={thStyle}>야간</th><th style={thStyle}>연장</th><th style={{...thStyle, color:'red'}}>휴일</th>
+                   </tr>
                 </thead>
                 <tbody>
-                    <tr><td style={tdStyle}>기본급</td><td style={{...tdStyle, textAlign:'right'}}>{p.basePay.toLocaleString()}</td><td style={tdStyle}>국민연금</td><td style={{...tdStyle, textAlign:'right'}}>{p.taxDetails.pension.toLocaleString()}</td></tr>
-                    <tr><td style={tdStyle}>주휴수당</td><td style={{...tdStyle, textAlign:'right'}}>{p.weeklyHolidayPay.toLocaleString()}</td><td style={tdStyle}>건강보험</td><td style={{...tdStyle, textAlign:'right'}}>{p.taxDetails.health.toLocaleString()}</td></tr>
-                    <tr><td style={tdStyle}>야간수당</td><td style={{...tdStyle, textAlign:'right'}}>{p.nightPay.toLocaleString()}</td><td style={tdStyle}>장기요양</td><td style={{...tdStyle, textAlign:'right'}}>{p.taxDetails.care.toLocaleString()}</td></tr>
-                    <tr><td style={tdStyle}>연장수당</td><td style={{...tdStyle, textAlign:'right'}}>{p.overtimePay.toLocaleString()}</td><td style={tdStyle}>고용보험</td><td style={{...tdStyle, textAlign:'right'}}>{p.taxDetails.employment.toLocaleString()}</td></tr>
-                    <tr><td style={tdStyle}>휴일수당</td><td style={{...tdStyle, textAlign:'right'}}>{p.holidayWorkPay.toLocaleString()}</td><td style={tdStyle}>소득세</td><td style={{...tdStyle, textAlign:'right'}}>{p.taxDetails.incomeTax.toLocaleString()}</td></tr>
-                    <tr style={{borderTop:'1px solid #333'}}><td style={{...tdStyle, fontWeight:'bold'}}>지급총액</td><td style={{...tdStyle, textAlign:'right', fontWeight:'bold'}}>{p.totalPay.toLocaleString()}</td><td style={tdStyle}>지방소득세</td><td style={{...tdStyle, textAlign:'right'}}>{p.taxDetails.localTax.toLocaleString()}</td></tr>
-                    <tr style={{borderTop:'2px solid #333', fontSize:'16px'}}><td colSpan={2} style={{...tdStyle, fontWeight:'bold', color:'blue'}}>실수령액</td><td colSpan={2} style={{...tdStyle, textAlign:'right', fontWeight:'bold', color:'blue'}}>{p.finalPay.toLocaleString()}원</td></tr>
+                   {(p.ledger || []).map((row: any, idx: number) => {
+                      if (row.type === 'WEEKLY') {
+                         // 주휴수당 표시 (기본적으로 포함)
+                         return (
+                            <tr key={idx} style={{ backgroundColor: '#fff8c4', borderBottom: '1px solid #ddd', height: 30 }}>
+                               <td colSpan={3} style={{...tdStyle, textAlign:'center', fontWeight:'bold', color:'#d68910'}}>⭐ {row.dayLabel} ({row.note})</td>
+                               <td style={tdStyle}>-</td>
+                               <td colSpan={3} style={{...tdStyle, textAlign:'right', fontWeight:'bold', color:'#d68910'}}>{(row.weeklyPay || 0).toLocaleString()}</td>
+                            </tr>
+                         );
+                      }
+                      if (row.type === 'WORK') {
+                          return (
+                            <tr key={idx} style={{ borderBottom: '1px solid #ddd', height: 30 }}>
+                               <td style={tdStyle}>{row.date.slice(5)} ({row.dayLabel})</td>
+                               <td style={tdStyle}>{row.timeRange}</td>
+                               <td style={tdStyle}>{row.hours}h</td>
+                               <td style={{...tdStyle, textAlign:'right'}}>{row.basePay.toLocaleString()}</td>
+                               <td style={{...tdStyle, textAlign:'right'}}>{row.nightPay.toLocaleString()}</td>
+                               <td style={{...tdStyle, textAlign:'right'}}>{row.overtimePay.toLocaleString()}</td>
+                               <td style={{...tdStyle, textAlign:'right', color:'red'}}>{row.holidayWorkPay.toLocaleString()}</td>
+                            </tr>
+                          );
+                      }
+                      return null;
+                   })}
                 </tbody>
              </table>
+
+             {/* 지급/공제 요약 박스 */}
+             <div style={{ border: '2px solid #000', padding: 20, borderRadius: 4 }}>
+                  <div style={rowStyle}><span>기본급</span> <span>{p.basePay.toLocaleString()}원</span></div>
+                  <div style={rowStyle}><span>+ 주휴수당</span> <span>{p.weeklyHolidayPay.toLocaleString()}원</span></div>
+                  <div style={rowStyle}><span>+ 야간수당</span> <span>{p.nightPay.toLocaleString()}원</span></div>
+                  <div style={rowStyle}><span>+ 연장수당</span> <span>{p.overtimePay.toLocaleString()}원</span></div>
+                  <div style={rowStyle}><span style={{color:'red'}}>+ 휴일근로수당</span> <span style={{color:'red'}}>{p.holidayWorkPay.toLocaleString()}원</span></div>
+                  
+                  <hr style={{ margin: '12px 0', borderTop: '1px dashed #aaa' }} />
+                  <div style={rowStyle}><span style={{fontWeight: 'bold'}}>세전 총액</span> <span style={{fontWeight: 'bold'}}>{p.totalPay.toLocaleString()}원</span></div>
+                  
+                  <div style={{ ...rowStyle, color: 'red' }}>
+                    <span>- 공제 (세금 등)</span> 
+                    <span>{(p.taxDetails.incomeTax + p.taxDetails.localTax + p.taxDetails.pension + p.taxDetails.health + p.taxDetails.care + p.taxDetails.employment).toLocaleString()}원</span>
+                  </div>
+                  
+                  <hr style={{ margin: '12px 0', borderTop: '2px solid #000' }} />
+                  <div style={{ ...rowStyle, fontSize: 20, fontWeight: 'bold', color: 'blue', marginTop: 10 }}>
+                    <span>실수령액</span> <span>{p.finalPay.toLocaleString()}원</span>
+                  </div>
+              </div>
           </div>
         ))}
       </div>
@@ -267,3 +318,4 @@ const thStyle = { padding: '6px', textAlign: 'center' as const, whiteSpace: 'now
 const tdStyle = { padding: '6px', textAlign: 'center' as const, color: '#333', whiteSpace: 'nowrap' as const, borderRight: '1px solid #eee' };
 const stickyLeftStyle = { position: 'sticky' as const, backgroundColor: '#fff' };
 const stickyRightStyle = { position: 'sticky' as const, backgroundColor: '#fff' };
+const rowStyle = { display: 'flex', justifyContent: 'space-between', marginBottom: 6 };
