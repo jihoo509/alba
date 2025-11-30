@@ -245,8 +245,11 @@ const handleAutoGenerate = async () => {
 
         const employee = employees.find(e => e.id === empId);
         
-        // ✅ [복구 완료] 퇴사일(end_date) 이후 날짜면 스케줄 생성 제외!
-        if (employee && employee.end_date && dateStr > employee.end_date) {
+        // ✅ [안전장치 1] 직원 정보가 없으면(이미 목록에서 사라진 퇴사자) 건너뜀
+        if (!employee) continue;
+
+        // ✅ [안전장치 2] 직원 정보는 있지만, '생성하려는 날짜'가 '퇴사일'보다 미래면 건너뜀
+        if (employee.end_date && dateStr > employee.end_date) {
             continue; 
         }
 

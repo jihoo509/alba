@@ -8,25 +8,27 @@ body {
 }
 
 /* =========================================
-   2. 🖥️ 반응형 숨김 처리 (광고 배너 등)
+   2. 🖥️ 광고 배너 스타일 (PC 전용)
    ========================================= */
 
-@media (max-width: 1620px) {
-  .responsive-banner {
-    display: none !important;
-  }
-}
-
-/* ✅ PC 좌우 배너 스타일 강제 지정 (화면 꽉 채우기) */
+/* 기본 스타일: 화면 꽉 채우기 (PC) */
 .responsive-banner {
   position: fixed !important;
   top: 0 !important;
   bottom: 0 !important;
-  height: 100vh !important; /* 화면 전체 높이 */
+  height: 100vh !important;
   z-index: 90 !important;
-  transform: none !important; /* 기존의 translateY(-50%) 제거 */
+  transform: none !important;
   display: flex !important;
-  align-items: center; /* 세로 중앙 정렬 */
+  align-items: center;
+}
+
+/* ⚠️ [중요] 미디어 쿼리는 항상 기본 스타일보다 아래에 있어야 작동합니다! */
+/* 화면 너비가 1550px 이하일 때 -> 광고 숨김 */
+@media (max-width: 1550px) {
+  .responsive-banner {
+    display: none !important;
+  }
 }
 
 /* =========================================
