@@ -120,9 +120,19 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
         </div>
       </div>
 
-      <div style={{ background: '#f9f9f9', padding: '16px', borderRadius: 8, marginBottom: 20, fontSize: 14, color: '#555' }}>
-         📅 재직 기간: <strong>{hireDate || '-'}</strong> ~ <strong>{resignDate}</strong> <br/>
-         ⏳ 총 재직일수: <strong style={{ color: totalDays >= 365 ? 'green' : 'crimson', fontSize: 16 }}>{totalDays}일</strong>
+<div style={{ background: '#f9f9f9', padding: '16px', borderRadius: 8, marginBottom: 20, fontSize: 14, color: '#555' }}>
+         {/* ✅ 모바일 줄바꿈 개선: flex-wrap 사용 */}
+         <div style={{ marginBottom: 8 }}>
+            📅 재직 기간: 
+            {/* 모바일에서는 block으로 줄바꿈, PC에서는 inline 유지 (반응형 스타일) */}
+            <span className="date-range-text" style={{ fontWeight: 'bold', color: '#333', marginLeft: 4 }}>
+               {hireDate || '-'} ~ {resignDate}
+            </span>
+         </div>
+         
+         <div>
+            ⏳ 총 재직일수: <strong style={{ color: totalDays >= 365 ? 'green' : 'crimson', fontSize: 16 }}>{totalDays}일</strong>
+         </div>
       </div>
 
       <div style={{ marginBottom: 20 }}>

@@ -215,3 +215,10 @@ body {
   .mobile-text { display: none; }
   .desktop-text { display: inline; }
 }
+@media (max-width: 768px) {
+  .date-range-text {
+    display: block; /* 아예 다음 줄로 내림 */
+    margin-left: 0 !important;
+    margin-top: 4px;
+  }
+}
