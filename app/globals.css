@@ -36,13 +36,23 @@ body {
    ========================================= */
 @media (max-width: 768px) {
   html, body { font-size: 14px; }
-  .mobile-top-padding { padding-top: 2500px !important; }
+  
+  /* ✅ [수정] 헤더가 고정(fixed)이 아니므로, 상단 여백은 없애야 합니다 (2500px -> 0) */
+  .mobile-top-padding { padding-top: 0 !important; }
+  
   .mobile-header-padding { padding: 10px 16px !important; }
   .mobile-logo-text { font-size: 20px !important; }
   .mobile-tab-btn { font-size: 13px !important; padding: 6px 12px !important; }
   .mobile-tab-container { gap: 10px !important; margin-top: 8px !important; padding-bottom: 8px !important; }
   .calendar-header-mobile { flex-direction: column; gap: 12px; align-items: stretch !important; }
   .mobile-sm-btn { padding: 6px 10px !important; font-size: 11px !important; height: 32px !important; line-height: 1 !important; white-space: nowrap; }
+  
+  /* ✅ 상단 메뉴 스크롤 따라오지 않게 설정 (relative) */
+  .mobile-sticky-nav {
+    position: relative !important;
+    top: auto !important;
+    z-index: 1 !important;
+  }
 }
 
 /* =========================================

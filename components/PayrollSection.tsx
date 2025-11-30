@@ -7,8 +7,11 @@ import { calculateMonthlyPayroll } from '@/lib/payroll';
 import * as XLSX from 'xlsx';
 import PayStubModal from './PayStubModal';
 import SeveranceCalculator from './SeveranceCalculator';
+import { format } from 'date-fns'; // ✅ [수정] import 추가
 
-type Props = { currentStoreId: string; };
+type Props = {
+  currentStoreId: string;
+};
 
 export default function PayrollSection({ currentStoreId }: Props) {
   const supabase = createSupabaseBrowserClient();
@@ -23,34 +26,41 @@ export default function PayrollSection({ currentStoreId }: Props) {
   const loadAndCalculate = useCallback(async () => {
     if (!currentStoreId) return;
     setLoading(true);
-    const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
-    const { data: empData } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
     
-    // 퇴직금 계산기용 전체 목록 (퇴사자 포함해서 넘겨줌)
+    // 1. 매장 정보
+    const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
+    
+    // 2. 직원 전체 목록 (퇴직금 계산용 포함)
+    const { data: empData } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
     if (empData) setEmployees(empData);
     
+    // 3. 개별 설정
     const { data: overData } = await supabase.from('employee_settings').select('*');
     
+    // 4. 스케줄 (급여 산정 기간: 전월 20일 ~ 당월 10일)
+    // (이 기간은 사장님 설정에 따라 다를 수 있으나, 일단 기존 로직 유지)
     const startStr = `${year}-${String(month - 1).padStart(2,'0')}-20`;
     const endStr = `${year}-${String(month + 1).padStart(2,'0')}-10`;
     const { data: schedules } = await supabase.from('schedules').select('*').eq('store_id', currentStoreId).gte('date', startStr).lte('date', endStr);
 
     if (empData && schedules && storeData) {
       
-      // ✅ [필터링 추가] 해당 월에 근무 자격이 있는 직원만 추리기
-      // 조건: 입사일이 해당 월 말일 이전 AND (퇴사일이 없거나 OR 퇴사일이 해당 월 1일 이후)
+      // ✅ [필터링 핵심] 해당 월 급여 대장에 나올 자격이 있는 직원만 추리기
       const targetMonthStart = new Date(year, month - 1, 1);
       const targetMonthEnd = new Date(year, month, 0);
       const targetMonthStartStr = format(targetMonthStart, 'yyyy-MM-dd');
       const targetMonthEndStr = format(targetMonthEnd, 'yyyy-MM-dd');
 
-      const activeEmps = empData.filter(emp => {
-        const joined = !emp.hire_date || emp.hire_date <= targetMonthEndStr; // 해당 월 안에 입사했거나 그 전 입사
-        const notLeft = !emp.end_date || emp.end_date >= targetMonthStartStr; // 퇴사일이 없거나, 해당 월 1일 이후에 퇴사
+      const activeEmps = empData.filter((emp: any) => {
+        // 1. 입사일이 이달 말일 이전이어야 함 (미래 입사자 제외)
+        const joined = !emp.hire_date || emp.hire_date <= targetMonthEndStr;
+        // 2. 퇴사일이 없거나, 퇴사일이 이달 1일 이후여야 함 (지난달 퇴사자 제외)
+        const notLeft = !emp.end_date || emp.end_date >= targetMonthStartStr;
+        
         return joined && notLeft;
       });
 
-      // 필터링된 직원 목록(activeEmps)만 계산기로 전달
+      // 필터링된 직원 목록만 계산기로 전달
       const result = calculateMonthlyPayroll(year, month, activeEmps, schedules, storeData, overData || []);
       setPayrollData(result);
     }
@@ -90,7 +100,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
       {/* 2. 급여 대장 */}
       <div style={cardStyle}>
-        {/* 헤더: 월 선택 & 총액 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
              <h2 style={{ fontSize: 20, margin: 0, color: '#333', fontWeight: 'bold' }}>💰 월 급여 대장</h2>
@@ -112,7 +121,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
           </div>
         </div>
 
-        {/* 테이블 (가로 스크롤 적용) */}
         {loading ? <p style={{color:'#666', textAlign:'center'}}>계산 중...</p> : (
           <div className="table-wrapper" style={{ boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
