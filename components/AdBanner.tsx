@@ -9,12 +9,13 @@ type Props = {
 };
 
 export default function AdBanner({ position, href }: Props) {
-  // 링크 주소 결정
+  // ✅ 링크 주소 결정 로직 수정
+  // 왼쪽: 정책자금 사이트
+  // 오른쪽: 노션 링크
   const targetLink = position === 'left' 
     ? "https://policy-funding.ba-damda.com/" 
-    : (href || '#');
+    : "https://tremendous-sunset-519.notion.site/51ec9464cecd425d91c96f5a8167471d?pvs=105";
 
-    
   // 공통 스타일
   const baseStyle: React.CSSProperties = {
     width: '300px',
@@ -26,7 +27,7 @@ export default function AdBanner({ position, href }: Props) {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    cursor: targetLink !== '#' ? 'pointer' : 'default',
+    cursor: 'pointer',
     transition: 'transform 0.2s ease',
   };
 
@@ -36,7 +37,6 @@ export default function AdBanner({ position, href }: Props) {
   if (position === 'left') {
     return (
       <Link href={targetLink} target="_blank" style={{ textDecoration: 'none' }}>
-        {/* ✅ className="responsive-banner" 추가 */}
         <div 
           className="responsive-banner" 
           style={{
@@ -60,8 +60,8 @@ export default function AdBanner({ position, href }: Props) {
   // -------------------------------------------------------
   if (position === 'right') {
     return (
-      <Link href={targetLink} style={{ textDecoration: 'none' }}>
-        {/* ✅ className="responsive-banner" 추가 */}
+      // ✅ target="_blank" 추가 (새 창 열기)
+      <Link href={targetLink} target="_blank" style={{ textDecoration: 'none' }}>
         <div 
           className="responsive-banner"
           style={{
