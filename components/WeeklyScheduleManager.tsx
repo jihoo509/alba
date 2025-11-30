@@ -214,7 +214,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     }
   };
 
-  const handleAutoGenerate = async () => {
+const handleAutoGenerate = async () => {
     if (!genStartDate || !genEndDate) return alert('시작일과 종료일을 설정해주세요.');
     if (genStartDate > genEndDate) return alert('시작일이 종료일보다 늦을 수 없습니다.');
     if (selectedPatternIds.length === 0) return alert('생성할 패턴을 하나 이상 체크해주세요.');
@@ -244,7 +244,11 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
         if (existingSet.has(`${dateStr}_${empId}`)) continue;
 
         const employee = employees.find(e => e.id === empId);
-        if (employee && employee.end_date && dateStr > employee.end_date) continue;
+        
+        // ✅ [복구 완료] 퇴사일(end_date) 이후 날짜면 스케줄 생성 제외!
+        if (employee && employee.end_date && dateStr > employee.end_date) {
+            continue; 
+        }
 
         const pattern = patterns.find(p => p.id === templateId);
         if (!pattern || !pattern.weekly_rules) continue;
@@ -265,7 +269,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     }
 
     if (newSchedules.length === 0) {
-      alert('생성할 스케줄이 없거나, 이미 등록되어 있습니다.');
+      alert('생성할 스케줄이 없거나, 퇴사일 등의 이유로 제외되었습니다.');
       setLoading(false);
       return;
     }

@@ -10,12 +10,23 @@ body {
 /* =========================================
    2. 🖥️ 반응형 숨김 처리 (광고 배너 등)
    ========================================= */
+
 @media (max-width: 1620px) {
-  .responsive-banner { display: none !important; }
-  .desktop-only { display: none !important; }
+  .responsive-banner {
+    display: none !important;
+  }
 }
-@media (min-width: 769px) {
-  .mobile-only { display: none !important; }
+
+/* ✅ PC 좌우 배너 스타일 강제 지정 (화면 꽉 채우기) */
+.responsive-banner {
+  position: fixed !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  height: 100vh !important; /* 화면 전체 높이 */
+  z-index: 90 !important;
+  transform: none !important; /* 기존의 translateY(-50%) 제거 */
+  display: flex !important;
+  align-items: center; /* 세로 중앙 정렬 */
 }
 
 /* =========================================
