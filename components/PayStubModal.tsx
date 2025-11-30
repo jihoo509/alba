@@ -14,7 +14,10 @@ type Props = {
 };
 
 export default function PayStubModal({ data, isOpen, onClose, onSave, year, month, mode = 'full' }: Props) {
-  const printRef = useRef<HTMLDivElement>(null);
+  // ✅ 보이는 화면용 Ref (모바일/PC 반응형)
+  const viewRef = useRef<HTMLDivElement>(null);
+  // ✅ [핵심] 숨겨진 캡처용 Ref (무조건 PC 풀버전)
+  const captureRef = useRef<HTMLDivElement>(null);
 
   const [useWeekly, setUseWeekly] = useState(true);
   const [useNight, setUseNight] = useState(true);
@@ -43,7 +46,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   }, [isOpen, data]);
 
   useEffect(() => {
-    if (isOpen && mode === 'download' && printRef.current) {
+    if (isOpen && mode === 'download') {
         const timer = setTimeout(() => {
             handleSaveImage(true); 
         }, 500);
@@ -95,7 +98,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   });
 
   const currentTotal = newBasePay + newWeeklyPay + newNightPay + newOvertimePay + newHolidayWorkPay;
-  const safeTotal = currentTotal || 0; // ✅ 여기서 정의된 safeTotal을 아래 함수에 전달해야 함
+  const safeTotal = currentTotal || 0;
 
   let currentTax = 0;
   if (noTax) {
@@ -138,23 +141,15 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   };
 
+  // ✅ [수정] 보이는 화면이 아니라, 숨겨진 captureRef를 찍습니다.
   const handleSaveImage = async (autoClose = false) => {
-    if (printRef.current) {
+    if (captureRef.current) {
       try {
-        const originalElement = printRef.current;
-        const clone = originalElement.cloneNode(true) as HTMLElement;
-        clone.classList.add('force-pc-view');
-        document.body.appendChild(clone);
-
-        clone.style.position = 'fixed';
-        clone.style.top = '-10000px';
-        clone.style.left = '-10000px';
-        clone.style.width = '800px'; 
-        clone.style.backgroundColor = '#ffffff';
-        clone.style.padding = '40px';
-
-        const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', useCORS: true, windowWidth: 1000, width: 800 });
-        document.body.removeChild(clone);
+        const canvas = await html2canvas(captureRef.current, { 
+            scale: 2, 
+            backgroundColor: '#ffffff', 
+            useCORS: true,
+        });
 
         const link = document.createElement('a');
         link.download = `${data.name}_${month}월_급여명세서.png`;
@@ -169,105 +164,90 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   };
 
-// ✅ 1. 설정 모드 (Mobile - Settings)
-  if (mode === 'settings') {
-    return (
-        <div style={overlayStyle}>
-            <div style={{ ...modalStyle, maxWidth: '340px', height: 'auto', padding: '24px', borderRadius: '16px' }}>
-                
-                {/* 제목 */}
-                <h3 style={{ margin: '0 0 24px 0', textAlign: 'center', color: '#333', fontSize: '18px', borderBottom: '2px solid #f0f0f0', paddingBottom: '12px' }}>
-                  ⚙️ <strong>{data.name} 님</strong> 급여 설정
-                </h3>
+  // --- 렌더링 시작 ---
 
-                {/* 체크박스 목록 */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <label style={checkboxLabelMobile}>
-                      <input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} style={checkInput} /> 
-                      <span>주휴수당 <span style={{fontSize:11, color:'#888'}}>(15h↑)</span></span>
-                    </label>
-                    <label style={checkboxLabelMobile}>
-                      <input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} style={checkInput} /> 
-                      <span>야간수당 <span style={{fontSize:11, color:'#888'}}>(1.5배)</span></span>
-                    </label>
-                    <label style={checkboxLabelMobile}>
-                      <input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} style={checkInput} /> 
-                      <span>연장수당 <span style={{fontSize:11, color:'#888'}}>(1.5배)</span></span>
-                    </label>
-                    <label style={checkboxLabelMobile}>
-                      <input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} style={checkInput} /> 
-                      <span>휴일수당 <span style={{fontSize:11, color:'#ff6b6b'}}>(1.5배)</span></span>
-                    </label>
-                    <label style={checkboxLabelMobile}>
-                      <input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} style={checkInput} /> 
-                      <span>휴게시간 자동 차감</span>
-                    </label>
-                    
-                    <div style={{ borderTop: '1px dashed #ddd', margin: '4px 0' }}></div>
-                    
-                    <label style={{ ...checkboxLabelMobile, color: 'crimson', fontWeight: 'bold' }}>
-                        <input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} style={checkInput} /> 
-                        <span>세금 공제 안 함 <span style={{fontSize:11}}>(100%)</span></span>
-                    </label>
-                </div>
+  return (
+    <>
+        {/* ✅ [Hidden] 캡처 전용 보이지 않는 DOM (무조건 PC 풀버전) */}
+        <div style={{ position: 'fixed', top: '-10000px', left: '-10000px', width: '800px', zIndex: -1 }}>
+            {/* 캡처용 풀버전 렌더링 */}
+            {renderFullStub(captureRef, year, month, data, filteredLedger, useWeekly, useNight, useOvertime, useHolidayWork, useBreakDeduct, noTax, newBasePay, newWeeklyPay, newNightPay, newOvertimePay, newHolidayWorkPay, currentTotal, currentTax, currentFinalPay, safeTotal)}
+        </div>
 
-                {/* 버튼 그룹 (작게) */}
-                <div style={{ marginTop: 28, display: 'flex', gap: 10, justifyContent: 'center' }}>
-                    <button onClick={onClose} style={btnCancelSmall}>취소</button>
-                    <button onClick={handleSaveSettings} disabled={isSaving} style={btnSaveSmall}>
-                      {isSaving ? '...' : '저장'}
-                    </button>
+        {/* ✅ [Visible] 실제 눈에 보이는 모달 */}
+        {/* 1. 설정 모드 (모바일) */}
+        {mode === 'settings' && (
+            <div style={overlayStyle}>
+                <div style={{ ...modalStyle, maxWidth: '400px', height: 'auto', padding: '24px', borderRadius: '16px' }}>
+                    <h3 style={{ margin: '0 0 24px 0', textAlign: 'center', color: '#333', fontSize: '18px', borderBottom: '2px solid #f0f0f0', paddingBottom: '12px' }}>
+                    ⚙️ <strong>{data.name} 님</strong> 급여 설정
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} style={checkInput} /> <span>주휴수당 <span style={{fontSize:11, color:'#888'}}>(15h↑)</span></span></label>
+                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} style={checkInput} /> <span>야간수당 <span style={{fontSize:11, color:'#888'}}>(1.5배)</span></span></label>
+                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} style={checkInput} /> <span>연장수당 <span style={{fontSize:11, color:'#888'}}>(1.5배)</span></span></label>
+                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} style={checkInput} /> <span>휴일수당 <span style={{fontSize:11, color:'#ff6b6b'}}>(1.5배)</span></span></label>
+                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} style={checkInput} /> <span>휴게시간 자동 차감</span></label>
+                        
+                        <div style={{ borderTop: '1px dashed #ddd', margin: '4px 0' }}></div>
+                        
+                        <label style={{ ...checkboxLabelMobile, color: 'crimson', fontWeight: 'bold' }}>
+                            <input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} style={checkInput} /> 
+                            <span>세금 공제 안 함 <span style={{fontSize:11}}>(100%)</span></span>
+                        </label>
+                    </div>
+                    <div style={{ marginTop: 28, display: 'flex', gap: 10, justifyContent: 'center' }}>
+                        <button onClick={onClose} style={btnCancelSmall}>취소</button>
+                        <button onClick={handleSaveSettings} disabled={isSaving} style={btnSaveSmall}>{isSaving ? '...' : '저장'}</button>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
-  }
+        )}
 
-  // ✅ 2. 다운로드 모드
-  if (mode === 'download') {
-      return (
-        <div style={{ position: 'fixed', left: '-9999px', top: '-9999px' }}>
-            {/* safeTotal 전달 */}
-            {renderFullStub(printRef, year, month, data, filteredLedger, useWeekly, useNight, useOvertime, useHolidayWork, useBreakDeduct, noTax, newBasePay, newWeeklyPay, newNightPay, newOvertimePay, newHolidayWorkPay, currentTotal, currentTax, currentFinalPay, safeTotal)}
-        </div>
-      );
-  }
+        {/* 2. 다운로드 모드 (화면엔 안 보임, 로직만 실행) */}
+        {mode === 'download' && (
+             <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', fontSize: '18px' }}>
+                ⏳ 다운로드 생성 중...
+             </div>
+        )}
 
-  // ✅ 3. 풀 모드
-  return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
-        <div style={{ padding: 16, borderBottom: '1px solid #444', backgroundColor: '#333', color: '#fff' }}>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 개별 지급 옵션 설정</h3>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-             <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} /> 주휴</label>
-             <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} /> 야간</label>
-             <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} /> 연장</label>
-             <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} /> 휴일</label>
-             <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게차감</label>
-             <label style={{display:'flex',gap:6,cursor:'pointer', marginLeft:'auto', color:'#ff6b6b'}}><input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함</label>
-          </div>
-        </div>
+        {/* 3. 풀 모드 (PC 뷰어) */}
+        {mode === 'full' && (
+            <div style={overlayStyle}>
+                <div style={modalStyle}>
+                    <div style={{ padding: 16, borderBottom: '1px solid #444', backgroundColor: '#333', color: '#fff' }}>
+                    <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 개별 지급 옵션 설정</h3>
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                        <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} /> 주휴</label>
+                        <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} /> 야간</label>
+                        <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} /> 연장</label>
+                        <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} /> 휴일</label>
+                        <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게차감</label>
+                        <label style={{display:'flex',gap:6,cursor:'pointer', marginLeft:'auto', color:'#ff6b6b'}}><input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함</label>
+                    </div>
+                    </div>
 
-        <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff', paddingBottom: '80px' }}>
-           {/* safeTotal 전달 */}
-           {renderFullStub(printRef, year, month, data, filteredLedger, useWeekly, useNight, useOvertime, useHolidayWork, useBreakDeduct, noTax, newBasePay, newWeeklyPay, newNightPay, newOvertimePay, newHolidayWorkPay, currentTotal, currentTax, currentFinalPay, safeTotal)}
-        </div>
+                    <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff', paddingBottom: '80px' }}>
+                    {/* 화면에 보여주는 용도 (viewRef) */}
+                    {renderFullStub(viewRef, year, month, data, filteredLedger, useWeekly, useNight, useOvertime, useHolidayWork, useBreakDeduct, noTax, newBasePay, newWeeklyPay, newNightPay, newOvertimePay, newHolidayWorkPay, currentTotal, currentTax, currentFinalPay, safeTotal)}
+                    </div>
 
-        <div style={{ padding: 16, backgroundColor: '#333', borderTop: '1px solid #444', display: 'flex', justifyContent: 'flex-end', gap: 10, paddingBottom: 20 }}>
-          <button onClick={onClose} style={btnCancel}>닫기</button>
-          {onSave && <button onClick={handleSaveSettings} disabled={isSaving} style={{...btnSave, background:'dodgerblue'}}>설정 저장</button>}
-          <button onClick={() => handleSaveImage(false)} style={btnSave}>이미지 저장</button>
-        </div>
-      </div>
-    </div>
+                    <div style={{ padding: 16, backgroundColor: '#333', borderTop: '1px solid #444', display: 'flex', justifyContent: 'flex-end', gap: 10, paddingBottom: 20 }}>
+                    <button onClick={onClose} style={btnCancel}>닫기</button>
+                    {onSave && <button onClick={handleSaveSettings} disabled={isSaving} style={{...btnSave, background:'dodgerblue'}}>설정 저장</button>}
+                    <button onClick={() => handleSaveImage(false)} style={btnSave}>이미지 저장</button>
+                    </div>
+                </div>
+            </div>
+        )}
+    </>
   );
 }
 
-// ✅ [수정] renderFullStub 함수에 safeTotal 인자 추가
+// 📌 공통 명세서 UI 렌더링 함수 (캡처용/뷰어용 공통)
 function renderFullStub(ref: any, year: number, month: number, data: any, filteredLedger: any, useWeekly: boolean, useNight: boolean, useOvertime: boolean, useHolidayWork: boolean, useBreakDeduct: boolean, noTax: boolean, newBasePay: number, newWeeklyPay: number, newNightPay: number, newOvertimePay: number, newHolidayWorkPay: number, currentTotal: number, currentTax: number, currentFinalPay: number, safeTotal: number) {
     return (
-        <div ref={ref} style={{ padding: 30, backgroundColor: '#fff', color: '#000', minHeight: 400 }}>
+        <div ref={ref} style={{ padding: 40, backgroundColor: '#fff', color: '#000', minHeight: 500, width: '800px', margin: '0 auto', boxSizing: 'border-box' }}>
             <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24 }}>
             {year}년 {month}월 급여 명세서
             </h2>
@@ -276,8 +256,8 @@ function renderFullStub(ref: any, year: number, month: number, data: any, filter
             <span>지급일: {year}.{month}.{new Date().getDate()}</span>
             </div>
 
-            <div className="table-wrapper" style={{ boxShadow: 'none', borderRight: 'none', overflowX: 'auto', width: '100%' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25, minWidth: '500px' }}>
+            {/* 캡처 시 무조건 PC 스타일로 나오도록 테이블 스타일 고정 */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25, minWidth: '100%' }}>
                 <thead>
                     <tr style={{ backgroundColor: '#f0f0f0', borderTop: '2px solid #000', borderBottom: '1px solid #000' }}>
                     <th style={thStyle}>날짜</th>
@@ -315,7 +295,6 @@ function renderFullStub(ref: any, year: number, month: number, data: any, filter
                     })}
                 </tbody>
             </table>
-            </div>
 
             <div style={{ border: '2px solid #000', padding: 20, borderRadius: 4 }}>
                 <div style={rowStyle}><span>기본급 (시급 {data.wage.toLocaleString()}원)</span> <span>{newBasePay.toLocaleString()}원</span></div>
@@ -382,14 +361,6 @@ const checkboxLabel = { display: 'flex', alignItems: 'center', gap: '8px', curso
 const checkInput = { transform: 'scale(1.2)' };
 const btnCancel = { flex: 1, padding: '12px', background: '#f5f5f5', border: 'none', color: '#333', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' };
 const btnSave = { flex: 1, padding: '12px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' };
-
-// 스타일 추가 (PayStubModal.tsx 맨 아래)
-const checkboxLabelMobile = { 
-  display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '15px', color: '#444' 
-};
-const btnCancelSmall = { 
-  padding: '10px 20px', background: '#f5f5f5', border: '1px solid #ddd', color: '#666', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px'
-};
-const btnSaveSmall = { 
-  padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px'
-};
+const checkboxLabelMobile = { display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '15px', color: '#444' };
+const btnCancelSmall = { padding: '10px 20px', background: '#f5f5f5', border: '1px solid #ddd', color: '#666', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
+const btnSaveSmall = { padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
