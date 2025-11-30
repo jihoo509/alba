@@ -30,7 +30,8 @@ export function EmployeeSection({
 }: Props) {
   const [newEmpName, setNewEmpName] = useState('');
   const [newEmpWage, setNewEmpWage] = useState('');
-  const [newEmpType, setNewEmpType] = useState<'freelancer_33' | 'four_insurance'>('freelancer_33');
+  // ✅ [수정] 기본값을 'four_insurance'로 변경
+  const [newEmpType, setNewEmpType] = useState<'freelancer_33' | 'four_insurance'>('four_insurance');
   const [newEmpHireDate, setNewEmpHireDate] = useState('');
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -58,7 +59,8 @@ export function EmployeeSection({
 
     setNewEmpName('');
     setNewEmpWage('');
-    setNewEmpType('freelancer_33');
+    // ✅ [수정] 등록 후 초기화도 'four_insurance'로
+    setNewEmpType('four_insurance'); 
     setNewEmpHireDate('');
   };
 
@@ -67,7 +69,6 @@ export function EmployeeSection({
     setIsEditOpen(true);
   };
 
-  // 리스트 렌더링 함수 (반응형 적용)
   const renderList = (list: Employee[], isRetired = false) => (
     <div className="employee-list-container">
       {list.map((emp) => (
@@ -119,7 +120,7 @@ export function EmployeeSection({
     <section>
       {/* 새 직원 등록 폼 */}
       <div className="new-employee-form-card">
-        <h3 style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 20, color: '#333' }}>새 직원 등록</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 12, color: '#333' }}>새 직원 등록</h3>
         <form onSubmit={handleSubmit}>
           <div className="form-grid">
             <div className="form-group">
@@ -133,8 +134,8 @@ export function EmployeeSection({
             <div className="form-group">
               <label>고용 형태</label>
               <select value={newEmpType} onChange={(e) => setNewEmpType(e.target.value as any)}>
-                <option value="freelancer_33">3.3% 프리랜서</option>
                 <option value="four_insurance">4대 보험</option>
+                <option value="freelancer_33">3.3% 프리랜서</option>
               </select>
             </div>
             <div className="form-group date-group">

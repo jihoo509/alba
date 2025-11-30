@@ -152,10 +152,10 @@ body {
    10. 👥 직원 관리 스타일 (반응형 카드/리스트)
    ========================================= */
 
-/* 1. 입력 폼 카드 */
+/* 1. 입력 폼 카드 (다이어트 적용) */
 .new-employee-form-card {
-  margin-bottom: 32px;
-  padding: 24px;
+  margin-bottom: 24px;  /* 하단 여백 축소 */
+  padding: 16px 20px;   /* 내부 패딩 축소 (24 -> 16) */
   background-color: #ffffff;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.05);
@@ -163,7 +163,7 @@ body {
 
 .form-grid {
   display: flex;
-  gap: 16px;
+  gap: 12px;            /* 항목 간 간격 축소 (16 -> 12) */
   align-items: flex-end;
   flex-wrap: wrap;
 }
@@ -171,38 +171,38 @@ body {
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;             /* 라벨과 입력창 사이 간격 축소 */
 }
 
 .form-group label {
-  font-size: 13px;
+  font-size: 12px;      /* 라벨 폰트 축소 */
   font-weight: bold;
-  color: #555;
+  color: #666;
 }
 
 .form-group input, .form-group select {
-  padding: 10px 12px;
+  padding: 8px 10px;    /* 입력창 내부 여백 축소 (뚱뚱함 해결) */
   border: 1px solid #ddd;
   border-radius: 6px;
   font-size: 14px;
   outline: none;
   background-color: #fff;
-  min-width: 100px;
+  min-width: 90px;      /* 최소 너비 살짝 축소 */
 }
 
 .form-group.date-group {
-  min-width: 140px;
+  min-width: 130px;
 }
 
 .btn-add {
-  padding: 10px 24px;
+  padding: 8px 20px;    /* 버튼 크기도 입력창과 높이 맞춤 */
   background-color: dodgerblue;
   color: #fff;
   border: none;
   border-radius: 6px;
   font-weight: bold;
   cursor: pointer;
-  height: 40px;
+  height: 36px;         /* 높이 고정 (입력창과 동일하게) */
   white-space: nowrap;
 }
 
@@ -210,14 +210,14 @@ body {
 .employee-list-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 /* 3. 직원 카드 (PC 기본: 가로 배치) */
 .employee-card {
   background-color: #fff;
   border-radius: 10px;
-  padding: 16px 20px;
+  padding: 14px 20px;   /* 패딩 살짝 축소 */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -240,6 +240,12 @@ body {
   align-items: center;
   gap: 16px;
   flex: 2;
+}
+
+.emp-name-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .emp-name {
@@ -269,9 +275,11 @@ body {
   font-size: 14px;
 }
 
+/* ✅ [수정] 폰트 통일 (monospace 제거) */
 .emp-phone {
-  font-family: monospace; /* 숫자 가독성 */
-  letter-spacing: 0.5px;
+  font-weight: 500;
+  letter-spacing: 0; /* 자간 정상화 */
+  color: #555;
 }
 
 .emp-actions {
@@ -293,54 +301,57 @@ body {
 .btn-delete:hover { background-color: #fdedec; }
 
 
-/* 📱 모바일 전용 스타일 (카드형 변환) */
+/* 📱 모바일 전용 스타일 */
 @media (max-width: 768px) {
   
-  /* 폼: 세로 배치 */
+  .new-employee-form-card {
+    padding: 16px; /* 모바일에서 더 컴팩트하게 */
+  }
+
   .form-grid {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
+    gap: 10px;
   }
-  .btn-add { width: 100%; margin-top: 8px; }
+  .btn-add { width: 100%; margin-top: 6px; }
 
-  /* 리스트: 카드형 (세로 쌓기) */
+  /* 리스트: 카드형 */
   .employee-card {
     flex-direction: column;
     align-items: flex-start;
     padding: 16px;
-    gap: 12px;
+    gap: 10px;
   }
 
   .emp-header {
     width: 100%;
-    justify-content: space-between; /* 이름 --- 시급 */
+    justify-content: space-between; 
     border-bottom: 1px solid #f0f0f0;
     padding-bottom: 8px;
     margin-bottom: 4px;
   }
 
-  .emp-name { font-size: 18px; }
-  .emp-wage { font-size: 16px; color: #000; font-weight: bold; }
+  .emp-name { font-size: 17px; }
+  .emp-wage { font-size: 15px; color: #000; font-weight: bold; }
 
   .emp-info-row {
-    flex-direction: column; /* 정보 세로 배치 */
+    flex-direction: column; 
     align-items: flex-start;
-    gap: 6px;
+    gap: 4px;
     width: 100%;
     font-size: 13px;
   }
 
   .emp-actions {
     width: 100%;
-    margin-top: 8px;
+    margin-top: 6px;
     display: flex;
     gap: 8px;
   }
 
   .btn-edit, .btn-delete {
-    flex: 1; /* 버튼 꽉 채우기 */
-    padding: 10px 0;
-    font-size: 14px;
+    flex: 1; 
+    padding: 8px 0;
+    font-size: 13px;
   }
 }
