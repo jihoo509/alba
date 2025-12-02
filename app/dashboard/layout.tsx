@@ -9,8 +9,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   // 🔴 [중요] 구글 애드센스에서 발급받은 '광고 단위 ID'를 여기에 입력하세요.
-  const MOBILE_BOTTOM_BOX_SLOT_ID = "1234567890"; // (예시) 모바일 하단 큰 박스용
-  const MOBILE_STICKY_SLOT_ID = "0987654321";     // (예시) 모바일 하단 스티키(띠)용
+  const MOBILE_BOTTOM_BOX_SLOT_ID = "4218312145"; // (예시) 모바일 하단 큰 박스용
+  const MOBILE_STICKY_SLOT_ID = "1423137158";     // (예시) 모바일 하단 스티키(띠)용
 
   return (
     // ✅ 전체 컨테이너

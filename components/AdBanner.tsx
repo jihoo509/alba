@@ -71,7 +71,7 @@ export default function AdBanner({ position, href }: Props) {
 
   // 🔵 [오른쪽 배너] - 구글 광고
   if (position === 'right') {
-    const GOOGLE_AD_SLOT_ID = "1234567890"; // 🔴 실제 슬롯 ID 확인
+    const GOOGLE_AD_SLOT_ID = "7310830607"; // 🔴 실제 슬롯 ID 확인
 
     return (
       <div 
