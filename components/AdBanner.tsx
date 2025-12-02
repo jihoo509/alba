@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import GoogleAd from './GoogleAd'; // ✅ 구글 광고 컴포넌트 import
 
 type Props = {
   position: 'left' | 'right';
@@ -9,12 +10,10 @@ type Props = {
 };
 
 export default function AdBanner({ position, href }: Props) {
-  // ✅ 링크 주소 결정 로직 수정
-  // 왼쪽: 정책자금 사이트
-  // 오른쪽: 노션 링크
+  // 왼쪽 배너 링크 (정책자금 등)
   const targetLink = position === 'left' 
     ? "https://policy-funding.ba-damda.com/" 
-    : "https://tremendous-sunset-519.notion.site/51ec9464cecd425d91c96f5a8167471d?pvs=105";
+    : (href || '#');
 
   // 공통 스타일
   const baseStyle: React.CSSProperties = {
@@ -27,12 +26,11 @@ export default function AdBanner({ position, href }: Props) {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    cursor: 'pointer',
     transition: 'transform 0.2s ease',
   };
 
   // -------------------------------------------------------
-  // 🟢 [왼쪽 배너]
+  // 🟢 [왼쪽 배너] - 기존 이미지 배너 유지 (정책자금 등)
   // -------------------------------------------------------
   if (position === 'left') {
     return (
@@ -43,6 +41,7 @@ export default function AdBanner({ position, href }: Props) {
             ...baseStyle,
             left: 0,
             boxShadow: '4px 0 15px rgba(0, 0, 0, 0.08)', 
+            cursor: 'pointer'
           }}
         >
           <img 
@@ -56,27 +55,25 @@ export default function AdBanner({ position, href }: Props) {
   }
 
   // -------------------------------------------------------
-  // 🔵 [오른쪽 배너]
+  // 🔵 [오른쪽 배너] - 구글 애드센스 광고로 교체
   // -------------------------------------------------------
   if (position === 'right') {
+    // 구글 애드센스에서 발급받은 '수직형' 광고 단위 ID를 넣으세요.
+    const GOOGLE_AD_SLOT_ID = "1234567890"; // 🔴 여기에 실제 ID 입력
+
     return (
-      // ✅ target="_blank" 추가 (새 창 열기)
-      <Link href={targetLink} target="_blank" style={{ textDecoration: 'none' }}>
-        <div 
-          className="responsive-banner"
-          style={{
-            ...baseStyle,
-            right: 0,
-            boxShadow: '-4px 0 15px rgba(0, 0, 0, 0.08)',
-          }}
-        >
-          <img 
-            src="/art-1.png"  
-            alt="보험인 구인" 
-            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-          />
-        </div>
-      </Link>
+      <div 
+        className="responsive-banner"
+        style={{
+          ...baseStyle,
+          right: 0,
+          boxShadow: '-4px 0 15px rgba(0, 0, 0, 0.08)',
+          cursor: 'default' // 광고는 커서 기본
+        }}
+      >
+        {/* 구글 광고 컴포넌트 */}
+        <GoogleAd slot={GOOGLE_AD_SLOT_ID} format="vertical" />
+      </div>
     );
   }
 
