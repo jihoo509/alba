@@ -10,6 +10,7 @@ import TemplateSection from '@/components/TemplateSection';
 import PayrollSection from '@/components/PayrollSection';
 import { format } from 'date-fns';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
+import TutorialModal from '@/components/TutorialModal'; // ✅ 추가
 
 type Store = { id: string; name: string; };
 
@@ -365,6 +366,28 @@ function DashboardContent() {
           </div>
         )}
       </div>
+
+      <TutorialModal 
+        tutorialKey="seen_home_tutorial_v1"
+        steps={[
+          {
+            title: "환영합니다, 사장님! 👋",
+            description: "Easy Alba에 오신 것을 환영합니다. 매장 관리의 모든 것을 쉽고 편하게 도와드릴게요.",
+          },
+          {
+            title: "1. 매장 등록하기",
+            description: "가장 먼저 '매장 추가' 버튼을 눌러 사장님의 매장을 등록해주세요. 여러 매장도 관리 가능합니다!",
+          },
+          {
+            title: "2. 직원 초대하기",
+            description: "'직원' 탭에서 함께 일하는 직원들을 등록하고 시급을 설정해보세요.",
+          },
+          {
+            title: "준비 되셨나요?",
+            description: "이제 복잡한 급여 계산과 스케줄 관리는 저희에게 맡기고, 사업에만 집중하세요!",
+          }
+        ]}
+      />
 
     </main>
   );

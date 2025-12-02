@@ -362,3 +362,4 @@ const tdStyle = { padding: '8px', textAlign: 'center' as const, borderRight: '1p
 const stickyLeftStyle = { position: 'sticky' as const, backgroundColor: '#fff' };
 const stickyRightStyle = { position: 'sticky' as const, backgroundColor: '#fff' };
 const rowStyle = { display: 'flex', justifyContent: 'space-between', marginBottom: 6 };
+
