@@ -9,9 +9,10 @@ type Props = {
   onClose: () => void;
   employee: Employee;
   onUpdate: (id: string, updates: Partial<Employee>) => Promise<void>;
+  wageSystem: 'hourly' | 'daily'; // ✅ [추가] 급여 시스템 정보 받기
 };
 
-export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate }: Props) {
+export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate, wageSystem }: Props) {
   const [formData, setFormData] = useState<Partial<Employee>>({});
   const [saving, setSaving] = useState(false);
 
@@ -59,8 +60,12 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     setSaving(true);
     const isActive = !formData.end_date; 
 
+    // ✅ 일당제인 경우 시급은 0원으로 처리 (데이터 무결성 유지)
+    const finalHourlyWage = wageSystem === 'hourly' ? formData.hourly_wage : 0;
+
     const updates = {
       ...formData,
+      hourly_wage: finalHourlyWage,
       is_active: isActive,
       hire_date: formData.hire_date === '' ? null : formData.hire_date,
       end_date: formData.end_date === '' ? null : formData.end_date,
@@ -95,15 +100,20 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         </div>
 
         <div style={styles.gridContainer}>
-          {/* 1행 */}
-          <div style={styles.inputGroup}>
+          {/* 1행: 이름 & (시급) */}
+          {/* ✅ 일당제면 이름 칸을 꽉 채우고(span 2), 시급제면 반반 나눔 */}
+          <div style={wageSystem === 'daily' ? { ...styles.inputGroup, gridColumn: 'span 2' } : styles.inputGroup}>
             <label style={styles.label}>이름</label>
             <input name="name" value={formData.name ?? ''} onChange={handleChange} style={styles.input} />
           </div>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>시급 (원)</label>
-            <input name="hourly_wage" type="number" value={formData.hourly_wage ?? 0} onChange={handleChange} style={styles.input} />
-          </div>
+
+          {/* ✅ 시급제일 때만 시급 입력칸 노출 */}
+          {wageSystem === 'hourly' && (
+            <div style={styles.inputGroup}>
+                <label style={styles.label}>시급 (원)</label>
+                <input name="hourly_wage" type="number" value={formData.hourly_wage ?? 0} onChange={handleChange} style={styles.input} />
+            </div>
+          )}
 
           {/* 2행 */}
           <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
@@ -176,7 +186,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   );
 }
 
-// ✅ 스타일: 밝은 테마로 변경
+// 스타일 유지
 const styles = {
   overlay: {
     position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0,
