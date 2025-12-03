@@ -255,7 +255,6 @@ function DashboardContent() {
           creatingStore={creatingStore}
           onCreateStore={handleCreateStore}
           onDeleteStore={() => {}}
-          isFullWidth={true} // ✅ 스타일 확장을 위해 prop 추가 가능 (선택사항)
         />
       </div>
     </div>
