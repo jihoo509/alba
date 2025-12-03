@@ -9,7 +9,7 @@ import DateSelector from './DateSelector';
 type Props = {
   currentStoreId: string;
   employees: Employee[];
-  wageSystem: 'hourly' | 'daily'; // ✅ [추가] 급여 체계
+  wageSystem: 'hourly' | 'daily';
 };
 
 const DAYS = [
@@ -22,7 +22,6 @@ const DAYS = [
   { num: 0, label: '일요일' },
 ];
 
-// ✅ 사장님 아이디어: 미리 정해둔 패턴 이름들
 const PRESET_NAMES = ['오픈', '미들', '마감', '야간', '파트', '풀타임', '주말'];
 
 type ShiftPattern = {
@@ -30,7 +29,7 @@ type ShiftPattern = {
   name: string;
   weekly_rules: Record<number, { start: string; end: string }>;
   color: string;
-  daily_wage?: number; // ✅ [추가] 패턴 자체의 기본 일당
+  daily_wage?: number;
 };
 
 export default function WeeklyScheduleManager({ currentStoreId, employees, wageSystem }: Props) {
@@ -42,7 +41,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
   const [loading, setLoading] = useState(false);
 
   const [newPatternName, setNewPatternName] = useState('');
-  const [newPatternWage, setNewPatternWage] = useState(''); // ✅ [추가] 일당 입력 상태
+  const [newPatternWage, setNewPatternWage] = useState('');
 
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [timeRules, setTimeRules] = useState<Record<number, { start: string; end: string }>>({});
@@ -100,7 +99,8 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
 
     if (assignData) {
       const map: Record<string, string> = {};
-      assignData.forEach(row => {
+      // ✅ [수정 1] row에 : any 타입 명시하여 에러 해결
+      assignData.forEach((row: any) => {
         map[row.employee_id] = row.template_id;
       });
       setAssignments(map);
@@ -139,14 +139,13 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
     if (!newPatternName.trim()) return alert('패턴 이름을 입력해주세요.');
     if (selectedDays.length === 0) return alert('요일을 하나 이상 선택해주세요.');
 
-    // ✅ 일당제일 경우 일당 처리
     const dailyWageVal = wageSystem === 'daily' ? Number(newPatternWage.replace(/,/g, '')) : null;
     if (wageSystem === 'daily' && !dailyWageVal) return alert('일당 금액을 입력해주세요.');
 
     const payload = {
         name: newPatternName,
         weekly_rules: timeRules,
-        daily_wage: dailyWageVal, // ✅ DB 저장
+        daily_wage: dailyWageVal,
     };
 
     if (editingPatternId) {
@@ -179,7 +178,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
   const handleEditPattern = (pattern: ShiftPattern) => {
     setEditingPatternId(pattern.id);
     setNewPatternName(pattern.name);
-    // ✅ 일당 불러오기
     setNewPatternWage(pattern.daily_wage ? String(pattern.daily_wage) : '');
     
     setTimeRules(pattern.weekly_rules);
@@ -201,7 +199,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
   const resetForm = () => {
     setEditingPatternId(null);
     setNewPatternName('');
-    setNewPatternWage(''); // ✅ 초기화
+    setNewPatternWage('');
     setSelectedDays([]);
     setTimeRules({});
   };
@@ -228,7 +226,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
     }
   };
 
-const handleAutoGenerate = async () => {
+  const handleAutoGenerate = async () => {
     if (!genStartDate || !genEndDate) return alert('시작일과 종료일을 설정해주세요.');
     if (genStartDate > genEndDate) return alert('시작일이 종료일보다 늦을 수 없습니다.');
     if (selectedPatternIds.length === 0) return alert('생성할 패턴을 하나 이상 체크해주세요.');
@@ -247,7 +245,8 @@ const handleAutoGenerate = async () => {
       .gte('date', genStartDate)
       .lte('date', genEndDate);
 
-    const existingSet = new Set(existingData?.map(s => `${s.date}_${s.employee_id}`));
+    // ✅ [수정 2] s에 : any 타입 명시하여 에러 해결
+    const existingSet = new Set(existingData?.map((s: any) => `${s.date}_${s.employee_id}`));
 
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const dateStr = formatDate(d);
@@ -260,7 +259,6 @@ const handleAutoGenerate = async () => {
         const employee = employees.find(e => e.id === empId);
         if (!employee) continue;
 
-        // 퇴사자 체크
         if (employee.end_date && dateStr > employee.end_date) {
             continue; 
         }
@@ -278,7 +276,7 @@ const handleAutoGenerate = async () => {
             end_time: rule.end,
             color: pattern.color || '#4ECDC4',
             memo: pattern.name,
-            daily_wage: pattern.daily_wage || null // ✅ [중요] 패턴의 일당 정보를 스케줄로 복사
+            daily_wage: pattern.daily_wage || null
           });
         }
       }
@@ -332,7 +330,6 @@ const handleAutoGenerate = async () => {
         → 2. 해당 패턴으로 근무할 직원을 체크하세요.
       </p>
 
-      {/* 스마트 날짜 선택기 */}
       <div className="auto-generator-card">
         <div className="auto-gen-inputs">
           <label style={{ color: '#333', fontSize: 14, fontWeight: 'bold' }}>생성 기간:</label>
@@ -352,12 +349,9 @@ const handleAutoGenerate = async () => {
         * 체크된 패턴에 대해서만 스케줄이 생성됩니다.
       </p>
 
-      {/* 구분선 */}
       <div style={{ borderTop: '1px solid #ddd', margin: '40px 0' }}></div>
 
       <div className="weekly-container">
-        
-        {/* 왼쪽: 패턴 생성기 */}
         <div className="pattern-maker-panel" ref={patternMakerRef}>
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#333' }}>
             {editingPatternId ? '🛠️ 패턴 수정하기' : '1. 근무 패턴 만들기'}
@@ -366,7 +360,6 @@ const handleAutoGenerate = async () => {
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6 }}>패턴 이름 (캘린더에 표시될 이름)</label>
             
-            {/* 프리셋 버튼들 */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
               {PRESET_NAMES.map(name => (
                 <button 
@@ -397,7 +390,6 @@ const handleAutoGenerate = async () => {
             />
           </div>
 
-          {/* ✅ [추가] 일당제일 경우 일당 입력칸 노출 */}
           {wageSystem === 'daily' && (
              <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6 }}>일당 (원)</label>
@@ -469,7 +461,6 @@ const handleAutoGenerate = async () => {
           </div>
         </div>
 
-        {/* 오른쪽: 직원 배정 */}
         <div className="pattern-list-panel">
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#fff' }}>2. 직원 배정하기</h4>
           <p className="instruction-text" style={{ color: '#ddd', marginBottom: 24, fontSize: 14, lineHeight: '1.6' }}>
@@ -511,7 +502,6 @@ const handleAutoGenerate = async () => {
                      </div>
 
                      <div style={{ padding: '12px 16px', fontSize: 13, color: '#555', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fff' }}>
-                       {/* ✅ [추가] 일당 표시 */}
                        {wageSystem === 'daily' && pattern.daily_wage && (
                            <div style={{ marginBottom: 8, fontWeight:'bold', color: '#0064FF' }}>
                                일당: {pattern.daily_wage.toLocaleString()}원
@@ -545,7 +535,7 @@ const handleAutoGenerate = async () => {
                                    backgroundColor: isAssignedHere ? '#e6f7ff' : '#fff', 
                                    color: isAssignedHere ? 'dodgerblue' : isAssignedElsewhere ? '#ccc' : '#555', 
                                    cursor: isAssignedElsewhere ? 'not-allowed' : 'pointer', 
-                                   textDecoration: isAssignedElsewhere ? 'line-through' : 'none',
+                                   textDecoration: isAssignedElsewhere ? 'line-through' : 'none', 
                                    fontSize: 12,
                                    fontWeight: isAssignedHere ? 'bold' : 'normal'
                                }}
