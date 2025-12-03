@@ -8,6 +8,8 @@ import type { Employee } from '@/app/dashboard/page';
 
 type Props = {
   currentStoreId: string;
+  // ✅ [추가] 부모(Page)로부터 급여 체계 정보를 받습니다.
+  wageSystem: 'hourly' | 'daily';
 };
 
 // 다른 컴포넌트에서 쓸 수도 있으므로 타입 정의 유지
@@ -17,9 +19,11 @@ export type ScheduleTemplate = {
   start_time: string;
   end_time: string;
   color: string;
+  // ✅ [추가] 템플릿에도 일당 정보가 들어갈 수 있음
+  daily_wage?: number; 
 };
 
-export default function TemplateSection({ currentStoreId }: Props) {
+export default function TemplateSection({ currentStoreId, wageSystem }: Props) {
   const supabase = createSupabaseBrowserClient();
   const [employees, setEmployees] = useState<Employee[]>([]);
 
@@ -55,19 +59,20 @@ export default function TemplateSection({ currentStoreId }: Props) {
 
   return (
     <div>
-      {/* 🟢 1. 스케줄 캘린더를 맨 위로 이동 (요청사항 반영) */}
+      {/* 🟢 1. 스케줄 캘린더 */}
       <ScheduleCalendar 
         currentStoreId={currentStoreId} 
         selectedTemplate={null} 
         employees={employees} 
+        wageSystem={wageSystem} // ✅ [전달] 일당제 여부를 넘겨줍니다
       />
 
-      {/* 🔵 2. 주간 스케줄 설정(패턴 배정)을 아래로 내림 */}
-      {/* 위쪽 캘린더와 간격을 두기 위해 marginTop 사용 */}
+      {/* 🔵 2. 주간 스케줄 설정(패턴 배정) */}
       <div style={{ marginTop: 40 }}>
         <WeeklyScheduleManager 
           currentStoreId={currentStoreId} 
           employees={employees} 
+          wageSystem={wageSystem} // ✅ [전달] 일당제 여부를 넘겨줍니다
         />
       </div>
     </div>

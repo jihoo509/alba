@@ -534,15 +534,20 @@ function DashboardContent() {
         </div>
       );
     }
-    if (currentTab === 'schedules') {
-      return (
-        <div>
-          <h2 style={{ fontSize: 24, marginBottom: 8, color: '#fff', fontWeight: 'bold' }}>스케줄 관리</h2>
-          <p style={{ color: '#ddd', marginBottom: 32 }}>월간 스케줄을 확인하고 관리합니다.</p>
-          <TemplateSection currentStoreId={currentStoreId} />
-        </div>
-      );
-    }
+if (currentTab === 'schedules') {
+  return (
+    <div>
+      <h2 style={{ fontSize: 24, marginBottom: 8, color: '#fff', fontWeight: 'bold' }}>스케줄 관리</h2>
+      <p style={{ color: '#ddd', marginBottom: 32 }}>월간 스케줄을 확인하고 관리합니다.</p>
+      
+      {/* 👇 여기를 수정해주세요 */}
+      <TemplateSection 
+        currentStoreId={currentStoreId} 
+        wageSystem={currentStore?.wage_system || 'hourly'} // ✅ 이 줄 추가!
+      />
+    </div>
+  );
+}
     if (currentTab === 'payroll') {
       return <PayrollSection currentStoreId={currentStoreId} />;
     }
