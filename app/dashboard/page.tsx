@@ -11,14 +11,13 @@ import PayrollSection from '@/components/PayrollSection';
 import { format } from 'date-fns';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
 import TutorialModal from '@/components/TutorialModal';
-// import StoreSettingsModal from '@/components/StoreSettingsModal'; // ✅ 추후 만들 설정 모달
 
-// ✅ [변경] Store 타입에 wage_system, is_large_store 추가
+// ✅ 타입 정의
 type Store = { 
   id: string; 
   name: string; 
-  wage_system: 'hourly' | 'daily'; // 시급제 vs 일당제
-  is_large_store: boolean; // 5인 이상 여부
+  wage_system: 'hourly' | 'daily'; 
+  is_large_store: boolean; 
 };
 
 type TabKey = 'home' | 'employees' | 'schedules' | 'payroll';
@@ -46,8 +45,14 @@ function DashboardContent() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
 
-  // ✅ [추가] 매장 설정 모달 상태 (추후 구현할 컴포넌트용)
+  // ✅ 매장 설정 모달 상태
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // ✅ [신규] 초기 매장 생성 폼 상태
+  const [newStoreName, setNewStoreName] = useState('');
+  const [newWageSystem, setNewWageSystem] = useState<'hourly'|'daily'>('hourly');
+  const [newIsLargeStore, setNewIsLargeStore] = useState(false);
+  const [isCreatingFirst, setIsCreatingFirst] = useState(false);
 
   const [currentTab, setCurrentTab] = useState<TabKey>(
     (searchParams.get('tab') as TabKey) || 'home'
@@ -56,7 +61,6 @@ function DashboardContent() {
   const [todayWorkers, setTodayWorkers] = useState<any[]>([]);
   const [monthlyEstPay, setMonthlyEstPay] = useState<number>(0);
 
-  // ✅ 현재 선택된 매장 객체 찾기 (편의용)
   const currentStore = useMemo(() => 
     stores.find(s => s.id === currentStoreId), 
   [stores, currentStoreId]);
@@ -83,12 +87,11 @@ function DashboardContent() {
     const { data, error } = await supabase.from('stores').select('*').eq('owner_id', userId);
     if (error) { setErrorMsg('매장 로딩 실패'); return; }
     
-    // ✅ [변경] DB에서 가져온 wage_system, is_large_store 매핑
     const list = (data ?? []).map((row: any) => ({ 
       id: String(row.id), 
       name: row.name,
-      wage_system: row.wage_system || 'hourly', // 없으면 기본 시급제
-      is_large_store: row.is_large_store || false // 없으면 기본 5인 미만
+      wage_system: row.wage_system || 'hourly', 
+      is_large_store: row.is_large_store || false 
     }));
     setStores(list);
 
@@ -107,10 +110,14 @@ function DashboardContent() {
     const { error } = await supabase.from('stores').delete().eq('id', storeId);
     if (error) alert('삭제 실패');
     else {
-      setStores((prev) => prev.filter((s) => s.id !== storeId));
-      if (currentStoreId === storeId) { setCurrentStoreId(null); setEmployees([]); }
+      const newStores = stores.filter((s) => s.id !== storeId);
+      setStores(newStores);
+      if (currentStoreId === storeId) { 
+        setCurrentStoreId(newStores.length > 0 ? newStores[0].id : null); 
+        setEmployees([]); 
+      }
     }
-  }, [supabase, currentStoreId]);
+  }, [supabase, currentStoreId, stores]);
 
   const loadEmployees = useCallback(async (storeId: string) => {
     setLoadingEmployees(true);
@@ -186,32 +193,51 @@ function DashboardContent() {
     if (currentStoreId) await loadEmployees(currentStoreId);
   }, [supabase, currentStoreId, loadEmployees]);
 
-  // ✅ [수정] 매장 생성 시 기본값 설정 (시급제/5인미만)
-  const handleCreateStore = useCallback(async (name: string) => {
+  // ✅ [기존] StoreSelector용 (간편 생성 - 기본값 사용)
+  const handleSimpleCreateStore = useCallback(async (name: string) => {
+    await handleCreateStoreInternal(name, 'hourly', false);
+  }, []);
+
+  // ✅ [신규] 첫 매장 생성용 (상세 설정)
+  const handleFirstCreateStore = async () => {
+    if (!newStoreName.trim()) { alert('매장명을 입력해주세요.'); return; }
+    setIsCreatingFirst(true);
+    await handleCreateStoreInternal(newStoreName, newWageSystem, newIsLargeStore);
+    setIsCreatingFirst(false);
+  };
+
+  // ✅ 통합 매장 생성 로직
+  const handleCreateStoreInternal = async (name: string, wage: 'hourly'|'daily', large: boolean) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase
+    
+    const { data, error } = await supabase
       .from('stores')
       .insert({ 
         name, 
         owner_id: user.id,
-        wage_system: 'hourly', // 기본값
-        is_large_store: false  // 기본값
+        wage_system: wage, 
+        is_large_store: large
       })
       .select()
       .single();
+
+    if (error) {
+        alert('매장 생성 중 오류가 발생했습니다.');
+        return;
+    }
 
     if (data) {
       const newStore = { 
         id: String(data.id), 
         name: data.name, 
-        wage_system: 'hourly' as const, 
-        is_large_store: false 
+        wage_system: wage, 
+        is_large_store: large 
       };
       setStores(prev => [...prev, newStore]);
       handleStoreChange(String(data.id));
     }
-  }, [supabase]);
+  };
 
   useEffect(() => {
     async function init() {
@@ -231,36 +257,113 @@ function DashboardContent() {
     }
   }, [currentStoreId, loadEmployees, loadHomeStats]);
 
-  // ✅ [추가] 매장이 0개일 때 보여줄 'Empty State' 컴포넌트
-  const renderEmptyState = () => (
-    <div style={{ 
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
-      minHeight: '80vh', textAlign: 'center', padding: 20 
-    }}>
-      <h2 style={{ fontSize: 28, fontWeight: 'bold', color: '#fff', marginBottom: 12 }}>
-        환영합니다, 사장님! 🎉
-      </h2>
-      <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.8)', marginBottom: 32, lineHeight: 1.5 }}>
-        아직 등록된 매장이 없습니다.<br/>
-        매장을 추가하고 직원/급여 관리를 시작해보세요.
-      </p>
-      
-      {/* 중앙 큰 버튼 (StoreSelector 내부 로직 재사용을 위해 임시 UI. 실제론 StoreSelector가 동작해야 함) */}
-      <div style={{ backgroundColor: '#fff', padding: 30, borderRadius: 16, width: '100%', maxWidth: 400 }}>
-        <h3 style={{ margin: '0 0 20px 0', color: '#333' }}>내 매장 만들기</h3>
-        <StoreSelector
-          stores={stores}
-          currentStoreId={null} // 선택된 것 없음
-          onChangeStore={() => {}}
-          creatingStore={creatingStore}
-          onCreateStore={handleCreateStore}
-          onDeleteStore={() => {}}
-        />
-      </div>
-    </div>
-  );
-
+  // ✅ [수정] 탭 내용 렌더링
   const renderTabContent = () => {
+    // 1️⃣ 매장이 없는 경우: [초기 생성 카드] 표시 (가운데 영역)
+    if (stores.length === 0) {
+        return (
+            <div style={{ maxWidth: 500, margin: '40px auto', padding: 30, backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+                <h2 style={{ textAlign: 'center', fontSize: 22, fontWeight: 'bold', marginBottom: 24, color: '#333' }}>
+                    첫 번째 매장을 만들어볼까요? 🏪
+                </h2>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    {/* 매장명 */}
+                    <div>
+                        <label style={{ display: 'block', fontSize: 14, fontWeight: 'bold', color: '#555', marginBottom: 8 }}>매장 이름</label>
+                        <input 
+                            type="text" 
+                            placeholder="예: 무유무유 수원점"
+                            value={newStoreName}
+                            onChange={(e) => setNewStoreName(e.target.value)}
+                            style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #ddd', fontSize: 16 }}
+                        />
+                    </div>
+
+                    {/* 급여 방식 */}
+                    <div>
+                        <label style={{ display: 'block', fontSize: 14, fontWeight: 'bold', color: '#555', marginBottom: 8 }}>급여 방식</label>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            <button 
+                                onClick={() => setNewWageSystem('hourly')}
+                                style={{ 
+                                    flex: 1, padding: '10px', borderRadius: 8, border: '1px solid',
+                                    backgroundColor: newWageSystem === 'hourly' ? '#eef6ff' : '#fff',
+                                    borderColor: newWageSystem === 'hourly' ? '#0064FF' : '#ddd',
+                                    color: newWageSystem === 'hourly' ? '#0064FF' : '#666',
+                                    fontWeight: newWageSystem === 'hourly' ? 'bold' : 'normal',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                ⏱️ 시급제
+                            </button>
+                            <button 
+                                onClick={() => setNewWageSystem('daily')}
+                                style={{ 
+                                    flex: 1, padding: '10px', borderRadius: 8, border: '1px solid',
+                                    backgroundColor: newWageSystem === 'daily' ? '#eef6ff' : '#fff',
+                                    borderColor: newWageSystem === 'daily' ? '#0064FF' : '#ddd',
+                                    color: newWageSystem === 'daily' ? '#0064FF' : '#666',
+                                    fontWeight: newWageSystem === 'daily' ? 'bold' : 'normal',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                🗓️ 일당제
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 규모 */}
+                    <div>
+                        <label style={{ display: 'block', fontSize: 14, fontWeight: 'bold', color: '#555', marginBottom: 8 }}>사업장 규모</label>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            <button 
+                                onClick={() => setNewIsLargeStore(false)}
+                                style={{ 
+                                    flex: 1, padding: '10px', borderRadius: 8, border: '1px solid',
+                                    backgroundColor: !newIsLargeStore ? '#eef6ff' : '#fff',
+                                    borderColor: !newIsLargeStore ? '#0064FF' : '#ddd',
+                                    color: !newIsLargeStore ? '#0064FF' : '#666',
+                                    fontWeight: !newIsLargeStore ? 'bold' : 'normal',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                🐣 5인 미만
+                            </button>
+                            <button 
+                                onClick={() => setNewIsLargeStore(true)}
+                                style={{ 
+                                    flex: 1, padding: '10px', borderRadius: 8, border: '1px solid',
+                                    backgroundColor: newIsLargeStore ? '#eef6ff' : '#fff',
+                                    borderColor: newIsLargeStore ? '#0064FF' : '#ddd',
+                                    color: newIsLargeStore ? '#0064FF' : '#666',
+                                    fontWeight: newIsLargeStore ? 'bold' : 'normal',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                🏢 5인 이상
+                            </button>
+                        </div>
+                        <p style={{ fontSize: 12, color: '#888', marginTop: 6 }}>
+                            * 5인 이상일 경우 야간/연장/휴일 수당이 자동 계산됩니다.
+                        </p>
+                    </div>
+
+                    <button 
+                        onClick={handleFirstCreateStore}
+                        disabled={isCreatingFirst}
+                        style={{ 
+                            width: '100%', padding: '14px', backgroundColor: '#0064FF', color: '#fff', 
+                            fontSize: 16, fontWeight: 'bold', borderRadius: 8, border: 'none', cursor: 'pointer', marginTop: 10
+                        }}
+                    >
+                        {isCreatingFirst ? '생성 중...' : '매장 만들기 완료'}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     if (!currentStoreId) return <p style={{ color: '#ddd', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
 
     if (currentTab === 'home') {
@@ -343,20 +446,6 @@ function DashboardContent() {
 
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
-  // ✅ [수정] 매장이 하나도 없으면 초기 화면(Empty State) 렌더링
-  if (stores.length === 0) {
-    return (
-      <main style={{ width: '100%', minHeight: '100vh', backgroundColor: '#0064FF' }}> {/* 배경색은 global css에 있다면 제거 가능 */}
-         {/* 간단한 헤더 */}
-         <header style={{ padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1 style={{ fontSize: 24, color: '#fff', fontWeight: 'bold', margin: 0 }}>Easy Alba</h1>
-            <UserBar email={userEmail} />
-         </header>
-         {renderEmptyState()}
-      </main>
-    );
-  }
-
   return (
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
       
@@ -374,45 +463,46 @@ function DashboardContent() {
 
             {errorMsg && <div style={{ marginBottom: 10, color: 'salmon' }}>{errorMsg}</div>}
 
-            {/* ✅ [수정] 상단 매장 정보 및 설정 버튼 영역 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <div style={{ flex: 1 }}>
-                <StoreSelector
-                  stores={stores}
-                  currentStoreId={currentStoreId}
-                  onChangeStore={handleStoreChange}
-                  creatingStore={creatingStore}
-                  onCreateStore={handleCreateStore}
-                  onDeleteStore={handleDeleteStore}
-                />
-              </div>
-              
-              {/* 매장 설정(수정) 버튼 */}
-              {currentStore && (
-                <div style={{ marginLeft: 10, textAlign: 'right' }}>
-                   <div style={{ display: 'flex', gap: 6, marginBottom: 4, justifyContent: 'flex-end' }}>
-                      <span style={{ fontSize: 12, backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff', padding: '2px 6px', borderRadius: 4 }}>
-                        {currentStore.wage_system === 'daily' ? '일당제' : '시급제'}
-                      </span>
-                      <span style={{ fontSize: 12, backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff', padding: '2px 6px', borderRadius: 4 }}>
-                        {currentStore.is_large_store ? '5인이상' : '5인미만'}
-                      </span>
-                   </div>
-                   <button 
-                     onClick={() => setIsSettingsOpen(true)} // 여기서 모달 열기
-                     style={{ 
-                       background: 'none', border: '1px solid rgba(255,255,255,0.4)', color: '#fff', 
-                       fontSize: 12, padding: '4px 8px', borderRadius: 4, cursor: 'pointer' 
-                     }}
-                   >
-                     ⚙️ 매장 설정
-                   </button>
+            {/* ✅ [수정] 매장이 있을 때만 상단 선택바 노출 (없으면 가운데 카드 사용) */}
+            {stores.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <StoreSelector
+                      stores={stores}
+                      currentStoreId={currentStoreId}
+                      onChangeStore={handleStoreChange}
+                      creatingStore={creatingStore}
+                      onCreateStore={handleSimpleCreateStore}
+                      onDeleteStore={handleDeleteStore}
+                    />
+                  </div>
+                  
+                  {currentStore && (
+                    <div style={{ marginLeft: 10, textAlign: 'right' }}>
+                       <div style={{ display: 'flex', gap: 6, marginBottom: 4, justifyContent: 'flex-end' }}>
+                          <span style={{ fontSize: 12, backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff', padding: '2px 6px', borderRadius: 4 }}>
+                            {currentStore.wage_system === 'daily' ? '일당제' : '시급제'}
+                          </span>
+                          <span style={{ fontSize: 12, backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff', padding: '2px 6px', borderRadius: 4 }}>
+                            {currentStore.is_large_store ? '5인이상' : '5인미만'}
+                          </span>
+                       </div>
+                       <button 
+                         onClick={() => setIsSettingsOpen(true)}
+                         style={{ 
+                           background: 'none', border: '1px solid rgba(255,255,255,0.4)', color: '#fff', 
+                           fontSize: 12, padding: '4px 8px', borderRadius: 4, cursor: 'pointer' 
+                         }}
+                       >
+                         ⚙️ 매장 설정
+                       </button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* 🟢 [메뉴 탭] */}
+          {/* 🟢 [메뉴 탭] (매장 있을 때만 노출) */}
           {stores.length > 0 && currentStoreId && (
             <div className="mobile-sticky-nav">
               <div className="mobile-tab-container" style={{ 
@@ -455,36 +545,29 @@ function DashboardContent() {
           boxSizing: 'border-box' 
         }}
       >
-        {stores.length > 0 && currentStoreId && (
-          <div style={{ width: '100%' }} className={currentTab === 'schedules' ? 'shrink-on-mobile' : ''}>
-            {renderTabContent()}
-          </div>
-        )}
+        {/* 매장이 0개여도 렌더링 함수 실행 (거기서 분기 처리) */}
+        <div style={{ width: '100%' }} className={currentTab === 'schedules' ? 'shrink-on-mobile' : ''}>
+          {renderTabContent()}
+        </div>
       </div>
 
-      <TutorialModal 
-        tutorialKey="seen_home_tutorial_v1"
-        steps={[
-          {
-            title: "환영합니다, 사장님! 👋",
-            description: "Easy Alba에 오신 것을 환영합니다. 매장 관리의 모든 것을 쉽고 편하게 도와드릴게요.",
-          },
-          // ... 기존 튜토리얼 내용 유지
-          {
-            title: "준비 되셨나요?",
-            description: "이제 복잡한 급여 계산과 스케줄 관리는 저희에게 맡기고, 사업에만 집중하세요!",
-          }
-        ]}
-      />
-      
-      {/* ✅ [TODO] 매장 설정/수정 모달 위치
-        <StoreSettingsModal 
-          isOpen={isSettingsOpen} 
-          onClose={() => setIsSettingsOpen(false)}
-          store={currentStore}
-          onUpdate={loadStores} 
-        />
-      */}
+      {/* 튜토리얼 (매장이 있을 때만) */}
+      {stores.length > 0 && (
+          <TutorialModal 
+            tutorialKey="seen_home_tutorial_v1"
+            steps={[
+              {
+                title: "환영합니다, 사장님! 👋",
+                description: "Easy Alba에 오신 것을 환영합니다. 매장 관리의 모든 것을 쉽고 편하게 도와드릴게요.",
+              },
+              // ... 기존 내용 ...
+              {
+                title: "준비 되셨나요?",
+                description: "이제 복잡한 급여 계산과 스케줄 관리는 저희에게 맡기고, 사업에만 집중하세요!",
+              }
+            ]}
+          />
+      )}
 
     </main>
   );
