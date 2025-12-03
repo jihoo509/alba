@@ -9,7 +9,6 @@ import DateSelector from './DateSelector';
 type Props = {
   currentStoreId: string;
   employees: Employee[];
-  wageSystem: 'hourly' | 'daily';
 };
 
 const DAYS = [
@@ -22,6 +21,7 @@ const DAYS = [
   { num: 0, label: '일요일' },
 ];
 
+// ✅ 사장님 아이디어: 미리 정해둔 패턴 이름들
 const PRESET_NAMES = ['오픈', '미들', '마감', '야간', '파트', '풀타임', '주말'];
 
 type ShiftPattern = {
@@ -29,10 +29,9 @@ type ShiftPattern = {
   name: string;
   weekly_rules: Record<number, { start: string; end: string }>;
   color: string;
-  daily_wage?: number;
 };
 
-export default function WeeklyScheduleManager({ currentStoreId, employees, wageSystem }: Props) {
+export default function WeeklyScheduleManager({ currentStoreId, employees }: Props) {
   const supabase = createSupabaseBrowserClient();
   const patternMakerRef = useRef<HTMLDivElement>(null);
 
@@ -41,8 +40,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
   const [loading, setLoading] = useState(false);
 
   const [newPatternName, setNewPatternName] = useState('');
-  const [newPatternWage, setNewPatternWage] = useState('');
-
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [timeRules, setTimeRules] = useState<Record<number, { start: string; end: string }>>({});
   const [lastInputTime, setLastInputTime] = useState({ start: '10:00', end: '16:00' });
@@ -99,8 +96,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
 
     if (assignData) {
       const map: Record<string, string> = {};
-      // ✅ [수정 1] row에 : any 타입 명시하여 에러 해결
-      assignData.forEach((row: any) => {
+      assignData.forEach(row => {
         map[row.employee_id] = row.template_id;
       });
       setAssignments(map);
@@ -139,18 +135,12 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
     if (!newPatternName.trim()) return alert('패턴 이름을 입력해주세요.');
     if (selectedDays.length === 0) return alert('요일을 하나 이상 선택해주세요.');
 
-    const dailyWageVal = wageSystem === 'daily' ? Number(newPatternWage.replace(/,/g, '')) : null;
-    if (wageSystem === 'daily' && !dailyWageVal) return alert('일당 금액을 입력해주세요.');
-
-    const payload = {
-        name: newPatternName,
-        weekly_rules: timeRules,
-        daily_wage: dailyWageVal,
-    };
-
     if (editingPatternId) {
       const { error } = await supabase.from('schedule_templates')
-        .update(payload)
+        .update({
+          name: newPatternName,
+          weekly_rules: timeRules,
+        })
         .eq('id', editingPatternId);
 
       if (error) alert('수정 실패: ' + error.message);
@@ -162,7 +152,8 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
     } else {
       const { error } = await supabase.from('schedule_templates').insert({
         store_id: currentStoreId,
-        ...payload,
+        name: newPatternName,
+        weekly_rules: timeRules,
         start_time: '00:00', end_time: '00:00', color: '#4ECDC4'
       });
 
@@ -178,8 +169,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
   const handleEditPattern = (pattern: ShiftPattern) => {
     setEditingPatternId(pattern.id);
     setNewPatternName(pattern.name);
-    setNewPatternWage(pattern.daily_wage ? String(pattern.daily_wage) : '');
-    
     setTimeRules(pattern.weekly_rules);
     setSelectedDays(Object.keys(pattern.weekly_rules).map(Number));
     
@@ -199,7 +188,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
   const resetForm = () => {
     setEditingPatternId(null);
     setNewPatternName('');
-    setNewPatternWage('');
     setSelectedDays([]);
     setTimeRules({});
   };
@@ -226,7 +214,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
     }
   };
 
-  const handleAutoGenerate = async () => {
+const handleAutoGenerate = async () => {
     if (!genStartDate || !genEndDate) return alert('시작일과 종료일을 설정해주세요.');
     if (genStartDate > genEndDate) return alert('시작일이 종료일보다 늦을 수 없습니다.');
     if (selectedPatternIds.length === 0) return alert('생성할 패턴을 하나 이상 체크해주세요.');
@@ -245,8 +233,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
       .gte('date', genStartDate)
       .lte('date', genEndDate);
 
-    // ✅ [수정 2] s에 : any 타입 명시하여 에러 해결
-    const existingSet = new Set(existingData?.map((s: any) => `${s.date}_${s.employee_id}`));
+    const existingSet = new Set(existingData?.map(s => `${s.date}_${s.employee_id}`));
 
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const dateStr = formatDate(d);
@@ -257,8 +244,11 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
         if (existingSet.has(`${dateStr}_${empId}`)) continue;
 
         const employee = employees.find(e => e.id === empId);
+        
+        // ✅ [안전장치 1] 직원 정보가 없으면(이미 목록에서 사라진 퇴사자) 건너뜀
         if (!employee) continue;
 
+        // ✅ [안전장치 2] 직원 정보는 있지만, '생성하려는 날짜'가 '퇴사일'보다 미래면 건너뜀
         if (employee.end_date && dateStr > employee.end_date) {
             continue; 
         }
@@ -275,8 +265,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
             start_time: rule.start,
             end_time: rule.end,
             color: pattern.color || '#4ECDC4',
-            memo: pattern.name,
-            daily_wage: pattern.daily_wage || null
+            memo: pattern.name 
           });
         }
       }
@@ -326,10 +315,11 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
     <div style={{ marginTop: 32, borderTop: '1px solid #ddd', paddingTop: 24 }}>
       <h3 style={{ fontSize: 20, marginBottom: 16, color: '#fff' }}>🔄 주간 반복 스케줄 설정 (패턴 배정)</h3>
       <p className="instruction-text" style={{ color: '#ddd', marginBottom: 24, fontSize: 14, lineHeight: '1.6' }}>
-        1. 근무 패턴(요일별 시간{wageSystem === 'daily' && '/일당'})을 만들고 <br className="mobile-only" /> 
+        1. 근무 패턴(요일별 시간)을 만들고 <br className="mobile-only" /> 
         → 2. 해당 패턴으로 근무할 직원을 체크하세요.
       </p>
 
+      {/* 스마트 날짜 선택기 */}
       <div className="auto-generator-card">
         <div className="auto-gen-inputs">
           <label style={{ color: '#333', fontSize: 14, fontWeight: 'bold' }}>생성 기간:</label>
@@ -349,9 +339,12 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
         * 체크된 패턴에 대해서만 스케줄이 생성됩니다.
       </p>
 
+      {/* ✅ [추가] 구분선 (스케줄 설정 <-> 패턴 만들기 사이) */}
       <div style={{ borderTop: '1px solid #ddd', margin: '40px 0' }}></div>
 
       <div className="weekly-container">
+        
+        {/* 왼쪽: 패턴 생성기 */}
         <div className="pattern-maker-panel" ref={patternMakerRef}>
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#333' }}>
             {editingPatternId ? '🛠️ 패턴 수정하기' : '1. 근무 패턴 만들기'}
@@ -360,6 +353,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6 }}>패턴 이름 (캘린더에 표시될 이름)</label>
             
+            {/* 프리셋 버튼들 */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
               {PRESET_NAMES.map(name => (
                 <button 
@@ -389,19 +383,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
               style={inputStyle} 
             />
           </div>
-
-          {wageSystem === 'daily' && (
-             <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6 }}>일당 (원)</label>
-                <input 
-                    type="number" 
-                    placeholder="예: 120000" 
-                    value={newPatternWage} 
-                    onChange={(e) => setNewPatternWage(e.target.value)} 
-                    style={inputStyle} 
-                />
-             </div>
-          )}
 
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -461,6 +442,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
           </div>
         </div>
 
+        {/* 오른쪽: 직원 배정 */}
         <div className="pattern-list-panel">
           <h4 style={{ marginTop: 0, marginBottom: 12, color: '#fff' }}>2. 직원 배정하기</h4>
           <p className="instruction-text" style={{ color: '#ddd', marginBottom: 24, fontSize: 14, lineHeight: '1.6' }}>
@@ -502,12 +484,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
                      </div>
 
                      <div style={{ padding: '12px 16px', fontSize: 13, color: '#555', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fff' }}>
-                       {wageSystem === 'daily' && pattern.daily_wage && (
-                           <div style={{ marginBottom: 8, fontWeight:'bold', color: '#0064FF' }}>
-                               일당: {pattern.daily_wage.toLocaleString()}원
-                           </div>
-                       )}
-
                        {groupRulesByTime(pattern.weekly_rules).map((group, idx) => (
                          <div key={idx} style={{ marginBottom: 4 }}>
                            <strong style={{ color: 'dodgerblue', marginRight: 6 }}>{group.labels}</strong> 
@@ -535,7 +511,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees, wageS
                                    backgroundColor: isAssignedHere ? '#e6f7ff' : '#fff', 
                                    color: isAssignedHere ? 'dodgerblue' : isAssignedElsewhere ? '#ccc' : '#555', 
                                    cursor: isAssignedElsewhere ? 'not-allowed' : 'pointer', 
-                                   textDecoration: isAssignedElsewhere ? 'line-through' : 'none', 
+                                   textDecoration: isAssignedElsewhere ? 'line-through' : 'none',
                                    fontSize: 12,
                                    fontWeight: isAssignedHere ? 'bold' : 'normal'
                                }}

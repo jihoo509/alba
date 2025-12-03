@@ -3,23 +3,16 @@
 import React, { useEffect, useMemo, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
+import UserBar from '@/components/UserBar';
 import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
 import TemplateSection from '@/components/TemplateSection'; 
 import PayrollSection from '@/components/PayrollSection';
 import { format } from 'date-fns';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
-import TutorialModal from '@/components/TutorialModal';
+import TutorialModal from '@/components/TutorialModal'; // ✅ 추가
 
-// 아이콘 라이브러리가 없다면 텍스트로 대체하거나 lucide-react 설치 필요
-// 편의상 이모지로 대체합니다.
-
-type Store = { 
-  id: string; 
-  name: string; 
-  wage_system: 'hourly' | 'daily'; 
-  is_large_store: boolean; 
-};
+type Store = { id: string; name: string; };
 
 type TabKey = 'home' | 'employees' | 'schedules' | 'payroll';
 
@@ -28,181 +21,6 @@ export type Employee = {
   is_active: boolean; hire_date?: string; phone_number?: string; birth_date?: string;
   bank_name?: string; account_number?: string; end_date?: string;
 };
-
-// ----------------------------------------------------------------------
-// ✅ [신규 컴포넌트] 계정 설정 모달
-// ----------------------------------------------------------------------
-function AccountModal({ isOpen, onClose, email, supabase }: any) {
-    const [newPassword, setNewPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-
-    if (!isOpen) return null;
-
-    const handlePasswordChange = async () => {
-        if (!newPassword || newPassword.length < 6) {
-            alert('비밀번호는 6자 이상이어야 합니다.');
-            return;
-        }
-        setLoading(true);
-        const { error } = await supabase.auth.updateUser({ password: newPassword });
-        setLoading(false);
-        
-        if (error) alert('비밀번호 변경 실패: ' + error.message);
-        else {
-            alert('비밀번호가 성공적으로 변경되었습니다!');
-            setNewPassword('');
-            onClose();
-        }
-    };
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        window.location.href = '/';
-    };
-
-    return (
-        <div style={modalOverlayStyle}>
-            <div style={modalContentStyle}>
-                <h3 style={{marginTop:0}}>🔒 계정 설정</h3>
-                
-                <div style={{ marginBottom: 20 }}>
-                    <label style={labelStyle}>내 아이디</label>
-                    <div style={{ padding: 10, backgroundColor: '#f5f5f5', borderRadius: 4, color: '#555' }}>
-                        {email}
-                    </div>
-                </div>
-
-                <div style={{ marginBottom: 20 }}>
-                    <label style={labelStyle}>비밀번호 변경</label>
-                    <input 
-                        type="password" 
-                        placeholder="새 비밀번호 (6자 이상)"
-                        value={newPassword}
-                        onChange={(e)=>setNewPassword(e.target.value)}
-                        style={inputStyle}
-                    />
-                    <button 
-                        onClick={handlePasswordChange}
-                        disabled={loading}
-                        style={{ marginTop: 8, width: '100%', padding: 8, backgroundColor: '#444', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                        {loading ? '변경 중...' : '비밀번호 변경하기'}
-                    </button>
-                </div>
-
-                <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid #eee' }} />
-                
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                    <button onClick={handleLogout} style={{ ...btnStyle, backgroundColor: '#ff6b6b', color: 'white' }}>로그아웃</button>
-                    <button onClick={onClose} style={{ ...btnStyle, backgroundColor: '#ddd' }}>닫기</button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// ----------------------------------------------------------------------
-// ✅ [신규 컴포넌트] 매장 설정 모달
-// ----------------------------------------------------------------------
-function StoreSettingsModal({ isOpen, onClose, store, onUpdate, onDelete, supabase }: any) {
-    const [wageSystem, setWageSystem] = useState(store?.wage_system || 'hourly');
-    const [isLarge, setIsLarge] = useState(store?.is_large_store || false);
-    const [name, setName] = useState(store?.name || '');
-
-    // store prop이 바뀔 때 state 동기화
-    useEffect(() => {
-        if (store) {
-            setWageSystem(store.wage_system);
-            setIsLarge(store.is_large_store);
-            setName(store.name);
-        }
-    }, [store]);
-
-    if (!isOpen || !store) return null;
-
-    const handleSave = async () => {
-        const { error } = await supabase
-            .from('stores')
-            .update({ name, wage_system: wageSystem, is_large_store: isLarge })
-            .eq('id', store.id);
-
-        if (error) alert('저장 실패');
-        else {
-            alert('매장 설정이 저장되었습니다.');
-            onUpdate(); // 부모 컴포넌트 리로드
-            onClose();
-        }
-    };
-
-    return (
-        <div style={modalOverlayStyle}>
-            <div style={modalContentStyle}>
-                <h3 style={{marginTop:0}}>⚙️ 매장 설정</h3>
-                
-                <div style={{ marginBottom: 16 }}>
-                    <label style={labelStyle}>매장 이름</label>
-                    <input 
-                        value={name} onChange={(e)=>setName(e.target.value)}
-                        style={inputStyle}
-                    />
-                </div>
-
-                <div style={{ marginBottom: 16 }}>
-                    <label style={labelStyle}>급여 방식</label>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                        <button 
-                             onClick={() => setWageSystem('hourly')}
-                             style={wageSystem === 'hourly' ? activeOptionStyle : optionStyle}
-                        >시급제</button>
-                        <button 
-                             onClick={() => setWageSystem('daily')}
-                             style={wageSystem === 'daily' ? activeOptionStyle : optionStyle}
-                        >일당제</button>
-                    </div>
-                    {wageSystem === 'daily' && store.wage_system === 'hourly' && (
-                        <p style={{ fontSize: 12, color: 'orange', marginTop: 4 }}>
-                            ⚠️ 주의: 일당제로 변경 시, 직원들의 '시급' 정보를 '일당' 금액으로 직접 수정해주셔야 합니다.
-                        </p>
-                    )}
-                </div>
-
-                <div style={{ marginBottom: 20 }}>
-                    <label style={labelStyle}>사업장 규모</label>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                        <button 
-                             onClick={() => setIsLarge(false)}
-                             style={!isLarge ? activeOptionStyle : optionStyle}
-                        >5인 미만</button>
-                        <button 
-                             onClick={() => setIsLarge(true)}
-                             style={isLarge ? activeOptionStyle : optionStyle}
-                        >5인 이상</button>
-                    </div>
-                    <p style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                        * 5인 이상 선택 시 야간/연장/휴일 수당이 자동 적용됩니다.
-                    </p>
-                </div>
-
-                <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid #eee' }} />
-
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                     <button onClick={() => onDelete(store.id)} style={{ ...btnStyle, backgroundColor: '#fff', border: '1px solid tomato', color: 'tomato' }}>
-                        매장 삭제
-                     </button>
-                     <div style={{ display: 'flex', gap: 10 }}>
-                        <button onClick={onClose} style={{ ...btnStyle, backgroundColor: '#ddd' }}>취소</button>
-                        <button onClick={handleSave} style={{ ...btnStyle, backgroundColor: '#0064FF', color: 'white' }}>저장</button>
-                     </div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-
-// ----------------------------------------------------------------------
-// 메인 대시보드 로직
-// ----------------------------------------------------------------------
 
 function DashboardContent() {
   const router = useRouter();
@@ -213,23 +31,11 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
   const [stores, setStores] = useState<Store[]>([]);
   const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
   const [creatingStore, setCreatingStore] = useState(false);
-  
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
-
-  // 모달 상태
-  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
-  const [isStoreSettingsModalOpen, setIsStoreSettingsModalOpen] = useState(false);
-
-  // 초기 생성 폼 상태
-  const [newStoreName, setNewStoreName] = useState('');
-  const [newWageSystem, setNewWageSystem] = useState<'hourly'|'daily'>('hourly');
-  const [newIsLargeStore, setNewIsLargeStore] = useState(false);
-  const [isCreatingFirst, setIsCreatingFirst] = useState(false);
 
   const [currentTab, setCurrentTab] = useState<TabKey>(
     (searchParams.get('tab') as TabKey) || 'home'
@@ -237,10 +43,6 @@ function DashboardContent() {
 
   const [todayWorkers, setTodayWorkers] = useState<any[]>([]);
   const [monthlyEstPay, setMonthlyEstPay] = useState<number>(0);
-
-  const currentStore = useMemo(() => 
-    stores.find(s => s.id === currentStoreId), 
-  [stores, currentStoreId]);
 
   const updateUrl = (tab: TabKey, storeId: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -263,17 +65,11 @@ function DashboardContent() {
   const loadStores = useCallback(async (userId: string) => {
     const { data, error } = await supabase.from('stores').select('*').eq('owner_id', userId);
     if (error) { setErrorMsg('매장 로딩 실패'); return; }
-    
-    const list = (data ?? []).map((row: any) => ({ 
-      id: String(row.id), 
-      name: row.name,
-      wage_system: row.wage_system || 'hourly', 
-      is_large_store: row.is_large_store || false 
-    }));
+    const list = (data ?? []).map((row: any) => ({ id: String(row.id), name: row.name }));
     setStores(list);
 
     const urlStoreId = searchParams.get('storeId');
-    const targetStore = list.find((s: Store) => s.id === urlStoreId);
+    const targetStore = list.find(s => s.id === urlStoreId);
 
     if (targetStore) {
       setCurrentStoreId(targetStore.id);
@@ -283,20 +79,14 @@ function DashboardContent() {
   }, [supabase, currentStoreId, searchParams]);
 
   const handleDeleteStore = useCallback(async (storeId: string) => {
-    if (!window.confirm('정말 매장을 삭제하시겠습니까? 모든 데이터가 사라집니다.')) return;
+    if (!window.confirm('정말 삭제하시겠습니까?')) return;
     const { error } = await supabase.from('stores').delete().eq('id', storeId);
     if (error) alert('삭제 실패');
     else {
-      alert('매장이 삭제되었습니다.');
-      setIsStoreSettingsModalOpen(false); // 모달 닫기
-      const newStores = stores.filter((s) => s.id !== storeId);
-      setStores(newStores);
-      if (currentStoreId === storeId) { 
-        setCurrentStoreId(newStores.length > 0 ? newStores[0].id : null); 
-        setEmployees([]); 
-      }
+      setStores((prev) => prev.filter((s) => s.id !== storeId));
+      if (currentStoreId === storeId) { setCurrentStoreId(null); setEmployees([]); }
     }
-  }, [supabase, currentStoreId, stores]);
+  }, [supabase, currentStoreId]);
 
   const loadEmployees = useCallback(async (storeId: string) => {
     setLoadingEmployees(true);
@@ -362,7 +152,7 @@ function DashboardContent() {
   }, [currentStoreId, supabase, loadEmployees]);
 
   const handleDeleteEmployee = useCallback(async (id: string) => {
-    if (!confirm('삭제하시겠습니까?')) return;
+    if (!confirm('삭제?')) return;
     await supabase.from('employees').delete().eq('id', id);
     if (currentStoreId) await loadEmployees(currentStoreId);
   }, [currentStoreId, supabase, loadEmployees]);
@@ -372,54 +162,16 @@ function DashboardContent() {
     if (currentStoreId) await loadEmployees(currentStoreId);
   }, [supabase, currentStoreId, loadEmployees]);
 
-  const handleSimpleCreateStore = useCallback(async (name: string) => {
-    await handleCreateStoreInternal(name, 'hourly', false);
-  }, []);
-
-  const handleFirstCreateStore = async () => {
-    if (!newStoreName.trim()) { alert('매장명을 입력해주세요.'); return; }
-    setIsCreatingFirst(true);
-    await handleCreateStoreInternal(newStoreName, newWageSystem, newIsLargeStore);
-    setIsCreatingFirst(false);
-  };
-
-  const handleCreateStoreInternal = async (name: string, wage: 'hourly'|'daily', large: boolean) => {
+  const handleCreateStore = useCallback(async (name: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('stores')
-      .insert({ 
-        name, 
-        owner_id: user.id,
-        wage_system: wage, 
-        is_large_store: large
-      })
-      .select()
-      .single();
-
-    if (error) {
-        alert('매장 생성 중 오류가 발생했습니다.');
-        return;
-    }
-
+    const { data } = await supabase.from('stores').insert({ name, owner_id: user.id }).select().single();
     if (data) {
-      const newStore = { 
-        id: String(data.id), 
-        name: data.name, 
-        wage_system: wage, 
-        is_large_store: large 
-      };
+      const newStore = { id: String(data.id), name: data.name };
       setStores(prev => [...prev, newStore]);
       handleStoreChange(String(data.id));
     }
-  };
-
-  // 모달 닫힐 때 데이터 갱신을 위해 래퍼 함수 사용
-  const handleReloadStores = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await loadStores(user.id);
-  };
+  }, [supabase]);
 
   useEffect(() => {
     async function init() {
@@ -440,48 +192,21 @@ function DashboardContent() {
   }, [currentStoreId, loadEmployees, loadHomeStats]);
 
   const renderTabContent = () => {
-    if (stores.length === 0) {
-        return (
-            <div style={{ maxWidth: 500, margin: '40px auto', padding: 30, backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-                <h2 style={{ textAlign: 'center', fontSize: 22, fontWeight: 'bold', marginBottom: 24, color: '#333' }}>
-                    첫 번째 매장을 만들어볼까요? 🏪
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    <div>
-                        <label style={{ display: 'block', fontSize: 14, fontWeight: 'bold', color: '#555', marginBottom: 8 }}>매장 이름</label>
-                        <input 
-                            type="text" placeholder="예: 무유무유 수원점" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)}
-                            style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #ddd', fontSize: 16 }}
-                        />
-                    </div>
-                    <div>
-                        <label style={{ display: 'block', fontSize: 14, fontWeight: 'bold', color: '#555', marginBottom: 8 }}>급여 방식</label>
-                        <div style={{ display: 'flex', gap: 10 }}>
-                            <button onClick={() => setNewWageSystem('hourly')} style={newWageSystem === 'hourly' ? activeOptionStyle : optionStyle}>⏱️ 시급제</button>
-                            <button onClick={() => setNewWageSystem('daily')} style={newWageSystem === 'daily' ? activeOptionStyle : optionStyle}>🗓️ 일당제</button>
-                        </div>
-                    </div>
-                    <div>
-                        <label style={{ display: 'block', fontSize: 14, fontWeight: 'bold', color: '#555', marginBottom: 8 }}>사업장 규모</label>
-                        <div style={{ display: 'flex', gap: 10 }}>
-                            <button onClick={() => setNewIsLargeStore(false)} style={!newIsLargeStore ? activeOptionStyle : optionStyle}>🐣 5인 미만</button>
-                            <button onClick={() => setNewIsLargeStore(true)} style={newIsLargeStore ? activeOptionStyle : optionStyle}>🏢 5인 이상</button>
-                        </div>
-                    </div>
-                    <button onClick={handleFirstCreateStore} disabled={isCreatingFirst} style={{ width: '100%', padding: '14px', backgroundColor: '#0064FF', color: '#fff', fontSize: 16, fontWeight: 'bold', borderRadius: 8, border: 'none', cursor: 'pointer', marginTop: 10 }}>
-                        {isCreatingFirst ? '생성 중...' : '매장 만들기 완료'}
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
     if (!currentStoreId) return <p style={{ color: '#ddd', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
 
     if (currentTab === 'home') {
       return (
         <div style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24, alignItems: 'start' }}>
+          {/* ✅ [수정] 반응형 그리드 & 높이 자동 조절 */}
+          {/* PC: 2열, 모바일: 1열 / align-items: start (내용물만큼만 높이 차지) */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+            gap: 24, 
+            alignItems: 'start' // ✅ 핵심: 내용물 높이에 맞춤 (늘어지지 않음)
+          }}>
+            
+            {/* 카드 1: 오늘 근무자 */}
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #eee', paddingBottom: 8, color: '#000' }}>
                 📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
@@ -504,17 +229,33 @@ function DashboardContent() {
                 </ul>
               )}
             </div>
+
+            {/* 카드 2: 급여 지출 */}
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#555' }}>💰 11월 예상 급여 지출 (세전)</h3>
               <div style={{ fontSize: 32, fontWeight: 'bold', color: '#000' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
             </div>
-            <div style={cardStyle}>
+
+<div style={cardStyle}>
+  <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#e67e22' }}>💡 사장님 필수 상식</h3>
+  <p style={{ color: '#333', lineHeight: '1.6' }}>
+    <strong>주휴수당이란?</strong><br/>
+    1주일에 15시간 이상 근무하고 개근한 근로자에게는 하루치 임금을 추가로 지급해야 합니다.
+  </p>
+</div>
+
+            {/* ✅ [추가] 꿀팁/법령 카드 예시 (사장님을 위한 공간) */}
+            {/* 아래 div 덩어리를 복사해서 내용만 바꾸면 계속 추가됩니다! */}
+            {/* <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#e67e22' }}>💡 사장님 필수 상식</h3>
               <p style={{ color: '#333', lineHeight: '1.6' }}>
-                <strong>주휴수당이란?</strong><br/>
-                1주일에 15시간 이상 근무하고 개근한 근로자에게는 하루치 임금을 추가로 지급해야 합니다.
+                <strong>해고 예고 제도:</strong><br/>
+                근로자를 해고하려면 적어도 30일 전에 예고해야 하며, 30일 전에 예고하지 않았을 경우 30일분 이상의 통상임금(해고예고수당)을 지급해야 합니다.
+                <br/><span style={{ fontSize: 12, color: '#999' }}>(단, 근로기간 3개월 미만 등 예외 있음)</span>
               </p>
             </div>
+            */}
+
           </div>
         </div>
       );
@@ -522,32 +263,26 @@ function DashboardContent() {
     if (currentTab === 'employees') {
       return (
         <div style={{ maxWidth: 750, margin: '0 auto', width: '100%' }}>
-<EmployeeSection
-  currentStoreId={currentStoreId}
-  wageSystem={currentStore?.wage_system || 'hourly'}  // 👈 이 줄을 꼭 추가해주세요!
-  employees={employees}
-  loadingEmployees={loadingEmployees}
-  onCreateEmployee={handleCreateEmployee}
-  onDeleteEmployee={handleDeleteEmployee}
-  onUpdateEmployee={handleUpdateEmployee}
-/>
+          <EmployeeSection
+            currentStoreId={currentStoreId}
+            employees={employees}
+            loadingEmployees={loadingEmployees}
+            onCreateEmployee={handleCreateEmployee}
+            onDeleteEmployee={handleDeleteEmployee}
+            onUpdateEmployee={handleUpdateEmployee}
+          />
         </div>
       );
     }
-if (currentTab === 'schedules') {
-  return (
-    <div>
-      <h2 style={{ fontSize: 24, marginBottom: 8, color: '#fff', fontWeight: 'bold' }}>스케줄 관리</h2>
-      <p style={{ color: '#ddd', marginBottom: 32 }}>월간 스케줄을 확인하고 관리합니다.</p>
-      
-      {/* 👇 여기를 수정해주세요 */}
-      <TemplateSection 
-        currentStoreId={currentStoreId} 
-        wageSystem={currentStore?.wage_system || 'hourly'} // ✅ 이 줄 추가!
-      />
-    </div>
-  );
-}
+    if (currentTab === 'schedules') {
+      return (
+        <div>
+          <h2 style={{ fontSize: 24, marginBottom: 8, color: '#fff', fontWeight: 'bold' }}>스케줄 관리</h2>
+          <p style={{ color: '#ddd', marginBottom: 32 }}>월간 스케줄을 확인하고 관리합니다.</p>
+          <TemplateSection currentStoreId={currentStoreId} />
+        </div>
+      );
+    }
     if (currentTab === 'payroll') {
       return <PayrollSection currentStoreId={currentStoreId} />;
     }
@@ -567,44 +302,22 @@ if (currentTab === 'schedules') {
               <h1 className="mobile-logo-text" style={{ fontSize: 28, color: '#fff', fontWeight: '900', letterSpacing: '-1px', margin: 0, fontFamily: 'sans-serif' }}>
                 Easy Alba
               </h1>
-              
-              {/* ✅ [수정] 아이디 제거 & 버튼 2개 배치 */}
-              <div style={{ display: 'flex', gap: 8 }}>
-                  <button 
-                    onClick={() => setIsAccountModalOpen(true)}
-                    style={{ background: 'rgba(255,255,255,0.2)', border:'none', color:'#fff', padding:'6px 12px', borderRadius:20, fontSize:13, cursor:'pointer' }}
-                  >
-                    🔒 계정 설정
-                  </button>
-                  {stores.length > 0 && (
-                     <button 
-                        onClick={() => setIsStoreSettingsModalOpen(true)}
-                        style={{ background: 'rgba(255,255,255,0.2)', border:'none', color:'#fff', padding:'6px 12px', borderRadius:20, fontSize:13, cursor:'pointer' }}
-                    >
-                        ⚙️ 매장 설정
-                    </button>
-                  )}
-              </div>
+              <UserBar email={userEmail} />
             </header>
 
             {errorMsg && <div style={{ marginBottom: 10, color: 'salmon' }}>{errorMsg}</div>}
 
-            {stores.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ flex: 1 }}>
-                    <StoreSelector
-                      stores={stores}
-                      currentStoreId={currentStoreId}
-                      onChangeStore={handleStoreChange}
-                      creatingStore={creatingStore}
-                      onCreateStore={handleSimpleCreateStore}
-                      onDeleteStore={handleDeleteStore}
-                    />
-                  </div>
-                </div>
-            )}
+            <StoreSelector
+              stores={stores}
+              currentStoreId={currentStoreId}
+              onChangeStore={handleStoreChange}
+              creatingStore={creatingStore}
+              onCreateStore={handleCreateStore}
+              onDeleteStore={handleDeleteStore}
+            />
           </div>
 
+          {/* 🟢 [메뉴 탭] */}
           {stores.length > 0 && currentStoreId && (
             <div className="mobile-sticky-nav">
               <div className="mobile-tab-container" style={{ 
@@ -638,46 +351,67 @@ if (currentTab === 'schedules') {
         </div>
       </div>
 
-      <div className="content-spacer" style={{ width: '100%', maxWidth: '1000px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px', boxSizing: 'border-box' }}>
-        <div style={{ width: '100%' }} className={currentTab === 'schedules' ? 'shrink-on-mobile' : ''}>
-          {renderTabContent()}
-        </div>
+      {/* 🔵 [콘텐츠 영역] */}
+      <div 
+        className="content-spacer"
+        style={{ 
+          width: '100%', maxWidth: '1000px', margin: '0 auto', 
+          paddingLeft: '20px', paddingRight: '20px', 
+          boxSizing: 'border-box' 
+        }}
+      >
+        {stores.length > 0 && currentStoreId && (
+          <div style={{ width: '100%' }} className={currentTab === 'schedules' ? 'shrink-on-mobile' : ''}>
+            {renderTabContent()}
+          </div>
+        )}
       </div>
 
-      {stores.length > 0 && (
-          <TutorialModal tutorialKey="seen_home_tutorial_v1" steps={[/* 기존 튜토리얼 유지 */]} />
-      )}
-
-      {/* 팝업 모달들 */}
-      <AccountModal 
-        isOpen={isAccountModalOpen} 
-        onClose={() => setIsAccountModalOpen(false)} 
-        email={userEmail}
-        supabase={supabase}
-      />
-
-      <StoreSettingsModal 
-        isOpen={isStoreSettingsModalOpen}
-        onClose={() => setIsStoreSettingsModalOpen(false)}
-        store={currentStore}
-        onUpdate={handleReloadStores}
-        onDelete={handleDeleteStore}
-        supabase={supabase}
+      <TutorialModal 
+        tutorialKey="seen_home_tutorial_v1"
+        steps={[
+          {
+            title: "환영합니다, 사장님! 👋",
+            description: "Easy Alba에 오신 것을 환영합니다. 매장 관리의 모든 것을 쉽고 편하게 도와드릴게요.",
+          },
+          {
+            title: "1. 매장 등록하기",
+            description: "가장 먼저 '매장 추가' 버튼을 눌러 사장님의 매장을 등록해주세요. 여러 매장도 관리 가능합니다!",
+          },
+          {
+            title: "2. 직원 등록하기",
+            description: "'직원' 탭에서 함께 일하는 직원들을 등록하고 시급을 설정해보세요.",
+          },
+          {
+            title: "3. 근무 패턴 등록하기",
+            description: "월~수 오픈 등 반복적인 스케줄 생성 후 스케줄 자동 생성이 가능합니다!",
+          },
+          {
+            title: "4. 스케줄 수정하기",
+            description: "배정되어 있는 직원 클릭 시 근무 시간 수정 및 삭제 가능, 스케줄의 빈 칸 클릭 시 새 근무 생성이 가능합니다.",
+          },
+          {
+            title: "5. 급여 확인하기",
+            description: "배정된 스케줄에 따라 정확한 급여가 표기됩니다. 이미지, 엑셀로 다운 받아 근무자 또는 세무서에 전달하세요!",
+          },
+          {
+            title: "준비 되셨나요?",
+            description: "이제 복잡한 급여 계산과 스케줄 관리는 저희에게 맡기고, 사업에만 집중하세요!",
+          }
+        ]}
       />
 
     </main>
   );
 }
 
-// 스타일 정의
-const cardStyle = { backgroundColor: '#ffffff', borderRadius: 8, padding: 24, border: '1px solid #ddd', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };
-const modalOverlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 };
-const modalContentStyle: React.CSSProperties = { backgroundColor: '#fff', borderRadius: 12, padding: 24, width: '90%', maxWidth: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' };
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 'bold', color: '#666', marginBottom: 8 };
-const inputStyle: React.CSSProperties = { width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #ddd', fontSize: 14, boxSizing: 'border-box' as const }; // boxSizing 타입 오류 방지
-const btnStyle: React.CSSProperties = { padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 14 };
-const optionStyle: React.CSSProperties = { flex: 1, padding: '10px', borderRadius: 8, border: '1px solid #ddd', backgroundColor: '#fff', color: '#666', cursor: 'pointer' };
-const activeOptionStyle: React.CSSProperties = { ...optionStyle, backgroundColor: '#eef6ff', borderColor: '#0064FF', color: '#0064FF', fontWeight: 'bold' };
+const cardStyle = {
+  backgroundColor: '#ffffff',
+  borderRadius: 8,
+  padding: 24,
+  border: '1px solid #ddd',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+};
 
 export default function DashboardPage() {
   return (

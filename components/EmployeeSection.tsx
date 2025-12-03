@@ -7,7 +7,6 @@ import DateSelector from './DateSelector';
 
 type Props = {
   currentStoreId: string | null;
-  wageSystem: 'hourly' | 'daily'; // ✅ [추가] 매장 급여 시스템 정보
   employees: Employee[];
   loadingEmployees: boolean;
   onCreateEmployee: (payload: any) => void | Promise<void>;
@@ -23,7 +22,6 @@ function getEmploymentLabel(type: string) {
 
 export function EmployeeSection({
   currentStoreId,
-  wageSystem, // ✅ 구조 분해 할당
   employees,
   loadingEmployees,
   onCreateEmployee,
@@ -32,6 +30,7 @@ export function EmployeeSection({
 }: Props) {
   const [newEmpName, setNewEmpName] = useState('');
   const [newEmpWage, setNewEmpWage] = useState('');
+  // ✅ [수정] 기본값을 'four_insurance'로 변경
   const [newEmpType, setNewEmpType] = useState<'freelancer_33' | 'four_insurance'>('four_insurance');
   const [newEmpHireDate, setNewEmpHireDate] = useState('');
 
@@ -46,30 +45,21 @@ export function EmployeeSection({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const wage = Number(newEmpWage.replace(/,/g, ''));
     
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
-
-    // ✅ [수정] 일당제 로직 분기 처리
-    let finalWage = 0;
-
-    if (wageSystem === 'hourly') {
-        // 시급제일 때만 시급 입력값 체크
-        if (!newEmpWage) return alert('시급을 입력해주세요.');
-        finalWage = Number(newEmpWage.replace(/,/g, ''));
-    } else {
-        // 일당제일 때는 시급을 0으로 처리 (스케줄에서 관리)
-        finalWage = 0;
-    }
+    if (!wage) return alert('시급을 입력해주세요.');
 
     await onCreateEmployee({
       name: newEmpName,
-      hourlyWage: finalWage,          
+      hourlyWage: wage,           
       employmentType: newEmpType, 
       hireDate: newEmpHireDate || undefined,
     });
 
     setNewEmpName('');
     setNewEmpWage('');
+    // ✅ [수정] 등록 후 초기화도 'four_insurance'로
     setNewEmpType('four_insurance'); 
     setNewEmpHireDate('');
   };
@@ -95,12 +85,8 @@ export function EmployeeSection({
                 {getEmploymentLabel(emp.employment_type)}
               </span>
             </div>
-            {/* ✅ [수정] 일당제일 경우 시급 금액 대신 '일당제' 텍스트 노출 */}
             <div className="emp-wage">
-              {wageSystem === 'hourly' 
-                ? `${emp.hourly_wage?.toLocaleString()}원`
-                : <span style={{fontSize: 13, color:'#999'}}>일당제</span>
-              }
+              {emp.hourly_wage?.toLocaleString()}원
             </div>
           </div>
 
@@ -141,15 +127,10 @@ export function EmployeeSection({
               <label>이름</label>
               <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} placeholder="이름 입력" />
             </div>
-            
-            {/* ✅ [수정] 시급제(hourly)일 때만 시급 입력칸 노출 */}
-            {wageSystem === 'hourly' && (
-                <div className="form-group">
-                <label>시급 (원)</label>
-                <input type="number" value={newEmpWage} onChange={(e) => setNewEmpWage(e.target.value)} placeholder="10030" />
-                </div>
-            )}
-
+            <div className="form-group">
+              <label>시급 (원)</label>
+              <input type="number" value={newEmpWage} onChange={(e) => setNewEmpWage(e.target.value)} placeholder="10030" />
+            </div>
             <div className="form-group">
               <label>고용 형태</label>
               <select value={newEmpType} onChange={(e) => setNewEmpType(e.target.value as any)}>
@@ -189,13 +170,7 @@ export function EmployeeSection({
       )}
 
       {selectedEmployee && (
-        <EmployeeEditModal 
-            isOpen={isEditOpen} 
-            onClose={() => setIsEditOpen(false)} 
-            employee={selectedEmployee} 
-            onUpdate={onUpdateEmployee} 
-            wageSystem={wageSystem} // ✅ [주의] EmployeeEditModal에도 wageSystem을 받아 처리하도록 수정 필요
-        />
+        <EmployeeEditModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} employee={selectedEmployee} onUpdate={onUpdateEmployee} />
       )}
     </section>
   );
