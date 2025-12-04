@@ -6,7 +6,7 @@
     "dev": "next dev -H 0.0.0.0",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
-    "build": "npm run typecheck && npm run lint && next build",
+    "build": "npm run typecheck && npm run lint && next build --webpack",
     "start": "next start"
   },
   "dependencies": {
