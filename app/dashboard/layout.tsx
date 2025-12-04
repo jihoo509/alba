@@ -45,7 +45,7 @@ export default function DashboardLayout({
           {children}
         </div>
 
-        {/* 4. [정적] 모바일 하단 광고 박스 (기존 유지) */}
+{/* 4. [정적] 모바일 하단 광고 박스 (수정됨) */}
         <div className="mobile-only" style={{
           width: '100%',
           padding: '20px',
@@ -58,16 +58,43 @@ export default function DashboardLayout({
           marginTop: '40px'
         }}>
           {/* 광고 박스 1 */}
-          <div style={{ width: '100%', height: '50px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', background:'#f8f8f8', borderRadius:8 }}>
-             {/* 높이 제한을 위해 overflow: hidden 추가 및 배경색으로 영역 표시 */}
-             <GoogleAd slot={MOBILE_BOTTOM_BOX_SLOT_ID} format="rectangle" />
+          <div style={{ 
+              width: '100%', 
+              height: '100px', // 높이 100px 공간 확보
+              overflow: 'hidden', 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              background:'#f8f8f8', 
+              borderRadius:8 
+          }}>
+             {/* 🔹 [핵심 수정] rectangle(사각형) -> horizontal(가로형) 변경 */}
+             <GoogleAd 
+                slot={MOBILE_BOTTOM_BOX_SLOT_ID} 
+                format="horizontal" 
+                responsive="true" 
+             />
           </div>
+
           {/* 광고 박스 2 */}
-          <div style={{ width: '100%', height: '50px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', background:'#f8f8f8', borderRadius:8 }}>
-             <GoogleAd slot={MOBILE_BOTTOM_BOX_SLOT_ID} format="rectangle" />
+          <div style={{ 
+              width: '100%', 
+              height: '100px', 
+              overflow: 'hidden', 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              background:'#f8f8f8', 
+              borderRadius:8 
+          }}>
+             {/* 🔹 [핵심 수정] 여기도 horizontal로 변경 */}
+             <GoogleAd 
+                slot={MOBILE_BOTTOM_BOX_SLOT_ID} 
+                format="horizontal"
+                responsive="true" 
+             />
           </div>
         </div>
-
       </div>
 
       {/* ✅ 5. 모바일 스티키 배너 삭제됨 */}
