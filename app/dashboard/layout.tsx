@@ -70,7 +70,7 @@ export default function DashboardLayout({
 
       </div>
 
-      {/* ✅ 5. [수정] 모바일 스티키 배너 (크기 제한 및 안전 영역 적용) */}
+{/* ✅ 5. [수정] 모바일 스티키 배너 (높이 강제 고정) */}
       <div className="mobile-only" style={{
         position: 'fixed',
         bottom: 0,
@@ -80,28 +80,35 @@ export default function DashboardLayout({
         zIndex: 100, 
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center', // 세로 중앙 정렬
+        alignItems: 'center',
         boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
         borderTop: '1px solid #eee',
-        // 🔹 [핵심] 높이 자동 조절 대신 패딩으로 높이 확보 + safe-area 대응
-        paddingBottom: 'env(safe-area-inset-bottom)', 
-        height: 'auto',
-        minHeight: '50px' // 최소 높이 보장
+        
+        // 🔥 [핵심 수정 1] 높이를 'auto'가 아니라 계산된 고정값으로 변경
+        // 광고 높이(50px) + 여유분(10px) + 아이폰 하단 베젤(safe-area)
+        height: 'calc(60px + env(safe-area-inset-bottom))', 
+        
+        // 🔥 [핵심 수정 2] 광고가 이 높이를 뚫고 나오지 못하도록 넘치는 부분 숨김 처리
+        overflow: 'hidden',
+        
+        // 패딩은 safe-area만 적용 (높이를 고정했으므로 padding-bottom만 챙김)
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        boxSizing: 'border-box'
       }}>
-        {/* 🔹 [핵심] 광고가 너무 커지지 않도록 감싸는 div에 크기 강제 지정 */}
+        
+        {/* 내부 광고 래퍼 */}
         <div style={{ 
-            width: '100%', 
-            maxWidth: '320px', // 모바일 표준 너비
-            height: '50px',    // 표준 배너 높이 강제
-            overflow: 'hidden', // 50px보다 큰 광고가 로드되면 잘라냄 (레이아웃 깨짐 방지)
+            width: '320px',    // 가로 고정
+            height: '50px',    // 세로 고정
             display: 'flex',
             justifyContent: 'center',
-            alignItems: 'center'
+            alignItems: 'center',
+            overflow: 'hidden' // 이중 잠금
         }}>
            <GoogleAd 
              slot={MOBILE_STICKY_SLOT_ID} 
              format="horizontal" 
-             style={{ display:'block', width: '320px', height: '50px' }} // 광고 컴포넌트에도 사이즈 명시
+             style={{ display:'block', width: '320px', height: '50px' }} 
            />
         </div>
       </div>
