@@ -10,16 +10,16 @@ export default function DashboardLayout({
 }) {
   // 🔴 [중요] 실제 운영 시엔 사장님 애드센스 ID로 변경 필수
   const MOBILE_BOTTOM_BOX_SLOT_ID = "4218312145"; 
-  // const MOBILE_STICKY_SLOT_ID = "1423137158"; // 🗑️ 스티키 슬롯 ID는 이제 안 쓰므로 주석 처리
+  // const MOBILE_STICKY_SLOT_ID = "1423137158"; // 🗑️ 스티키 슬롯 ID 미사용
 
   return (
     // ✅ 전체 컨테이너
     <div style={{ minHeight: '100vh', backgroundColor: '#fff', color: '#292929' }}>
       
-      {/* 1. 팝업 광고 (기존 유지) */}
+      {/* 1. 팝업 광고 */}
       <AdPopup />
 
-      {/* 2. PC 좌우 배너 (기존 유지) */}
+      {/* 2. PC 좌우 배너 */}
       <div className="desktop-only responsive-banner" style={{ position: 'fixed', left: 0, top: '0', bottom: '0', height: '100vh', zIndex: 90, display: 'flex', alignItems: 'center' }}>
         <AdBanner position="left" />
       </div>
@@ -36,7 +36,7 @@ export default function DashboardLayout({
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        // ✅ [수정] 하단 스티키 배너가 사라졌으므로, 불필요한 큰 여백(70px)을 제거하고 기본 여백(20px)만 남김
+        // 하단 여백: 스티키 배너가 없으므로 기본값(20px) + 아이폰 하단 베젤(safe-area)
         paddingBottom: 'calc(20px + env(safe-area-inset-bottom))' 
       }}>
         
@@ -45,7 +45,7 @@ export default function DashboardLayout({
           {children}
         </div>
 
-{/* 4. [정적] 모바일 하단 광고 박스 (수정됨) */}
+        {/* 4. [정적] 모바일 하단 광고 박스 (320x50 강제 고정 적용) */}
         <div className="mobile-only" style={{
           width: '100%',
           padding: '20px',
@@ -60,7 +60,7 @@ export default function DashboardLayout({
           {/* 광고 박스 1 */}
           <div style={{ 
               width: '100%', 
-              height: '100px', // 높이 100px 공간 확보
+              height: '100px', // 여백 포함 넉넉하게
               overflow: 'hidden', 
               display: 'flex', 
               justifyContent: 'center', 
@@ -68,11 +68,14 @@ export default function DashboardLayout({
               background:'#f8f8f8', 
               borderRadius:8 
           }}>
-             {/* 🔹 [핵심 수정] rectangle(사각형) -> horizontal(가로형) 변경 */}
+             {/* 🔥 [핵심 수정] 반응형을 끄고, 320x50 사이즈를 직접 지정 */}
              <GoogleAd 
                 slot={MOBILE_BOTTOM_BOX_SLOT_ID} 
-                format="horizontal" 
-                responsive="true" 
+                // format과 responsive를 제거하거나 비워서 고정 모드로 전환
+                format="" 
+                responsive="false"
+                // style에 정확한 크기 명시
+                style={{ display:'inline-block', width: '320px', height: '50px' }}
              />
           </div>
 
@@ -87,17 +90,19 @@ export default function DashboardLayout({
               background:'#f8f8f8', 
               borderRadius:8 
           }}>
-             {/* 🔹 [핵심 수정] 여기도 horizontal로 변경 */}
+             {/* 🔥 [핵심 수정] 위와 동일하게 고정 */}
              <GoogleAd 
                 slot={MOBILE_BOTTOM_BOX_SLOT_ID} 
-                format="horizontal"
-                responsive="true" 
+                format="" 
+                responsive="false"
+                style={{ display:'inline-block', width: '320px', height: '50px' }}
              />
           </div>
         </div>
+
       </div>
 
-      {/* ✅ 5. 모바일 스티키 배너 삭제됨 */}
+      {/* 5. 모바일 스티키 배너 삭제됨 */}
 
     </div>
   );
