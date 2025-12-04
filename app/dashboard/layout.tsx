@@ -70,44 +70,42 @@ export default function DashboardLayout({
 
       </div>
 
-{/* ✅ 5. [수정] 모바일 스티키 배너 (높이 강제 고정) */}
-      <div className="mobile-only" style={{
+{/* ✅ 5. [수정] 모바일 스티키 배너 (CSS 강제 고정 적용) */}
+      <div className="mobile-only sticky-ad-container" style={{
         position: 'fixed',
         bottom: 0,
         left: 0,
         right: 0,
         backgroundColor: '#fff', 
         zIndex: 100, 
+        borderTop: '1px solid #eee',
+        boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
+        // 하단 여백(Safe Area) 확보
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        // 높이 강제 지정 (내용물이 커져도 이 이상 안 커짐)
+        height: '60px', 
+        maxHeight: '60px',
+        overflow: 'hidden', 
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center',
-        boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
-        borderTop: '1px solid #eee',
-        
-        // 🔥 [핵심 수정 1] 높이를 'auto'가 아니라 계산된 고정값으로 변경
-        // 광고 높이(50px) + 여유분(10px) + 아이폰 하단 베젤(safe-area)
-        height: 'calc(60px + env(safe-area-inset-bottom))', 
-        
-        // 🔥 [핵심 수정 2] 광고가 이 높이를 뚫고 나오지 못하도록 넘치는 부분 숨김 처리
-        overflow: 'hidden',
-        
-        // 패딩은 safe-area만 적용 (높이를 고정했으므로 padding-bottom만 챙김)
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        boxSizing: 'border-box'
+        alignItems: 'center'
       }}>
-        
-        {/* 내부 광고 래퍼 */}
-        <div style={{ 
-            width: '320px',    // 가로 고정
-            height: '50px',    // 세로 고정
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            overflow: 'hidden' // 이중 잠금
-        }}>
+        {/* 🔥 CSS로 내부 광고 크기 강제 조절 (인라인 스타일 무시) */}
+        <style dangerouslySetInnerHTML={{__html: `
+          .sticky-ad-container ins, 
+          .sticky-ad-container iframe {
+            height: 50px !important;
+            max-height: 50px !important;
+            min-height: 50px !important;
+            margin: 0 auto !important;
+          }
+        `}} />
+
+        <div style={{ width: '320px', height: '50px' }}>
+           {/* format을 비워두거나 "false"로 설정하여 반응형 동작 억제 */}
            <GoogleAd 
              slot={MOBILE_STICKY_SLOT_ID} 
-             format="horizontal" 
+             format="" 
              style={{ display:'block', width: '320px', height: '50px' }} 
            />
         </div>
