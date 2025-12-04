@@ -58,12 +58,12 @@ export default function DashboardLayout({
           marginTop: '40px'
         }}>
           {/* 광고 박스 1 */}
-          <div style={{ width: '100%', height: '100px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', background:'#f8f8f8', borderRadius:8 }}>
+          <div style={{ width: '100%', height: '50px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', background:'#f8f8f8', borderRadius:8 }}>
              {/* 높이 제한을 위해 overflow: hidden 추가 및 배경색으로 영역 표시 */}
              <GoogleAd slot={MOBILE_BOTTOM_BOX_SLOT_ID} format="rectangle" />
           </div>
           {/* 광고 박스 2 */}
-          <div style={{ width: '100%', height: '100px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', background:'#f8f8f8', borderRadius:8 }}>
+          <div style={{ width: '100%', height: '50px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', background:'#f8f8f8', borderRadius:8 }}>
              <GoogleAd slot={MOBILE_BOTTOM_BOX_SLOT_ID} format="rectangle" />
           </div>
         </div>
