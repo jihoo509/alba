@@ -108,47 +108,50 @@ export default function PayrollSection({ currentStoreId }: Props) {
         return joined && notLeft;
       });
 
-      // 1. 기본 라이브러리 계산
-      let result = calculateMonthlyPayroll(year, month, activeEmps, schedules, storeData, overData || []);
+// 1. 기본 라이브러리 계산
+let result = calculateMonthlyPayroll(year, month, activeEmps, schedules, storeData, overData || []);
 
-      // 2. ✅ 수정 사항(Override/Adjustment) 반영 및 재계산 로직
-      // (DB에 저장된 monthly_override 등의 필드를 확인하여 덮어쓰기)
-      if (overData) {
-        result = result.map((item: any) => {
-          const setting = overData.find((s: any) => s.employee_id === item.empId);
-          
-          // *DB 컬럼명은 실제 상황에 맞춰 조정 필요 (여기선 monthly_override, monthly_adjustment로 가정)*
-          // 만약 DB컬럼이 없다면 settings json 컬럼을 파싱해서 써야 함. 
-          // 여기서는 setting 객체에 해당 필드가 있다고 가정하고 진행합니다.
-          const override = setting?.monthly_override ? Number(setting.monthly_override) : null;
-          const adjustment = setting?.monthly_adjustment ? Number(setting.monthly_adjustment) : 0;
+// 2. ✅ 수정 사항(Override/Adjustment) 반영 및 데이터 규격 통일 (여기를 통째로 교체하세요)
+// overData 유무와 상관없이 모든 직원에 대해 basePay, adjustment 필드를 보장해야 함
+result = result.map((item: any) => {
+  // overData가 없으면 빈 배열로 처리
+  const setting = overData ? overData.find((s: any) => s.employee_id === item.empId) : null;
+  
+  const override = setting?.monthly_override ? Number(setting.monthly_override) : null;
+  const adjustment = setting?.monthly_adjustment ? Number(setting.monthly_adjustment) : 0;
 
-          // 수정사항이 없으면 원본 유지
-          if (override === null && adjustment === 0) return item;
+  // 수정사항이 없더라도, 화면 렌더링을 위해 기본 필드를 반드시 채워줘야 함! (★여기가 핵심 수정★)
+  if (override === null && adjustment === 0) {
+    return {
+      ...item,
+      basePay: item.totalPay,       // 확정 급여가 없으면 총 지급액이 곧 기본급
+      adjustment: 0,                // 조정액 0
+      originalCalcPay: item.totalPay,
+      isModified: false
+    };
+  }
 
-          // 재계산 시작
-          const originalPay = item.totalPay; // 시급 기반 계산액 (보존용)
-          const basePay = override !== null ? override : item.totalPay; // 확정급여 or 시급계산액
-          const newTotalPay = basePay + adjustment; // 최종 지급액
+  // 수정사항이 있는 경우 재계산 로직
+  const originalPay = item.totalPay; 
+  const basePay = override !== null ? override : item.totalPay; 
+  const newTotalPay = basePay + adjustment; 
 
-          // 세금 재계산 (라이브러리가 지원 안 할 경우를 대비한 안전장치)
-          const newTax = recalculateTax(newTotalPay);
-          const newFinalPay = newTotalPay - newTax.totalTax - newTax.totalInsurance;
+  const newTax = recalculateTax(newTotalPay);
+  const newFinalPay = newTotalPay - newTax.totalTax - newTax.totalInsurance;
 
-          return {
-            ...item,
-            totalPay: newTotalPay,
-            finalPay: newFinalPay,
-            basePay: basePay, // 명세서 표시용 기본급
-            adjustment: adjustment, // 명세서 표시용 조정액
-            taxDetails: newTax, // 재계산된 세금 정보 교체
-            originalCalcPay: originalPay, // 수정 UI용 원본 금액 저장
-            isModified: true // 수정됨 표시
-          };
-        });
-      }
+  return {
+    ...item,
+    totalPay: newTotalPay,
+    finalPay: newFinalPay,
+    basePay: basePay, 
+    adjustment: adjustment, 
+    taxDetails: newTax, 
+    originalCalcPay: originalPay, 
+    isModified: true 
+  };
+});
 
-      setPayrollData(result);
+setPayrollData(result);
     }
     setLoading(false);
   }, [currentStoreId, year, month, supabase]);
