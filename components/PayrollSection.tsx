@@ -158,17 +158,15 @@ setPayrollData(result);
 
   useEffect(() => { loadAndCalculate(); }, [loadAndCalculate]);
 
-  // ✅ 수정 모달 저장 핸들러
   const handleSaveEdit = async (override: number | null, adjustment: number) => {
     if (!editModalState.empId) return;
 
-    // DB에 저장 (employee_settings 테이블에 컬럼이 존재해야 함)
-    // 없을 경우: monthly_data 라는 JSON 컬럼 등을 사용 권장
+    // DB에 저장
     const updates = {
       employee_id: editModalState.empId,
-      monthly_override: override, // 확정 급여
-      monthly_adjustment: adjustment, // 보너스/공제
-      store_id: currentStoreId,
+      monthly_override: override,
+      monthly_adjustment: adjustment,
+      // store_id: currentStoreId,  <-- ❌ 이 줄을 삭제하거나 주석 처리하세요! (테이블에 이 컬럼이 없어서 에러 남)
       updated_at: new Date().toISOString()
     };
 
@@ -179,6 +177,7 @@ setPayrollData(result);
       console.error(error);
     } else {
       await loadAndCalculate(); // 재계산
+      setEditModalState(prev => ({ ...prev, isOpen: false })); // ✅ 저장 후 모달 닫기 추가
     }
   };
 
@@ -382,61 +381,62 @@ setPayrollData(result);
                   <th className="desktop-cell" style={thStyle}>보기</th>
                 </tr>
               </thead>
-              <tbody>
-                {payrollData.map(p => (
-                  <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '13px', backgroundColor: '#fff', height: 48 }}>
-                    <td className="col-name" style={{ ...tdStyle, fontWeight: 'bold', position: 'sticky', left: 0, background: '#fff', zIndex: 5 }}>{p.name}</td>
-                    
-                    {/* ✅ 총 지급 (클릭 시 수정 모달) */}
-                    <td className="col-total" style={{ ...tdStyle }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                        <span 
-                          onClick={() => openEditModal(p)} 
-                          style={{ fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px dashed #aaa' }}
-                        >
-                          {p.totalPay.toLocaleString()}
-                        </span>
-                        {/* PC에서만 보이는 수정 버튼 */}
-                        <button 
-                          className="desktop-cell"
-                          onClick={() => openEditModal(p)}
-                          style={{ padding: '2px 6px', fontSize: '10px', borderRadius: 4, background: '#eee', border: 'none', cursor: 'pointer', color: '#555' }}
-                        >
-                          수정
-                        </button>
-                      </div>
-                      {p.adjustment !== 0 && (
-                        <div style={{ fontSize: 10, color: p.adjustment > 0 ? 'blue' : 'red' }}>
-                          ({p.adjustment > 0 ? '+' : ''}{p.adjustment.toLocaleString()})
-                        </div>
-                      )}
-                    </td>
-                    
-                    {/* 모바일 버튼들 */}
-                    <td className="mobile-cell col-settings" style={tdStyle}>
-                      <button onClick={() => setStubModalState({ isOpen: true, data: p, mode: 'settings' })} className="compact-btn" style={{ ...detailBtnStyle, borderColor: '#e67e22', color: '#e67e22' }}>설정</button>
-                    </td>
-                    <td className="mobile-cell col-download" style={tdStyle}>
-                      <button onClick={() => setStubModalState({ isOpen: true, data: p, mode: 'download' })} className="compact-btn" style={detailBtnStyle}>다운</button>
-                    </td>
+{/* PayrollSection.tsx의 <tbody> 부분 교체 */}
+<tbody>
+  {payrollData.map(p => (
+    <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '13px', backgroundColor: '#fff', height: 48 }}>
+      <td className="col-name" style={{ ...tdStyle, fontWeight: 'bold', position: 'sticky', left: 0, background: '#fff', zIndex: 5 }}>{p.name}</td>
+      
+      {/* ✅ 총 지급 (안전장치 추가) */}
+      <td className="col-total" style={{ ...tdStyle }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <span 
+            onClick={() => openEditModal(p)} 
+            style={{ fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px dashed #aaa' }}
+          >
+            {(p.totalPay || 0).toLocaleString()}
+          </span>
+          {/* PC 수정 버튼 */}
+          <button 
+            className="desktop-cell"
+            onClick={() => openEditModal(p)}
+            style={{ padding: '2px 6px', fontSize: '10px', borderRadius: 4, background: '#eee', border: 'none', cursor: 'pointer', color: '#555' }}
+          >
+            수정
+          </button>
+        </div>
+        {(p.adjustment || 0) !== 0 && (
+          <div style={{ fontSize: 10, color: (p.adjustment || 0) > 0 ? 'blue' : 'red' }}>
+            {(p.adjustment || 0) > 0 ? '+' : ''}{(p.adjustment || 0).toLocaleString()}
+          </div>
+        )}
+      </td>
+      
+      {/* 모바일 버튼들 */}
+      <td className="mobile-cell col-settings" style={tdStyle}>
+        <button onClick={() => setStubModalState({ isOpen: true, data: p, mode: 'settings' })} className="compact-btn" style={{ ...detailBtnStyle, borderColor: '#e67e22', color: '#e67e22' }}>설정</button>
+      </td>
+      <td className="mobile-cell col-download" style={tdStyle}>
+        <button onClick={() => setStubModalState({ isOpen: true, data: p, mode: 'download' })} className="compact-btn" style={detailBtnStyle}>다운</button>
+      </td>
 
-                    {/* PC 데이터 */}
-                    <td className="desktop-cell" style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
-                    <td className="desktop-cell" style={tdStyle}>{p.basePay.toLocaleString()}</td>
-                    <td className="desktop-cell" style={tdStyle}>{p.weeklyHolidayPay ? p.weeklyHolidayPay.toLocaleString() : '-'}</td>
-                    <td className="desktop-cell" style={tdStyle}>
-                      {(p.nightPay + p.overtimePay + p.holidayWorkPay).toLocaleString()}
-                    </td>
-                    <td className="desktop-cell" style={tdStyle}>{(p.taxDetails.incomeTax + p.taxDetails.localTax).toLocaleString()}</td>
-                    <td className="desktop-cell" style={tdStyle}>
-                      {(p.taxDetails.pension + p.taxDetails.health + p.taxDetails.employment + p.taxDetails.care).toLocaleString()}
-                    </td>
-                    <td className="desktop-cell" style={tdStyle}>
-                      <button onClick={() => setStubModalState({ isOpen: true, data: p, mode: 'full' })} style={detailBtnStyle}>보기</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+      {/* PC 데이터 (여기가 에러의 주범! 모든 항목에 || 0 추가함) */}
+      <td className="desktop-cell" style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{(p.finalPay || 0).toLocaleString()}</td>
+      <td className="desktop-cell" style={tdStyle}>{(p.basePay || 0).toLocaleString()}</td>
+      <td className="desktop-cell" style={tdStyle}>{(p.weeklyHolidayPay || 0).toLocaleString()}</td>
+      <td className="desktop-cell" style={tdStyle}>
+        {((p.nightPay || 0) + (p.overtimePay || 0) + (p.holidayWorkPay || 0)).toLocaleString()}
+      </td>
+      <td className="desktop-cell" style={tdStyle}>{((p.taxDetails?.incomeTax || 0) + (p.taxDetails?.localTax || 0)).toLocaleString()}</td>
+      <td className="desktop-cell" style={tdStyle}>
+        {((p.taxDetails?.pension || 0) + (p.taxDetails?.health || 0) + (p.taxDetails?.employment || 0) + (p.taxDetails?.care || 0)).toLocaleString()}
+      </td>
+      <td className="desktop-cell" style={tdStyle}>
+        <button onClick={() => setStubModalState({ isOpen: true, data: p, mode: 'full' })} style={detailBtnStyle}>보기</button>
+      </td>
+    </tr>
+  ))}
+</tbody>
             </table>
           </div>
         )}
