@@ -16,14 +16,13 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   const [formData, setFormData] = useState<Partial<Employee>>({});
   const [saving, setSaving] = useState(false);
   
-  // ✅ 고정 월급 상태 추가
+  // ✅ 고정 월급 상태 (문자열로 관리하며 콤마 포함)
   const [monthlyOverride, setMonthlyOverride] = useState<string>('');
   
   const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     if (isOpen && employee) {
-      // 1. 기본 직원 정보 세팅
       setFormData({
         name: employee.name,
         hourly_wage: employee.hourly_wage,
@@ -37,7 +36,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         is_active: employee.is_active,
       });
 
-      // 2. 고정 월급 정보 가져오기 (employee_settings 테이블 조회)
       const fetchSettings = async () => {
         const { data } = await supabase
           .from('employee_settings')
@@ -46,7 +44,8 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
           .single();
         
         if (data && data.monthly_override) {
-          setMonthlyOverride(String(data.monthly_override));
+          // 불러올 때 콤마 찍어서 보여주기
+          setMonthlyOverride(Number(data.monthly_override).toLocaleString());
         } else {
           setMonthlyOverride('');
         }
@@ -59,10 +58,28 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === 'hourly_wage' ? Number(value.replace(/,/g, '')) : value,
-    }));
+    
+    // ✅ 시급 입력 시 콤마 처리 로직
+    if (name === 'hourly_wage') {
+        const rawValue = value.replace(/,/g, ''); // 콤마 제거
+        if (/^\d*$/.test(rawValue)) { // 숫자만 허용
+            setFormData(prev => ({ 
+                ...prev, 
+                [name]: rawValue === '' ? 0 : Number(rawValue) 
+            }));
+        }
+    } else {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // ✅ 고정 월급 입력 핸들러 (콤마 자동 추가)
+  const handleMonthlyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/,/g, '');
+    if (/^\d*$/.test(rawValue)) {
+        const formatted = rawValue === '' ? '' : Number(rawValue).toLocaleString();
+        setMonthlyOverride(formatted);
+    }
   };
 
   const handleDateChange = (field: keyof Employee, value: string) => {
@@ -82,7 +99,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     setSaving(true);
     const isActive = !formData.end_date; 
 
-    // 1. 직원 정보 업데이트
     const updates = {
       ...formData,
       is_active: isActive,
@@ -97,19 +113,15 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     // @ts-ignore
     await onUpdate(employee.id, updates);
 
-    // 2. 고정 월급 정보 저장 (employee_settings 테이블)
+    // 고정 월급 저장 (콤마 제거 후 숫자 저장)
     const overrideValue = monthlyOverride.trim() ? Number(monthlyOverride.replace(/,/g, '')) : null;
     
     const { error } = await supabase.from('employee_settings').upsert({
         employee_id: employee.id,
         monthly_override: overrideValue,
-        // store_id는 테이블에 없으므로 생략 (만약 있으면 추가: store_id: employee.store_id)
     }, { onConflict: 'employee_id' });
 
-    if (error) {
-        console.error('고정 월급 저장 실패:', error);
-        // 실패해도 직원 정보는 저장되었으므로 진행하거나, alert 띄우기
-    }
+    if (error) console.error('고정 월급 저장 실패:', error);
 
     setSaving(false);
     onClose();
@@ -141,19 +153,28 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
           </div>
           <div style={styles.inputGroup}>
             <label style={styles.label}>시급 (원)</label>
-            <input name="hourly_wage" type="number" value={formData.hourly_wage ?? 0} onChange={handleChange} style={styles.input} />
+            <input 
+                name="hourly_wage" 
+                type="text" // ✅ text 타입으로 변경
+                inputMode="numeric" // 모바일 키패드 숫자용
+                value={formData.hourly_wage ? formData.hourly_wage.toLocaleString() : ''} // ✅ 콤마 표시
+                onChange={handleChange} 
+                style={styles.input} 
+                placeholder="0"
+            />
           </div>
 
-          {/* ✅ 2행: 고정 월급 (신규 추가) - 전체 너비 사용 */}
+          {/* 2행: 고정 월급 (콤마 적용) */}
           <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
             <label style={{ ...styles.label, color: 'dodgerblue', display: 'flex', justifyContent: 'space-between' }}>
                 <span>고정 월급 (선택)</span>
                 <span style={{fontWeight:'normal', fontSize:11, color:'#888'}}>* 입력 시 시급 계산 무시</span>
             </label>
             <input 
-                type="number" 
+                type="text" // ✅ text 타입
+                inputMode="numeric"
                 value={monthlyOverride} 
-                onChange={(e) => setMonthlyOverride(e.target.value)} 
+                onChange={handleMonthlyChange} // ✅ 전용 핸들러 사용
                 placeholder="금액 입력"
                 style={{ ...styles.input, borderColor: '#bae7ff', backgroundColor: '#f0f9ff' }} 
             />
@@ -230,7 +251,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   );
 }
 
-// ✅ 스타일: 밝은 테마로 변경
+// ✅ 스타일 (기존 유지)
 const styles = {
   overlay: {
     position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0,

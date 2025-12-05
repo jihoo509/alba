@@ -10,7 +10,7 @@ type Props = {
   currentStoreId: string | null;
   employees: Employee[];
   loadingEmployees: boolean;
-  onCreateEmployee: (payload: any) => void | Promise<void>; // 반환 타입 수정 (ID 받을 수 있게)
+  onCreateEmployee: (payload: any) => void | Promise<void>;
   onDeleteEmployee: (employeeId: string) => void | Promise<void>;
   onUpdateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
 };
@@ -25,9 +25,8 @@ export function EmployeeSection({
   currentStoreId, employees, loadingEmployees, onCreateEmployee, onDeleteEmployee, onUpdateEmployee,
 }: Props) {
   const [newEmpName, setNewEmpName] = useState('');
-  const [newEmpWage, setNewEmpWage] = useState('');
-  // ✅ 고정 월급 상태 추가
-  const [newEmpMonthly, setNewEmpMonthly] = useState(''); 
+  const [newEmpWage, setNewEmpWage] = useState(''); // 콤마 포함 문자열
+  const [newEmpMonthly, setNewEmpMonthly] = useState(''); // 콤마 포함 문자열
   const [newEmpType, setNewEmpType] = useState<'freelancer_33' | 'four_insurance'>('four_insurance');
   const [newEmpHireDate, setNewEmpHireDate] = useState('');
 
@@ -41,6 +40,14 @@ export function EmployeeSection({
 
   if (!currentStoreId) return null;
 
+  // ✅ 숫자 포맷팅 핸들러
+  const handleNumberInput = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
+    const raw = e.target.value.replace(/,/g, '');
+    if (/^\d*$/.test(raw)) {
+      setter(raw === '' ? '' : Number(raw).toLocaleString());
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const wage = Number(newEmpWage.replace(/,/g, ''));
@@ -48,10 +55,6 @@ export function EmployeeSection({
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
     if (!wage) return alert('시급을 입력해주세요.');
 
-    // 1. 직원 생성 요청 (상위 컴포넌트 함수 호출)
-    // 주의: onCreateEmployee가 생성된 직원의 ID를 반환해줘야 완벽하게 연동됩니다.
-    // 만약 반환을 안 해주면, 이름으로 찾거나 해야 해서 약간 불안정할 수 있습니다.
-    // 일단 여기서는 생성 후 이름으로 매칭해서 ID 찾는 방식을 써보겠습니다.
     await onCreateEmployee({
       name: newEmpName,
       hourlyWage: wage,           
@@ -59,10 +62,7 @@ export function EmployeeSection({
       hireDate: newEmpHireDate || undefined,
     });
 
-    // 2. 고정 월급이 있다면 settings 테이블에 저장 시도
     if (newEmpMonthly.trim()) {
-        // 방금 만든 직원 ID 찾기 (이름과 시급으로 매칭 시도 - 약간 위험하지만 차선책)
-        // 가장 좋은 건 onCreateEmployee가 id를 리턴해주는 것임.
         const { data: createdEmp } = await supabase
             .from('employees')
             .select('id')
@@ -76,14 +76,14 @@ export function EmployeeSection({
             await supabase.from('employee_settings').upsert({
                 employee_id: createdEmp.id,
                 monthly_override: Number(newEmpMonthly.replace(/,/g, '')),
-                store_id: currentStoreId // 혹시 모를 에러 방지용 (컬럼 없으면 무시됨)
+                store_id: currentStoreId
             }, { onConflict: 'employee_id' });
         }
     }
 
     setNewEmpName('');
     setNewEmpWage('');
-    setNewEmpMonthly(''); // 초기화
+    setNewEmpMonthly('');
     setNewEmpType('four_insurance'); 
     setNewEmpHireDate('');
   };
@@ -135,13 +135,27 @@ export function EmployeeSection({
             
             <div className="form-group">
               <label>시급 (원)</label>
-              <input type="number" value={newEmpWage} onChange={(e) => setNewEmpWage(e.target.value)} placeholder="10030" />
+              {/* ✅ 콤마 적용된 시급 입력 */}
+              <input 
+                type="text" 
+                inputMode="numeric"
+                value={newEmpWage} 
+                onChange={(e) => handleNumberInput(e, setNewEmpWage)} 
+                placeholder="10,030" 
+              />
             </div>
 
-            {/* ✅ 고정 월급 입력 (선택) */}
             <div className="form-group">
               <label style={{color: 'dodgerblue'}}>고정 월급 (선택)</label>
-              <input type="number" value={newEmpMonthly} onChange={(e) => setNewEmpMonthly(e.target.value)} placeholder="입력시 시급 무시" style={{borderColor: '#bae7ff', background:'#f0f9ff'}} />
+              {/* ✅ 콤마 적용된 고정 월급 입력 */}
+              <input 
+                type="text" 
+                inputMode="numeric"
+                value={newEmpMonthly} 
+                onChange={(e) => handleNumberInput(e, setNewEmpMonthly)} 
+                placeholder="입력시 시급 무시" 
+                style={{borderColor: '#bae7ff', background:'#f0f9ff'}} 
+              />
             </div>
 
             <div className="form-group">
