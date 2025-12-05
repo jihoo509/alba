@@ -158,28 +158,30 @@ setPayrollData(result);
 
   useEffect(() => { loadAndCalculate(); }, [loadAndCalculate]);
 
-  const handleSaveEdit = async (override: number | null, adjustment: number) => {
-    if (!editModalState.empId) return;
+const handleSaveEdit = async (override: number | null, adjustment: number) => {
+  if (!editModalState.empId) return;
 
-    // DB에 저장
-    const updates = {
-      employee_id: editModalState.empId,
-      monthly_override: override,
-      monthly_adjustment: adjustment,
-      // store_id: currentStoreId,  <-- ❌ 이 줄을 삭제하거나 주석 처리하세요! (테이블에 이 컬럼이 없어서 에러 남)
-      updated_at: new Date().toISOString()
-    };
-
-    const { error } = await supabase.from('employee_settings').upsert(updates, { onConflict: 'employee_id' });
-
-    if (error) {
-      alert('저장 중 오류가 발생했습니다.');
-      console.error(error);
-    } else {
-      await loadAndCalculate(); // 재계산
-      setEditModalState(prev => ({ ...prev, isOpen: false })); // ✅ 저장 후 모달 닫기 추가
-    }
+  // DB에 저장할 데이터 객체
+  const updates = {
+    employee_id: editModalState.empId,
+    monthly_override: override,
+    monthly_adjustment: adjustment,
+    // ❌ 삭제: store_id: currentStoreId, (테이블에 컬럼 없음)
+    // ❌ 삭제: updated_at: new Date().toISOString() (테이블에 컬럼 없음)
   };
+
+  // upsert 실행
+  const { error } = await supabase.from('employee_settings').upsert(updates, { onConflict: 'employee_id' });
+
+  if (error) {
+    alert('저장 중 오류가 발생했습니다: ' + error.message);
+    console.error(error);
+  } else {
+    // 저장 성공 시 모달 닫고 데이터 재로딩
+    setEditModalState(prev => ({ ...prev, isOpen: false }));
+    await loadAndCalculate(); 
+  }
+};
 
   const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => acc + curr.totalPay, 0), [payrollData]);
 
@@ -382,12 +384,13 @@ setPayrollData(result);
                 </tr>
               </thead>
 {/* PayrollSection.tsx의 <tbody> 부분 교체 */}
+{/* PayrollSection.tsx의 <tbody> 태그 내부를 이걸로 교체하세요 */}
 <tbody>
   {payrollData.map(p => (
     <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '13px', backgroundColor: '#fff', height: 48 }}>
       <td className="col-name" style={{ ...tdStyle, fontWeight: 'bold', position: 'sticky', left: 0, background: '#fff', zIndex: 5 }}>{p.name}</td>
       
-      {/* ✅ 총 지급 (안전장치 추가) */}
+      {/* ✅ 총 지급 (안전장치 || 0 추가) */}
       <td className="col-total" style={{ ...tdStyle }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <span 
@@ -420,7 +423,7 @@ setPayrollData(result);
         <button onClick={() => setStubModalState({ isOpen: true, data: p, mode: 'download' })} className="compact-btn" style={detailBtnStyle}>다운</button>
       </td>
 
-      {/* PC 데이터 (여기가 에러의 주범! 모든 항목에 || 0 추가함) */}
+      {/* ✅ PC 데이터 (여기가 에러의 주범! 모든 변수에 || 0 추가함) */}
       <td className="desktop-cell" style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{(p.finalPay || 0).toLocaleString()}</td>
       <td className="desktop-cell" style={tdStyle}>{(p.basePay || 0).toLocaleString()}</td>
       <td className="desktop-cell" style={tdStyle}>{(p.weeklyHolidayPay || 0).toLocaleString()}</td>
