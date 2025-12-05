@@ -152,7 +152,7 @@ function DashboardContent() {
   }, [currentStoreId, supabase, loadEmployees]);
 
   const handleDeleteEmployee = useCallback(async (id: string) => {
-    if (!confirm('삭제?')) return;
+    if (!confirm('정말 삭제하시겠습니까?')) return;
     await supabase.from('employees').delete().eq('id', id);
     if (currentStoreId) await loadEmployees(currentStoreId);
   }, [currentStoreId, supabase, loadEmployees]);
