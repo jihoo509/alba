@@ -96,23 +96,34 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => acc + curr.totalPay, 0), [payrollData]);
 
-  const handleDownloadExcel = () => {
+const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
+    
     const excelRows = payrollData.map(p => {
       const empInfo = employees.find(e => e.id === p.empId);
+      
+      // 세금 합계 계산 (소득세 + 지방소득세)
+      const totalTax = (p.taxDetails.incomeTax || 0) + (p.taxDetails.localTax || 0);
+
       return {
         '이름': p.name,
         '전화번호': empInfo?.phone_number || '-',
         '은행': empInfo?.bank_name || '-',
         '계좌번호': empInfo?.account_number || '-',
+        '생년월일': empInfo?.resident_number || '-', // 요청하신 생년월일 (주민번호 데이터 사용)
         '총 지급 급여': fmt(p.totalPay),
         '세후 지급 급여': fmt(p.finalPay),
         '소득세': fmt(p.taxDetails.incomeTax),
         '지방소득세': fmt(p.taxDetails.localTax),
-        '4대보험 합계': fmt(p.taxDetails.pension + p.taxDetails.health + p.taxDetails.employment + p.taxDetails.care),
+        '세금 토탈': fmt(totalTax), // 요청하신 세금 합계 추가
+        '국민연금': fmt(p.taxDetails.pension), // 4대보험 개별 분리
+        '건강보험': fmt(p.taxDetails.health),
+        '고용보험': fmt(p.taxDetails.employment),
+        '장기요양보험': fmt(p.taxDetails.care),
       };
     });
+
     const ws = XLSX.utils.json_to_sheet(excelRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "급여대장");
