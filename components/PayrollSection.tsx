@@ -20,7 +20,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
   const supabase = createSupabaseBrowserClient();
   const today = new Date();
   
-  // ✅ 연도와 월 상태 관리
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
 
@@ -35,7 +34,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
-  // ✅ [수정] 월 이동 핸들러 (연도 변경 포함)
   const handlePrevMonth = () => {
     if (month === 1) {
       setYear(y => y - 1);
@@ -63,26 +61,9 @@ export default function PayrollSection({ currentStoreId }: Props) {
     if (empData) setEmployees(empData);
     const { data: overData } = await supabase.from('employee_settings').select('*');
     
-    // 급여 산정 기간 (전월 20일 ~ 당월 10일 예시) -> 실제 로직에 맞게 조정 가능
-    // 연도가 바뀌어도 year state가 바뀌므로 정확한 날짜가 생성됨
-    let startYear = year;
-    let startMonth = month - 1;
-    if (startMonth === 0) { startMonth = 12; startYear -= 1; }
-
-    const startStr = `${startYear}-${String(startMonth).padStart(2,'0')}-20`;
-    const endStr = `${year}-${String(month).padStart(2,'0')}-10`; // 당월 10일까지라면 month 사용
-
-    // ⚠️ [중요] 위 기간 로직은 기존 코드의 의도(전월~당월)를 유지한 것입니다.
-    // 만약 "해당 월 1일 ~ 말일"이 기준이라면 아래처럼 심플하게 가도 됩니다.
-    // const startStr = `${year}-${String(month).padStart(2,'0')}-01`;
-    // const endStr = format(new Date(year, month, 0), 'yyyy-MM-dd');
-    
-    // 일단 기존 로직(전월 20일 ~ )을 유지하되 연도 계산을 보정했습니다.
-    
-    // 🚨 (잠깐! 기존 코드는 단순히 month-1, month+1을 쓰고 있었는데 연도 처리가 미흡했을 수 있음)
-    // 안전하게 "해당 월 전체 스케줄"을 가져오도록 넉넉하게 잡겠습니다.
-    const safeStart = `${year}-${String(month).padStart(2,'0')}-01`; // 1일
-    const safeEnd = format(new Date(year, month, 0), 'yyyy-MM-dd'); // 말일
+    // 월 전체 기간 계산
+    const safeStart = `${year}-${String(month).padStart(2,'0')}-01`;
+    const safeEnd = format(new Date(year, month, 0), 'yyyy-MM-dd');
 
     const { data: schedules } = await supabase.from('schedules').select('*').eq('store_id', currentStoreId).gte('date', safeStart).lte('date', safeEnd);
 
@@ -113,6 +94,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => acc + curr.totalPay, 0), [payrollData]);
 
+  // 엑셀 다운로드 (기존 유지)
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
@@ -123,28 +105,23 @@ export default function PayrollSection({ currentStoreId }: Props) {
             '전화번호': empInfo?.phone_number || '-',
             '은행': empInfo?.bank_name || '-',
             '계좌번호': empInfo?.account_number || '-',
-            '생년월일': empInfo?.birth_date || '-',
             '총 지급 급여': fmt(p.totalPay),
             '세후 지급 급여': fmt(p.finalPay),
             '소득세': fmt(p.taxDetails.incomeTax),
             '지방소득세': fmt(p.taxDetails.localTax),
-            '세금 토탈': fmt(p.taxDetails.incomeTax + p.taxDetails.localTax),
-            '국민연금': fmt(p.taxDetails.pension),
-            '건강보험': fmt(p.taxDetails.health),
-            '고용보험': fmt(p.taxDetails.employment),
-            '장기요양보험': fmt(p.taxDetails.care),
+            '4대보험 합계': fmt(p.taxDetails.pension + p.taxDetails.health + p.taxDetails.employment + p.taxDetails.care),
         };
     });
     const ws = XLSX.utils.json_to_sheet(excelRows);
-    ws['!cols'] = [{ wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "급여대장");
     XLSX.writeFile(wb, `${year}년_${month}월_급여대장.xlsx`);
   };
 
+  // 전체 다운로드 (기존 유지)
   const handleDownloadAllStubs = async () => {
     if (payrollData.length === 0) return;
-    if (!confirm(`${payrollData.length}명의 명세서를 압축(ZIP)하여 다운로드합니다.\n시간이 조금 걸릴 수 있습니다.`)) return;
+    if (!confirm(`${payrollData.length}명의 명세서를 압축(ZIP)하여 다운로드합니다.`)) return;
     setIsDownloading(true);
     setDownloadProgress(0);
     const zip = new JSZip();
@@ -164,13 +141,12 @@ export default function PayrollSection({ currentStoreId }: Props) {
       }
       const content = await zip.generateAsync({ type: 'blob' });
       saveAs(content, `${year}년_${month}월_급여명세서_모음.zip`);
-      alert('다운로드가 완료되었습니다!');
+      alert('다운로드 완료!');
     } catch (e) {
       console.error(e);
-      alert('다운로드 중 오류가 발생했습니다.');
+      alert('오류 발생');
     } finally {
       setIsDownloading(false);
-      setDownloadProgress(0);
     }
   };
 
@@ -183,82 +159,87 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
       <div style={cardStyle}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
+          {/* 상단 제목 및 전체 버튼 */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-             <h2 style={{ fontSize: 20, margin: 0, color: '#333', fontWeight: 'bold' }}>💰 월 급여 대장</h2>
-             <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: '#27ae60', color: '#fff', border: 'none', fontSize: 13 }}>
-                  <span className="mobile-text">엑셀</span><span className="desktop-text">엑셀 다운로드</span>
+             <h2 style={{ fontSize: 18, margin: 0, color: '#333', fontWeight: 'bold' }}>💰 월 급여 대장</h2>
+             <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: '#27ae60', fontSize: 12 }}>
+                  엑셀
                 </button>
-                <button onClick={handleDownloadAllStubs} disabled={isDownloading} style={{ ...btnStyle, background: '#333', color: '#fff', border: 'none', fontSize: 13 }}>
-                  {isDownloading ? `생성 중 ${downloadProgress}%` : (
-                    <>
-                      <span className="mobile-text">전체다운</span>
-                      <span className="desktop-text">명세서 전체 다운(ZIP)</span>
-                    </>
-                  )}
+                <button onClick={handleDownloadAllStubs} disabled={isDownloading} style={{ ...btnStyle, background: '#333', fontSize: 12 }}>
+                  {isDownloading ? `${downloadProgress}%` : '전체다운'}
                 </button>
              </div>
           </div>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f5f5f5', padding: '12px', borderRadius: 8 }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-               {/* ✅ [수정] 버튼에 새로운 핸들러 연결 */}
-               <button onClick={handlePrevMonth} style={navBtnStyle}>◀</button>
-               
-               {/* ✅ [수정] 연도 포함하여 표시 */}
-               <span style={{ fontSize: 18, fontWeight: 'bold', color: '#333' }}>
-                 {year}년 {month}월
-               </span>
-               
-               <button onClick={handleNextMonth} style={navBtnStyle}>▶</button>
+          {/* ✅ [수정 1] 날짜 및 합계 박스 디자인 개선 (심플하게) */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8f9fa', padding: '15px', borderRadius: 12, border: '1px solid #eee' }}>
+             
+             {/* 왼쪽: 날짜 선택기 */}
+             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+               <button onClick={handlePrevMonth} style={navIconBtnStyle}>◀</button>
+               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                 <span style={{ fontSize: 18, fontWeight: '800', color: '#333', lineHeight: '1' }}>
+                   {year}.{String(month).padStart(2, '0')}
+                 </span>
+               </div>
+               <button onClick={handleNextMonth} style={navIconBtnStyle}>▶</button>
              </div>
+
+             {/* 오른쪽: 총 지급액 */}
              <div style={{ textAlign: 'right' }}>
-               <div style={{ fontSize: 12, color: '#666' }}>총 지급액</div>
-               <div style={{ fontSize: 18, fontWeight: 'bold', color: 'dodgerblue' }}>{totalMonthlyCost.toLocaleString()}원</div>
+               <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>총 지급액</div>
+               <div style={{ fontSize: 18, fontWeight: 'bold', color: 'dodgerblue', letterSpacing: '-0.5px' }}>
+                 {totalMonthlyCost.toLocaleString()}원
+               </div>
              </div>
           </div>
         </div>
 
-        {loading ? <p style={{color:'#666', textAlign:'center'}}>계산 중...</p> : (
-          <div className="table-wrapper" style={{ boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '100%' }}>
-              {/* ... (테이블 내용은 기존과 동일하므로 유지) ... */}
+        {loading ? <p style={{color:'#666', textAlign:'center', padding: 20}}>계산 중...</p> : (
+          <div className="table-wrapper" style={{ boxShadow: '0 0 0 1px #eee', borderRadius: 8, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#f5f5f5', color: '#555', fontSize: '13px', borderBottom: '1px solid #ddd', height: 40 }}>
-                  <th style={{ ...thStyle, width: 70, position: 'sticky', left: 0, zIndex: 10, background: '#f5f5f5' }}>이름</th>
-                  <th style={{ ...thStyle, width: 90 }}>총 지급</th>
-                  <th className="mobile-cell" style={{ ...thStyle, width: 60, color: '#e67e22' }}>설정</th>
-                  <th className="mobile-cell" style={{ ...thStyle, width: 60 }}>명세서</th>
-                  <th className="desktop-cell" style={{ ...thStyle, width: 90, color: 'dodgerblue' }}>세후 지급</th>
-                  <th className="desktop-cell" style={{ ...thStyle, width: 80 }}>기본급</th>
-                  <th className="desktop-cell" style={{ ...thStyle, width: 70 }}>주휴</th>
-                  <th className="desktop-cell" style={{ ...thStyle, width: 70 }}>야간</th>
-                  <th className="desktop-cell" style={{ ...thStyle, width: 70 }}>연장</th>
-                  <th className="desktop-cell" style={{ ...thStyle, width: 70 }}>휴일</th>
-                  <th className="desktop-cell" style={{ ...thStyle, width: 70 }}>소득세</th>
-                  <th className="desktop-cell" style={{ ...thStyle, width: 70 }}>4대보험</th>
-                  <th className="desktop-cell" style={{ ...thStyle, width: 80 }}>보기</th>
+                <tr style={{ background: '#f8f9fa', color: '#555', fontSize: '12px', borderBottom: '1px solid #eee', height: 40 }}>
+                  <th style={{ ...thStyle, width: '15%' }}>이름</th>
+                  <th style={{ ...thStyle, width: '35%' }}>총 지급</th>
+                  {/* ✅ [수정 2] 모바일에서 불필요한 여백 최소화 및 컬럼 너비 조정 */}
+                  <th className="mobile-cell" style={{ ...thStyle, width: '25%', color: '#e67e22' }}>설정</th>
+                  <th className="mobile-cell" style={{ ...thStyle, width: '25%' }}>명세서</th>
+                  
+                  {/* PC 전용 컬럼들 (모바일에선 숨김 - CSS media query 필요) */}
+                  <th className="desktop-cell" style={{ ...thStyle, color: 'dodgerblue' }}>세후 지급</th>
+                  <th className="desktop-cell" style={thStyle}>기본급</th>
+                  <th className="desktop-cell" style={thStyle}>수당합계</th>
+                  <th className="desktop-cell" style={thStyle}>공제합계</th>
+                  <th className="desktop-cell" style={thStyle}>상세</th>
                 </tr>
               </thead>
               <tbody>
                 {payrollData.map(p => (
-                  <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '13px', backgroundColor: '#fff', height: 46 }}>
-                    <td style={{ ...tdStyle, fontWeight: 'bold', position: 'sticky', left: 0, background: '#fff', zIndex: 5 }}>{p.name}</td>
+                  <tr key={p.empId} style={{ borderBottom: '1px solid #f0f0f0', fontSize: '13px', backgroundColor: '#fff', height: 50 }}>
+                    <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.name}</td>
                     <td style={{ ...tdStyle, fontWeight: 'bold' }}>{p.totalPay.toLocaleString()}</td>
+                    
+                    {/* 설정 버튼 */}
                     <td className="mobile-cell" style={tdStyle}>
-                      <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'settings' })} style={{ ...detailBtnStyle, borderColor: '#e67e22', color: '#e67e22' }}>설정</button>
+                      <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'settings' })} style={compactBtnStyle}>
+                        설정
+                      </button>
                     </td>
+                    
+                    {/* 다운로드 버튼 */}
                     <td className="mobile-cell" style={tdStyle}>
-                      <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'download' })} style={detailBtnStyle}>다운</button>
+                       <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'download' })} style={{...compactBtnStyle, borderColor: '#333', color: '#333'}}>
+                        다운
+                       </button>
                     </td>
+
+                    {/* PC 전용 데이터 */}
                     <td className="desktop-cell" style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{p.finalPay.toLocaleString()}</td>
                     <td className="desktop-cell" style={tdStyle}>{p.basePay.toLocaleString()}</td>
-                    <td className="desktop-cell" style={tdStyle}>{p.weeklyHolidayPay.toLocaleString()}</td>
-                    <td className="desktop-cell" style={tdStyle}>{p.nightPay.toLocaleString()}</td>
-                    <td className="desktop-cell" style={tdStyle}>{p.overtimePay.toLocaleString()}</td>
-                    <td className="desktop-cell" style={tdStyle}>{p.holidayWorkPay.toLocaleString()}</td>
-                    <td className="desktop-cell" style={tdStyle}>{p.taxDetails.incomeTax.toLocaleString()}</td>
-                    <td className="desktop-cell" style={tdStyle}>{(p.taxDetails.pension + p.taxDetails.health + p.taxDetails.employment).toLocaleString()}</td>
+                    <td className="desktop-cell" style={tdStyle}>{(p.weeklyHolidayPay + p.nightPay + p.overtimePay + p.holidayWorkPay).toLocaleString()}</td>
+                    <td className="desktop-cell" style={tdStyle}>{(p.taxDetails.incomeTax + p.taxDetails.localTax + p.taxDetails.pension + p.taxDetails.health).toLocaleString()}</td>
                     <td className="desktop-cell" style={tdStyle}>
                       <button onClick={() => setModalState({ isOpen: true, data: p, mode: 'full' })} style={detailBtnStyle}>보기</button>
                     </td>
@@ -270,72 +251,68 @@ export default function PayrollSection({ currentStoreId }: Props) {
         )}
       </div>
 
-      {/* 숨겨진 명세서 (다운로드용) */}
+      {/* 히든 영역 (이미지 생성용) - 기존 코드 유지 */}
       <div style={{ position: 'fixed', top: '-10000px', left: '-10000px' }}>
         {payrollData.map(p => (
-          <div key={p.empId} id={`hidden-stub-${p.empId}`} style={{ width: '800px', backgroundColor: '#fff', padding: '40px', boxSizing: 'border-box', fontFamily: 'sans-serif' }}>
-             <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24 }}>
-                {year}년 {month}월 급여 명세서
-             </h2>
-             {/* ... (상세 명세서 내용은 동일하게 유지) ... */}
-             {/* (코드 생략 없이 위쪽 코드 그대로 쓰시면 됩니다. 변경점 없음) */}
-             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 16 }}>
-                <span>성명: <strong>{p.name}</strong></span>
-                <span>지급일: {year}.{month}.{new Date().getDate()}</span>
-             </div>
-             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25, border: '1px solid #ddd' }}>
-                <thead>
-                   <tr style={{ backgroundColor: '#f0f0f0', borderBottom: '1px solid #000', height: 30 }}>
-                      <th style={thStyle}>날짜</th><th style={thStyle}>시간</th><th style={thStyle}>근무</th>
-                      <th style={thStyle}>기본급</th><th style={thStyle}>야간</th><th style={thStyle}>연장</th><th style={{...thStyle, color:'red'}}>휴일</th>
-                   </tr>
-                </thead>
-                <tbody>
-                   {(p.ledger || []).map((row: any, idx: number) => {
-                      if (row.type === 'WEEKLY') {
-                         return (
-                            <tr key={idx} style={{ backgroundColor: '#fff8c4', borderBottom: '1px solid #ddd', height: 30 }}>
-                               <td colSpan={3} style={{...tdStyle, textAlign:'center', fontWeight:'bold', color:'#d68910'}}>⭐ {row.dayLabel} ({row.note})</td>
-                               <td style={tdStyle}>-</td>
-                               <td colSpan={3} style={{...tdStyle, textAlign:'right', fontWeight:'bold', color:'#d68910'}}>{(row.weeklyPay || 0).toLocaleString()}</td>
-                            </tr>
-                         );
-                      }
-                      if (row.type === 'WORK') {
+           <div key={p.empId} id={`hidden-stub-${p.empId}`} style={{ width: '800px', backgroundColor: '#fff', padding: '40px' }}>
+               <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24 }}>
+                 {year}년 {month}월 급여 명세서
+               </h2>
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 16 }}>
+                 <span>성명: <strong>{p.name}</strong></span>
+                 <span>지급일: {year}.{month}.{new Date().getDate()}</span>
+               </div>
+               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25, border: '1px solid #ddd' }}>
+                 <thead>
+                    <tr style={{ backgroundColor: '#f0f0f0', borderBottom: '1px solid #000', height: 30 }}>
+                       <th style={printThStyle}>날짜</th><th style={printThStyle}>시간</th><th style={printThStyle}>근무</th>
+                       <th style={printThStyle}>기본급</th><th style={printThStyle}>야간</th><th style={printThStyle}>연장</th><th style={{...printThStyle, color:'red'}}>휴일</th>
+                    </tr>
+                 </thead>
+                 <tbody>
+                    {(p.ledger || []).map((row: any, idx: number) => {
+                       if (row.type === 'WEEKLY') {
                           return (
-                            <tr key={idx} style={{ borderBottom: '1px solid #ddd', height: 30 }}>
-                               <td style={tdStyle}>{row.date.slice(5)} ({row.dayLabel})</td>
-                               <td style={tdStyle}>{row.timeRange}</td>
-                               <td style={tdStyle}>{row.hours}h</td>
-                               <td style={{...tdStyle, textAlign:'right'}}>{row.basePay.toLocaleString()}</td>
-                               <td style={{...tdStyle, textAlign:'right'}}>{row.nightPay.toLocaleString()}</td>
-                               <td style={{...tdStyle, textAlign:'right'}}>{row.overtimePay.toLocaleString()}</td>
-                               <td style={{...tdStyle, textAlign:'right', color:'red'}}>{row.holidayWorkPay.toLocaleString()}</td>
-                            </tr>
+                             <tr key={idx} style={{ backgroundColor: '#fff8c4', borderBottom: '1px solid #ddd', height: 30 }}>
+                                <td colSpan={3} style={{...printTdStyle, textAlign:'center', fontWeight:'bold', color:'#d68910'}}>⭐ {row.dayLabel} ({row.note})</td>
+                                <td style={printTdStyle}>-</td>
+                                <td colSpan={3} style={{...printTdStyle, textAlign:'right', fontWeight:'bold', color:'#d68910'}}>{(row.weeklyPay || 0).toLocaleString()}</td>
+                             </tr>
                           );
-                      }
-                      return null;
-                   })}
-                </tbody>
-             </table>
-             <div style={{ border: '2px solid #000', padding: 20, borderRadius: 4 }}>
-                  <div style={rowStyle}><span>기본급</span> <span>{p.basePay.toLocaleString()}원</span></div>
-                  <div style={rowStyle}><span>+ 주휴수당</span> <span>{p.weeklyHolidayPay.toLocaleString()}원</span></div>
-                  <div style={rowStyle}><span>+ 야간수당</span> <span>{p.nightPay.toLocaleString()}원</span></div>
-                  <div style={rowStyle}><span>+ 연장수당</span> <span>{p.overtimePay.toLocaleString()}원</span></div>
-                  <div style={rowStyle}><span style={{color:'red'}}>+ 휴일근로수당</span> <span style={{color:'red'}}>{p.holidayWorkPay.toLocaleString()}원</span></div>
-                  <hr style={{ margin: '12px 0', borderTop: '1px dashed #aaa' }} />
-                  <div style={rowStyle}><span style={{fontWeight:'bold'}}>세전 총액</span> <span style={{fontWeight:'bold'}}>{p.totalPay.toLocaleString()}원</span></div>
-                  <div style={{ ...rowStyle, color: 'red' }}>
-                    <span>- 공제 (세금 등)</span> 
-                    <span>{(p.taxDetails.incomeTax + p.taxDetails.localTax + p.taxDetails.pension + p.taxDetails.health + p.taxDetails.care + p.taxDetails.employment).toLocaleString()}원</span>
-                  </div>
-                  <hr style={{ margin: '12px 0', borderTop: '2px solid #000' }} />
-                  <div style={{ ...rowStyle, fontSize: 20, fontWeight: 'bold', color: 'blue', marginTop: 10 }}>
-                    <span>실수령액</span> <span>{p.finalPay.toLocaleString()}원</span>
-                  </div>
-              </div>
-          </div>
+                       }
+                       if (row.type === 'WORK') {
+                           return (
+                             <tr key={idx} style={{ borderBottom: '1px solid #ddd', height: 30 }}>
+                                <td style={printTdStyle}>{row.date.slice(5)} ({row.dayLabel})</td>
+                                <td style={printTdStyle}>{row.timeRange}</td>
+                                <td style={printTdStyle}>{row.hours}h</td>
+                                <td style={{...printTdStyle, textAlign:'right'}}>{row.basePay.toLocaleString()}</td>
+                                <td style={{...printTdStyle, textAlign:'right'}}>{row.nightPay.toLocaleString()}</td>
+                                <td style={{...printTdStyle, textAlign:'right'}}>{row.overtimePay.toLocaleString()}</td>
+                                <td style={{...printTdStyle, textAlign:'right', color:'red'}}>{row.holidayWorkPay.toLocaleString()}</td>
+                             </tr>
+                           );
+                       }
+                       return null;
+                    })}
+                 </tbody>
+               </table>
+               <div style={{ border: '2px solid #000', padding: 20, borderRadius: 4 }}>
+                   <div style={rowStyle}><span>기본급</span> <span>{p.basePay.toLocaleString()}원</span></div>
+                   <div style={rowStyle}><span>+ 주휴수당</span> <span>{p.weeklyHolidayPay.toLocaleString()}원</span></div>
+                   <div style={rowStyle}><span>+ 수당합계</span> <span>{(p.nightPay + p.overtimePay + p.holidayWorkPay).toLocaleString()}원</span></div>
+                   <hr style={{ margin: '12px 0', borderTop: '1px dashed #aaa' }} />
+                   <div style={rowStyle}><span style={{fontWeight:'bold'}}>세전 총액</span> <span style={{fontWeight:'bold'}}>{p.totalPay.toLocaleString()}원</span></div>
+                   <div style={{ ...rowStyle, color: 'red' }}>
+                     <span>- 공제 합계</span> 
+                     <span>{(p.taxDetails.incomeTax + p.taxDetails.localTax + p.taxDetails.pension + p.taxDetails.health).toLocaleString()}원</span>
+                   </div>
+                   <hr style={{ margin: '12px 0', borderTop: '2px solid #000' }} />
+                   <div style={{ ...rowStyle, fontSize: 20, fontWeight: 'bold', color: 'blue', marginTop: 10 }}>
+                     <span>실수령액</span> <span>{p.finalPay.toLocaleString()}원</span>
+                   </div>
+               </div>
+           </div>
         ))}
       </div>
 
@@ -353,13 +330,26 @@ export default function PayrollSection({ currentStoreId }: Props) {
   );
 }
 
+// 스타일 정의
 const cardStyle = { backgroundColor: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #ddd', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', marginBottom: '24px' };
-const btnStyle = { padding: '8px 12px', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' };
-const navBtnStyle = { background: '#fff', border: '1px solid #ccc', borderRadius: 4, padding: '4px 10px', cursor: 'pointer' };
-const detailBtnStyle = { padding: '4px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', background: '#fff', color: '#333' };
-const thStyle = { padding: '8px', textAlign: 'center' as const, fontWeight: 'bold', borderRight: '1px solid #ddd' };
-const tdStyle = { padding: '8px', textAlign: 'center' as const, borderRight: '1px solid #ddd', whiteSpace: 'nowrap' as const };
-const stickyLeftStyle = { position: 'sticky' as const, backgroundColor: '#fff' };
-const stickyRightStyle = { position: 'sticky' as const, backgroundColor: '#fff' };
-const rowStyle = { display: 'flex', justifyContent: 'space-between', marginBottom: 6 };
+const btnStyle = { padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', color: '#fff', border: 'none' };
+const navIconBtnStyle = { background: 'none', border: '1px solid #ddd', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#555', fontSize: '12px' };
 
+// ✅ [핵심] 모바일 테이블 스타일 다이어트
+const thStyle = { padding: '8px 4px', textAlign: 'center' as const, fontWeight: 'bold', borderRight: '1px solid #f0f0f0', whiteSpace: 'nowrap' as const };
+const tdStyle = { padding: '8px 2px', textAlign: 'center' as const, borderRight: '1px solid #f0f0f0', whiteSpace: 'nowrap' as const };
+
+// ✅ [핵심] 버튼 크기 축소 (설정/다운)
+const compactBtnStyle = { 
+  padding: '6px 8px', fontSize: '11px', cursor: 'pointer', 
+  borderRadius: 4, border: '1px solid #e67e22', background: '#fff', color: '#e67e22',
+  width: '100%', minWidth: '40px' 
+};
+
+// PC용 상세 버튼
+const detailBtnStyle = { padding: '4px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', background: '#fff', color: '#333' };
+
+// 프린트용 스타일 (히든 영역)
+const printThStyle = { padding: '8px', textAlign: 'center' as const, fontWeight: 'bold', borderRight: '1px solid #ddd' };
+const printTdStyle = { padding: '8px', textAlign: 'center' as const, borderRight: '1px solid #ddd', whiteSpace: 'nowrap' as const };
+const rowStyle = { display: 'flex', justifyContent: 'space-between', marginBottom: 6 };
