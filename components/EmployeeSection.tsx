@@ -153,7 +153,7 @@ export function EmployeeSection({
                 inputMode="numeric"
                 value={newEmpMonthly} 
                 onChange={(e) => handleNumberInput(e, setNewEmpMonthly)} 
-                placeholder="입력시 시급 무시" 
+                placeholder="입력 시 시급 무시" 
                 style={{borderColor: '#bae7ff', background:'#f0f9ff'}} 
               />
             </div>
