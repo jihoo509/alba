@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Employee } from '@/app/dashboard/page';
 import DateSelector from './DateSelector';
+import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 
 type Props = {
   isOpen: boolean;
@@ -14,9 +15,15 @@ type Props = {
 export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate }: Props) {
   const [formData, setFormData] = useState<Partial<Employee>>({});
   const [saving, setSaving] = useState(false);
+  
+  // ✅ 고정 월급 상태 추가
+  const [monthlyOverride, setMonthlyOverride] = useState<string>('');
+  
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     if (isOpen && employee) {
+      // 1. 기본 직원 정보 세팅
       setFormData({
         name: employee.name,
         hourly_wage: employee.hourly_wage,
@@ -29,8 +36,24 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         account_number: employee.account_number || '',
         is_active: employee.is_active,
       });
+
+      // 2. 고정 월급 정보 가져오기 (employee_settings 테이블 조회)
+      const fetchSettings = async () => {
+        const { data } = await supabase
+          .from('employee_settings')
+          .select('monthly_override')
+          .eq('employee_id', employee.id)
+          .single();
+        
+        if (data && data.monthly_override) {
+          setMonthlyOverride(String(data.monthly_override));
+        } else {
+          setMonthlyOverride('');
+        }
+      };
+      fetchSettings();
     }
-  }, [isOpen, employee]);
+  }, [isOpen, employee, supabase]);
 
   if (!isOpen) return null;
 
@@ -59,6 +82,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     setSaving(true);
     const isActive = !formData.end_date; 
 
+    // 1. 직원 정보 업데이트
     const updates = {
       ...formData,
       is_active: isActive,
@@ -72,6 +96,21 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     
     // @ts-ignore
     await onUpdate(employee.id, updates);
+
+    // 2. 고정 월급 정보 저장 (employee_settings 테이블)
+    const overrideValue = monthlyOverride.trim() ? Number(monthlyOverride.replace(/,/g, '')) : null;
+    
+    const { error } = await supabase.from('employee_settings').upsert({
+        employee_id: employee.id,
+        monthly_override: overrideValue,
+        // store_id는 테이블에 없으므로 생략 (만약 있으면 추가: store_id: employee.store_id)
+    }, { onConflict: 'employee_id' });
+
+    if (error) {
+        console.error('고정 월급 저장 실패:', error);
+        // 실패해도 직원 정보는 저장되었으므로 진행하거나, alert 띄우기
+    }
+
     setSaving(false);
     onClose();
   };
@@ -95,7 +134,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         </div>
 
         <div style={styles.gridContainer}>
-          {/* 1행 */}
+          {/* 1행: 이름 & 시급 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>이름</label>
             <input name="name" value={formData.name ?? ''} onChange={handleChange} style={styles.input} />
@@ -105,7 +144,22 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             <input name="hourly_wage" type="number" value={formData.hourly_wage ?? 0} onChange={handleChange} style={styles.input} />
           </div>
 
-          {/* 2행 */}
+          {/* ✅ 2행: 고정 월급 (신규 추가) - 전체 너비 사용 */}
+          <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
+            <label style={{ ...styles.label, color: 'dodgerblue', display: 'flex', justifyContent: 'space-between' }}>
+                <span>고정 월급 (선택)</span>
+                <span style={{fontWeight:'normal', fontSize:11, color:'#888'}}>* 입력 시 시급 계산 무시</span>
+            </label>
+            <input 
+                type="number" 
+                value={monthlyOverride} 
+                onChange={(e) => setMonthlyOverride(e.target.value)} 
+                placeholder="금액 입력"
+                style={{ ...styles.input, borderColor: '#bae7ff', backgroundColor: '#f0f9ff' }} 
+            />
+          </div>
+
+          {/* 3행: 고용 형태 */}
           <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
             <label style={styles.label}>고용 형태</label>
             <select name="employment_type" value={formData.employment_type ?? 'freelancer'} onChange={handleChange} style={styles.input}>
@@ -114,7 +168,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             </select>
           </div>
 
-          {/* 3행 */}
+          {/* 4행: 생년월일 & 전화번호 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>생년월일</label>
             <DateSelector value={formData.birth_date ?? ''} onChange={(val) => handleDateChange('birth_date', val)} />
@@ -124,7 +178,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             <input name="phone_number" placeholder="010-1234-5678" value={formData.phone_number ?? ''} onChange={handleChange} style={styles.input} />
           </div>
 
-          {/* 4행 */}
+          {/* 5행: 은행 정보 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>은행명</label>
             <input name="bank_name" placeholder="예: 국민" value={formData.bank_name ?? ''} onChange={handleChange} style={styles.input} />
@@ -134,7 +188,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             <input name="account_number" placeholder="- 포함 가능" value={formData.account_number ?? ''} onChange={handleChange} style={styles.input} />
           </div>
 
-          {/* 5행 */}
+          {/* 6행: 입사일 */}
           <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
             <label style={styles.label}>입사일</label>
             <DateSelector value={formData.hire_date ?? ''} onChange={(val) => handleDateChange('hire_date', val)} />
