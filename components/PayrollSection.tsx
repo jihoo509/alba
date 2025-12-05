@@ -94,7 +94,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => acc + curr.totalPay, 0), [payrollData]);
 
-  // 엑셀 다운로드 (기존 유지)
+  // 엑셀 다운로드
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
@@ -118,7 +118,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
     XLSX.writeFile(wb, `${year}년_${month}월_급여대장.xlsx`);
   };
 
-  // 전체 다운로드 (기존 유지)
+  // 전체 다운로드
   const handleDownloadAllStubs = async () => {
     if (payrollData.length === 0) return;
     if (!confirm(`${payrollData.length}명의 명세서를 압축(ZIP)하여 다운로드합니다.`)) return;
@@ -172,7 +172,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
              </div>
           </div>
           
-          {/* ✅ [수정 1] 날짜 및 합계 박스 디자인 개선 (심플하게) */}
+          {/* 날짜 및 합계 박스 (심플하게 유지) */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8f9fa', padding: '15px', borderRadius: 12, border: '1px solid #eee' }}>
              
              {/* 왼쪽: 날짜 선택기 */}
@@ -201,13 +201,14 @@ export default function PayrollSection({ currentStoreId }: Props) {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f8f9fa', color: '#555', fontSize: '12px', borderBottom: '1px solid #eee', height: 40 }}>
-                  <th style={{ ...thStyle, width: '15%' }}>이름</th>
-                  <th style={{ ...thStyle, width: '35%' }}>총 지급</th>
-                  {/* ✅ [수정 2] 모바일에서 불필요한 여백 최소화 및 컬럼 너비 조정 */}
-                  <th className="mobile-cell" style={{ ...thStyle, width: '25%', color: '#e67e22' }}>설정</th>
-                  <th className="mobile-cell" style={{ ...thStyle, width: '25%' }}>명세서</th>
                   
-                  {/* PC 전용 컬럼들 (모바일에선 숨김 - CSS media query 필요) */}
+                  {/* ✅ [수정] 25 : 35 : 20 : 20 비율 적용 */}
+                  <th style={{ ...thStyle, width: '25%' }}>이름</th>
+                  <th style={{ ...thStyle, width: '35%' }}>총 지급</th>
+                  <th className="mobile-cell" style={{ ...thStyle, width: '20%', color: '#e67e22' }}>설정</th>
+                  <th className="mobile-cell" style={{ ...thStyle, width: '20%' }}>명세서</th>
+                  
+                  {/* PC 전용 컬럼들 (모바일에선 숨김) */}
                   <th className="desktop-cell" style={{ ...thStyle, color: 'dodgerblue' }}>세후 지급</th>
                   <th className="desktop-cell" style={thStyle}>기본급</th>
                   <th className="desktop-cell" style={thStyle}>수당합계</th>
@@ -251,7 +252,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
         )}
       </div>
 
-      {/* 히든 영역 (이미지 생성용) - 기존 코드 유지 */}
+      {/* 히든 영역 (이미지 생성용) */}
       <div style={{ position: 'fixed', top: '-10000px', left: '-10000px' }}>
         {payrollData.map(p => (
            <div key={p.empId} id={`hidden-stub-${p.empId}`} style={{ width: '800px', backgroundColor: '#fff', padding: '40px' }}>
@@ -335,11 +336,11 @@ const cardStyle = { backgroundColor: '#fff', borderRadius: '12px', padding: '20p
 const btnStyle = { padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', color: '#fff', border: 'none' };
 const navIconBtnStyle = { background: 'none', border: '1px solid #ddd', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#555', fontSize: '12px' };
 
-// ✅ [핵심] 모바일 테이블 스타일 다이어트
+// ✅ 모바일 테이블 스타일
 const thStyle = { padding: '8px 4px', textAlign: 'center' as const, fontWeight: 'bold', borderRight: '1px solid #f0f0f0', whiteSpace: 'nowrap' as const };
 const tdStyle = { padding: '8px 2px', textAlign: 'center' as const, borderRight: '1px solid #f0f0f0', whiteSpace: 'nowrap' as const };
 
-// ✅ [핵심] 버튼 크기 축소 (설정/다운)
+// ✅ 버튼 크기
 const compactBtnStyle = { 
   padding: '6px 8px', fontSize: '11px', cursor: 'pointer', 
   borderRadius: 4, border: '1px solid #e67e22', background: '#fff', color: '#e67e22',
@@ -349,7 +350,7 @@ const compactBtnStyle = {
 // PC용 상세 버튼
 const detailBtnStyle = { padding: '4px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', background: '#fff', color: '#333' };
 
-// 프린트용 스타일 (히든 영역)
+// 프린트용 스타일
 const printThStyle = { padding: '8px', textAlign: 'center' as const, fontWeight: 'bold', borderRight: '1px solid #ddd' };
 const printTdStyle = { padding: '8px', textAlign: 'center' as const, borderRight: '1px solid #ddd', whiteSpace: 'nowrap' as const };
 const rowStyle = { display: 'flex', justifyContent: 'space-between', marginBottom: 6 };
