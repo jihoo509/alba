@@ -14,7 +14,7 @@ type Props = {
 };
 
 export default function PayStubModal({ data, isOpen, onClose, onSave, year, month, mode = 'full' }: Props) {
-  // ✅ 보이는 화면용 Ref (모바일/PC 반응형)
+  // ✅ 보이는 화면용 Ref
   const viewRef = useRef<HTMLDivElement>(null);
   // ✅ [핵심] 숨겨진 캡처용 Ref (무조건 PC 풀버전)
   const captureRef = useRef<HTMLDivElement>(null);
@@ -141,8 +141,8 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   };
 
-  // ✅ [수정] 보이는 화면이 아니라, 숨겨진 captureRef를 찍습니다.
   const handleSaveImage = async (autoClose = false) => {
+    // 📸 무조건 'captureRef' (숨겨진 A4 버전)를 캡처합니다.
     if (captureRef.current) {
       try {
         const canvas = await html2canvas(captureRef.current, { 
@@ -164,18 +164,15 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   };
 
-  // --- 렌더링 시작 ---
-
+  // --- 렌더링 ---
   return (
     <>
-        {/* ✅ [Hidden] 캡처 전용 보이지 않는 DOM (무조건 PC 풀버전) */}
+        {/* ✅ [Hidden] 캡처 전용 보이지 않는 DOM (무조건 PC 풀버전 스타일 유지) */}
         <div style={{ position: 'fixed', top: '-10000px', left: '-10000px', width: '800px', zIndex: -1 }}>
-            {/* 캡처용 풀버전 렌더링 */}
             {renderFullStub(captureRef, year, month, data, filteredLedger, useWeekly, useNight, useOvertime, useHolidayWork, useBreakDeduct, noTax, newBasePay, newWeeklyPay, newNightPay, newOvertimePay, newHolidayWorkPay, currentTotal, currentTax, currentFinalPay, safeTotal)}
         </div>
 
-        {/* ✅ [Visible] 실제 눈에 보이는 모달 */}
-        {/* 1. 설정 모드 (모바일) */}
+        {/* 1. 설정 모드 (모바일용) */}
         {mode === 'settings' && (
             <div style={overlayStyle}>
                 <div style={{ ...modalStyle, maxWidth: '400px', height: 'auto', padding: '24px', borderRadius: '16px' }}>
@@ -204,38 +201,116 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
             </div>
         )}
 
-        {/* 2. 다운로드 모드 (화면엔 안 보임, 로직만 실행) */}
+        {/* 2. 다운로드 모드 */}
         {mode === 'download' && (
              <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', fontSize: '18px' }}>
                 ⏳ 다운로드 생성 중...
              </div>
         )}
 
-        {/* 3. 풀 모드 (PC 뷰어) */}
+        {/* 3. 풀 모드 (화면 표시용) */}
         {mode === 'full' && (
             <div style={overlayStyle}>
                 <div style={modalStyle}>
                     <div style={{ padding: 16, borderBottom: '1px solid #444', backgroundColor: '#333', color: '#fff' }}>
-                    <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 개별 지급 옵션 설정</h3>
-                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                        <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} /> 주휴</label>
-                        <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} /> 야간</label>
-                        <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} /> 연장</label>
-                        <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} /> 휴일</label>
-                        <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게차감</label>
-                        <label style={{display:'flex',gap:6,cursor:'pointer', marginLeft:'auto', color:'#ff6b6b'}}><input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함</label>
-                    </div>
+                        <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 개별 지급 옵션 설정</h3>
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                            <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} /> 주휴</label>
+                            <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} /> 야간</label>
+                            <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} /> 연장</label>
+                            <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} /> 휴일</label>
+                            <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게차감</label>
+                            <label style={{display:'flex',gap:6,cursor:'pointer', marginLeft:'auto', color:'#ff6b6b'}}><input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함</label>
+                        </div>
                     </div>
 
-                    <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff', paddingBottom: '80px' }}>
-                    {/* 화면에 보여주는 용도 (viewRef) */}
-                    {renderFullStub(viewRef, year, month, data, filteredLedger, useWeekly, useNight, useOvertime, useHolidayWork, useBreakDeduct, noTax, newBasePay, newWeeklyPay, newNightPay, newOvertimePay, newHolidayWorkPay, currentTotal, currentTax, currentFinalPay, safeTotal)}
+                    {/* ✅ [수정] 화면 표시용 컴팩트 뷰 (Compact View) */}
+                    <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff', paddingBottom: '20px' }}>
+                        <div ref={viewRef} style={{ padding: '20px', width: '100%', boxSizing: 'border-box' }}>
+                             {/* 1. 타이틀 축소 */}
+                            <h2 style={{ textAlign: 'center', borderBottom: '2px solid #333', paddingBottom: 10, marginBottom: 15, fontSize: 18, margin: '10px 0' }}>
+                                {year}년 {month}월 급여 명세서
+                            </h2>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15, fontSize: 13, color:'#555' }}>
+                                <span>성명: <strong style={{color:'#000'}}>{data.name}</strong></span>
+                                <span>지급일: {year}.{month}.{new Date().getDate()}</span>
+                            </div>
+
+                            {/* 2. 테이블 컴팩트화 (폰트 12px, 패딩 축소) */}
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 15 }}>
+                                <thead style={{ background: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
+                                    <tr>
+                                        <th style={compactThStyle}>날짜</th>
+                                        <th style={compactThStyle}>시간</th>
+                                        <th style={compactThStyle}>근무</th>
+                                        <th style={compactThStyle}>기본급</th>
+                                        <th style={compactThStyle}>야간</th>
+                                        <th style={compactThStyle}>연장</th>
+                                        <th style={{...compactThStyle, color: 'red'}}>휴일</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredLedger.map((row: any, idx: number) => {
+                                        if (row.type === 'WEEKLY') {
+                                            if (!useWeekly) return null;
+                                            return (
+                                                <tr key={idx} style={{ backgroundColor: '#fffcf0', borderBottom: '1px solid #eee' }}>
+                                                    <td colSpan={3} style={{ ...compactTdStyle, textAlign: 'center', fontWeight: 'bold', color: '#d68910' }}>⭐ {row.dayLabel} ({row.note})</td>
+                                                    <td style={compactTdStyle}>-</td>
+                                                    <td colSpan={3} style={{ ...compactTdStyle, textAlign: 'right', fontWeight: 'bold', color: '#d68910' }}>{(row.displayWeekly || 0).toLocaleString()}</td>
+                                                </tr>
+                                            );
+                                        }
+                                        return (
+                                            <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
+                                                <td style={compactTdStyle}>{row.date.slice(5)} ({row.dayLabel})</td>
+                                                <td style={compactTdStyle}>{row.timeRange}</td>
+                                                <td style={compactTdStyle}>{row.displayHours}</td>
+                                                <td style={{ ...compactTdStyle, textAlign: 'right' }}>{(row.displayBase || 0).toLocaleString()}</td>
+                                                <td style={{ ...compactTdStyle, textAlign: 'right', color: row.displayNight > 0 ? '#888' : '#eee' }}>{(row.displayNight || 0).toLocaleString()}</td>
+                                                <td style={{ ...compactTdStyle, textAlign: 'right', color: row.displayOvertime > 0 ? '#888' : '#eee' }}>{(row.displayOvertime || 0).toLocaleString()}</td>
+                                                <td style={{ ...compactTdStyle, textAlign: 'right', color: row.displayHoliday > 0 ? 'red' : '#eee' }}>{(row.displayHoliday || 0).toLocaleString()}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+
+                            {/* 3. 합계 박스 컴팩트화 (가로 배치) */}
+                            <div style={{ background: '#f9f9f9', padding: 15, borderRadius: 8, border: '1px solid #eee' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', rowGap: '8px', fontSize: 13, color: '#555', marginBottom: 12 }}>
+                                    <div>기본급: <b>{newBasePay.toLocaleString()}</b></div>
+                                    <div style={{color: useWeekly?'#555':'#ccc'}}>+ 주휴: <b>{newWeeklyPay.toLocaleString()}</b></div>
+                                    <div style={{color: useNight?'#555':'#ccc'}}>+ 야간: <b>{newNightPay.toLocaleString()}</b></div>
+                                    <div style={{color: useOvertime?'#555':'#ccc'}}>+ 연장: <b>{newOvertimePay.toLocaleString()}</b></div>
+                                    <div style={{color: useHolidayWork?'red':'#ccc'}}>+ 휴일: <b>{newHolidayWorkPay.toLocaleString()}</b></div>
+                                </div>
+                                
+                                <div style={{ borderTop: '1px dashed #ccc', margin: '8px 0' }}></div>
+                                
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                    <div style={{fontSize: 13}}>
+                                        <div style={{marginBottom: 4}}>세전 총액: <b>{currentTotal.toLocaleString()}원</b></div>
+                                        <div style={{color: 'red', fontSize: 12}}>
+                                            - 공제 합계: {currentTax.toLocaleString()}원 
+                                            <span style={{fontSize: 11, color: '#999', marginLeft: 4}}>({noTax ? '미적용' : '세금 등'})</span>
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: 11, color: '#666' }}>실수령액</div>
+                                        <div style={{ fontSize: 22, fontWeight: 'bold', color: 'dodgerblue' }}>
+                                            {currentFinalPay.toLocaleString()}<span style={{fontSize:14}}>원</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div style={{ padding: 16, backgroundColor: '#333', borderTop: '1px solid #444', display: 'flex', justifyContent: 'flex-end', gap: 10, paddingBottom: 20 }}>
-                    <button onClick={onClose} style={btnCancel}>닫기</button>
-                    {onSave && <button onClick={handleSaveSettings} disabled={isSaving} style={{...btnSave, background:'dodgerblue'}}>설정 저장</button>}
-                    <button onClick={() => handleSaveImage(false)} style={btnSave}>이미지 저장</button>
+                        <button onClick={onClose} style={btnCancel}>닫기</button>
+                        {onSave && <button onClick={handleSaveSettings} disabled={isSaving} style={{...btnSave, background:'dodgerblue'}}>설정 저장</button>}
+                        <button onClick={() => handleSaveImage(false)} style={btnSave}>이미지 저장</button>
                     </div>
                 </div>
             </div>
@@ -244,7 +319,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   );
 }
 
-// 📌 공통 명세서 UI 렌더링 함수 (캡처용/뷰어용 공통)
+// 📌 [Capture용] 기존 풀버전 렌더링 함수 (변경 없음 - 이미지 저장용으로 유지)
 function renderFullStub(ref: any, year: number, month: number, data: any, filteredLedger: any, useWeekly: boolean, useNight: boolean, useOvertime: boolean, useHolidayWork: boolean, useBreakDeduct: boolean, noTax: boolean, newBasePay: number, newWeeklyPay: number, newNightPay: number, newOvertimePay: number, newHolidayWorkPay: number, currentTotal: number, currentTax: number, currentFinalPay: number, safeTotal: number) {
     return (
         <div ref={ref} style={{ padding: 40, backgroundColor: '#fff', color: '#000', minHeight: 500, width: '800px', margin: '0 auto', boxSizing: 'border-box' }}>
@@ -256,7 +331,6 @@ function renderFullStub(ref: any, year: number, month: number, data: any, filter
             <span>지급일: {year}.{month}.{new Date().getDate()}</span>
             </div>
 
-            {/* 캡처 시 무조건 PC 스타일로 나오도록 테이블 스타일 고정 */}
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25, minWidth: '100%' }}>
                 <thead>
                     <tr style={{ backgroundColor: '#f0f0f0', borderTop: '2px solid #000', borderBottom: '1px solid #000' }}>
@@ -364,3 +438,7 @@ const btnSave = { flex: 1, padding: '12px', background: 'dodgerblue', color: '#f
 const checkboxLabelMobile = { display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '15px', color: '#444' };
 const btnCancelSmall = { padding: '10px 20px', background: '#f5f5f5', border: '1px solid #ddd', color: '#666', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
 const btnSaveSmall = { padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
+
+// ✅ 컴팩트용 스타일 추가
+const compactThStyle = { padding: '6px 4px', textAlign: 'center' as const, fontWeight: 'bold', borderRight: '1px solid #eee', whiteSpace: 'nowrap' as const };
+const compactTdStyle = { padding: '6px 4px', textAlign: 'center' as const, borderRight: '1px solid #eee', whiteSpace: 'nowrap' as const };
