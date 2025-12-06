@@ -24,17 +24,14 @@ export function StoreSelector({
   const [isAdding, setIsAdding] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
   
-  // ✅ [추가] 모바일용 드롭다운 열림/닫힘 상태
+  // ✅ 모바일 드롭다운 열림 여부
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
-  // 드롭다운 외부 클릭 감지용 Ref
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // 현재 선택된 매장 이름 찾기
   const currentStore = stores.find(s => s.id === currentStoreId);
   const currentStoreName = currentStore ? currentStore.name : '매장 선택';
 
-  // 외부 클릭 시 드롭다운 닫기 로직
+  // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -53,36 +50,35 @@ export function StoreSelector({
     }
   };
 
-  // ✅ [중요] 매장 삭제 버튼 클릭 핸들러
-  const handleDeleteClick = (e: React.MouseEvent, storeId: string) => {
-    e.stopPropagation(); // 💥 핵심: 삭제 버튼 누를 때 매장 선택이 되지 않게 막음
-    onDeleteStore(storeId);
+  const handleMobileSelect = (storeId: string) => {
+    onChangeStore(storeId);
+    setIsDropdownOpen(false);
   };
 
-  const handleSelectStore = (storeId: string) => {
-    onChangeStore(storeId);
-    setIsDropdownOpen(false); // 선택 후 바로 닫기
+  const handleMobileDelete = (e: React.MouseEvent, storeId: string) => {
+    e.stopPropagation(); // 선택 이벤트 방지
+    onDeleteStore(storeId);
   };
 
   return (
     <div className="store-selector-wrapper">
       <style jsx>{`
-        /* 📱 모바일 스타일: 직접 만든 드롭다운 */
+        /* 📱 모바일 스타일 */
         .store-selector-wrapper {
           width: 100%;
           margin-bottom: 10px;
-          position: relative; /* 드롭다운 위치 기준 */
-          z-index: 20; /* 다른 요소보다 위에 뜨게 */
+          position: relative; /* 드롭다운 기준점 */
+          z-index: 20;
         }
-        
-        /* 1. 평소 보이는 바 (어두운 배경) */
+
+        /* 1. 모바일 메인 바 (어두운 배경) */
         .mobile-bar {
           display: flex;
           justify-content: space-between;
           align-items: center;
           background-color: #333;
           border-radius: 8px;
-          padding: 10px 16px;
+          padding: 12px 16px;
           border: 1px solid #444;
           color: #fff;
           cursor: pointer;
@@ -90,13 +86,16 @@ export function StoreSelector({
         .store-name {
           font-size: 16px;
           font-weight: bold;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 70%;
         }
-        .arrow-icon {
-          font-size: 12px;
-          color: #aaa;
+        .right-group {
+          display: flex;
+          align-items: center;
+          gap: 10px;
         }
-
-        /* 2. 매장 추가 버튼 (바 오른쪽 안) */
         .mobile-add-btn {
           background: #555;
           border: 1px solid #666;
@@ -104,14 +103,17 @@ export function StoreSelector({
           padding: 4px 8px;
           border-radius: 4px;
           font-size: 12px;
-          margin-left: 10px;
           cursor: pointer;
         }
+        .arrow-icon {
+          font-size: 12px;
+          color: #aaa;
+        }
 
-        /* 3. 열리는 목록 상자 (커스텀 드롭다운) */
+        /* 2. 모바일 드롭다운 목록 */
         .dropdown-list {
           position: absolute;
-          top: 100%; /* 바 바로 아래 */
+          top: 100%;
           left: 0;
           width: 100%;
           background-color: #fff;
@@ -128,7 +130,7 @@ export function StoreSelector({
           color: #333;
           font-size: 15px;
           display: flex;
-          justify-content: space-between; /* 이름과 삭제버튼 양끝 정렬 */
+          justify-content: space-between;
           align-items: center;
           cursor: pointer;
         }
@@ -141,7 +143,7 @@ export function StoreSelector({
           font-weight: bold;
         }
         
-        /* 목록 내 삭제 버튼 */
+        /* 목록 안의 삭제 버튼 */
         .list-del-btn {
           background: #ffecec;
           border: 1px solid #ffcccc;
@@ -152,10 +154,10 @@ export function StoreSelector({
           cursor: pointer;
         }
 
-        /* PC용 요소들 (모바일에서 숨김) */
+        /* PC용 컨테이너 숨김 */
         .pc-container { display: none; }
 
-        /* 💻 PC 화면 (768px 이상) 스타일 재정의 */
+        /* 💻 PC 화면 (768px 이상) - 아까 디자인 유지 */
         @media (min-width: 768px) {
           .store-selector-wrapper {
             display: flex;
@@ -165,7 +167,7 @@ export function StoreSelector({
           /* 모바일 요소 숨김 */
           .mobile-bar, .dropdown-list { display: none; }
 
-          /* PC 컨테이너 보임 */
+          /* PC 요소 보임 */
           .pc-container {
             display: flex;
             flex-direction: row;
@@ -223,7 +225,7 @@ export function StoreSelector({
         }
       `}</style>
 
-      {/* --- [공통] 매장 추가 모드 --- */}
+      {/* --- 매장 추가 모드 (공통) --- */}
       {isAdding ? (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', width: '100%' }}>
           <input
@@ -258,40 +260,33 @@ export function StoreSelector({
         <>
           {/* 📱 [모바일] 커스텀 드롭다운 */}
           <div ref={dropdownRef} style={{ width: '100%' }}>
-            {/* 1. 닫혀있을 때 보이는 바 */}
+            {/* 1. 메인 바 */}
             <div className="mobile-bar" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-              <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-                <span className="store-name">{currentStoreName}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                {/* 매장 추가 버튼은 항상 보이게 */}
+              <span className="store-name">{currentStoreName}</span>
+              <div className="right-group">
                 <button 
                     className="mobile-add-btn" 
                     onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
                 >
                     + 추가
                 </button>
-                <span className="arrow-icon" style={{ marginLeft: 10 }}>
-                    {isDropdownOpen ? '▲' : '▼'}
-                </span>
+                <span className="arrow-icon">{isDropdownOpen ? '▲' : '▼'}</span>
               </div>
             </div>
 
-            {/* 2. 열렸을 때 보이는 목록 */}
+            {/* 2. 열리는 목록 (삭제 버튼 포함) */}
             {isDropdownOpen && (
               <div className="dropdown-list">
                 {stores.map(store => (
                   <div 
                     key={store.id} 
                     className={`list-item ${store.id === currentStoreId ? 'active' : ''}`}
-                    onClick={() => handleSelectStore(store.id)}
+                    onClick={() => handleMobileSelect(store.id)}
                   >
                     <span>{store.name}</span>
-                    
-                    {/* 🗑️ 삭제 버튼 (목록 안에 포함) */}
                     <button 
                         className="list-del-btn"
-                        onClick={(e) => handleDeleteClick(e, store.id)}
+                        onClick={(e) => handleMobileDelete(e, store.id)}
                     >
                         삭제
                     </button>
