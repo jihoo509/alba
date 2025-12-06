@@ -24,7 +24,7 @@ export function StoreSelector({
   const [isAdding, setIsAdding] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
    
-  // ✅ 모바일 드롭다운 관련 상태
+  // ✅ 모바일 드롭다운 관련 상태 (새 기능 유지)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -66,7 +66,7 @@ export function StoreSelector({
     <div className="store-selector-wrapper">
       <style jsx>{`
         /* =========================================
-           📱 모바일 스타일
+           📱 모바일 스타일 (새로운 디자인 유지)
            ========================================= */
         .store-selector-wrapper {
           width: 100%;
@@ -161,14 +161,13 @@ export function StoreSelector({
 
 
         /* =========================================
-           💻 PC 화면 (768px 이상) - 높이 대폭 축소
+           💻 PC 화면 (768px 이상) - 원본 디자인 복구
            ========================================= */
         @media (min-width: 768px) {
           .store-selector-wrapper {
             display: flex;
             justify-content: center;
-            /* 👇 여백 대폭 삭제 (기존 30px -> 0px) */
-            margin-bottom: 0px; 
+            margin-bottom: 30px; /* 원본 여백 복구 */
           }
           
           /* 모바일 요소 숨김 */
@@ -181,47 +180,48 @@ export function StoreSelector({
             align-items: center;
             width: auto;
             background-color: rgba(255, 255, 255, 0.1);
-            /* 👇 패딩 축소 (기존 12px -> 6px) 높이를 줄임 */
-            padding: 6px 24px; 
+            padding: 12px 30px; /* 원본 패딩 복구 */
             border-radius: 50px;
             border: none;
-            gap: 12px;
+            gap: 16px;
           }
           .pc-label {
             display: block;
             color: #fff;
             font-weight: bold;
-            font-size: 15px; /* 폰트 살짝 조정 */
+            font-size: 16px;
             margin: 0;
           }
           .select-box {
-            width: 260px;
-            /* 👇 셀렉트 박스 내부 패딩도 축소 */
-            padding: 4px 8px; 
+            width: 280px; /* 원본 너비 복구 */
+            padding: 8px 12px;
             font-size: 15px;
             border: 1px solid #666;
             background-color: #222;
-            border-radius: 6px;
+            border-radius: 8px;
             text-align: center;
             text-align-last: center;
             cursor: pointer;
             color: #fff;
             appearance: auto;
+            flex: none; /* 크기 줄어듦 방지 */
           }
           .pc-action-area {
             display: flex;
-            gap: 12px;
+            gap: 16px;
             align-items: center;
+            margin-left: 0;
           }
           .pc-add-btn {
             background: none;
             border: none;
-            font-size: 15px; 
+            font-size: 16px; 
             font-weight: bold;
             color: #fff;
             opacity: 0.8;
             cursor: pointer;
             padding: 0;
+            white-space: nowrap; /* 줄바꿈 방지 */
           }
           .pc-add-btn:hover { opacity: 1; }
           
@@ -229,10 +229,11 @@ export function StoreSelector({
             background: #e74c3c;
             border: none;
             color: #fff;
-            padding: 4px 10px; /* 버튼 패딩도 축소 */
+            padding: 6px 12px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 13px;
+            white-space: nowrap;
           }
         }
       `}</style>
@@ -247,30 +248,30 @@ export function StoreSelector({
             value={newStoreName}
             onChange={(e) => setNewStoreName(e.target.value)}
             style={{
-              padding: '8px', /* 입력창 높이도 살짝 줄임 */
+              padding: '10px',
               borderRadius: '6px',
               border: '1px solid #ddd',
               flex: 1,
               maxWidth: '300px',
-              fontSize: '14px'
+              fontSize: '15px'
             }}
           />
           <button
             onClick={handleAddClick}
-            style={{ padding: '8px 14px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}
+            style={{ padding: '10px 16px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
           >
             확인
           </button>
           <button
             onClick={() => setIsAdding(false)}
-            style={{ padding: '8px 14px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}
+            style={{ padding: '10px 16px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
           >
             취소
           </button>
         </div>
       ) : (
         <>
-          {/* 📱 [모바일] 커스텀 드롭다운 */}
+          {/* 📱 [모바일] 커스텀 드롭다운 (새 기능) */}
           <div ref={dropdownRef} style={{ width: '100%' }}>
             <div className="mobile-bar" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
               <span className="store-name">{currentStoreName}</span>
@@ -306,7 +307,7 @@ export function StoreSelector({
             )}
           </div>
 
-          {/* 💻 [PC] 높이 축소된 컨테이너 */}
+          {/* 💻 [PC] 원본 디자인 복구 */}
           <div className="pc-container">
             <span className="pc-label">현재 관리 중인 매장:</span>
             <select
