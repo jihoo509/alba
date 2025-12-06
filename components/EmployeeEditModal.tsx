@@ -15,8 +15,6 @@ type Props = {
 export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate }: Props) {
   const [formData, setFormData] = useState<Partial<Employee>>({});
   const [saving, setSaving] = useState(false);
-  
-  // 고정 월급 상태 (문자열로 관리하며 콤마 포함)
   const [monthlyOverride, setMonthlyOverride] = useState<string>('');
   
   const supabase = createSupabaseBrowserClient();
@@ -24,20 +22,15 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   useEffect(() => {
     if (isOpen && employee) {
       setFormData({
-        name: employee.name,
-        hourly_wage: employee.hourly_wage,
-        employment_type: employee.employment_type,
+        ...employee,
         hire_date: employee.hire_date || '',
         end_date: employee.end_date || '',
         phone_number: employee.phone_number || '',
         birth_date: employee.birth_date || '',
         bank_name: employee.bank_name || '',
         account_number: employee.account_number || '',
-        is_active: employee.is_active,
-        
-        // ▼▼▼ [수정] DB 컬럼명(daily_wage)과 일치시킴 ▼▼▼
         pay_type: employee.pay_type || 'time',
-        daily_wage: employee.daily_wage || 0, 
+        daily_wage: employee.daily_wage || 0,
       });
 
       const fetchSettings = async () => {
@@ -59,17 +52,12 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
 
   if (!isOpen) return null;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
-    // ▼▼▼ [수정] daily_wage로 변경 ▼▼▼
     if (name === 'hourly_wage' || name === 'daily_wage') {
-        const rawValue = value.replace(/,/g, ''); // 콤마 제거
-        if (/^\d*$/.test(rawValue)) { // 숫자만 허용
-            setFormData(prev => ({ 
-                ...prev, 
-                [name]: rawValue === '' ? 0 : Number(rawValue) 
-            }));
+        const rawValue = value.replace(/,/g, '');
+        if (/^\d*$/.test(rawValue)) {
+            setFormData(prev => ({ ...prev, [name]: rawValue === '' ? 0 : Number(rawValue) }));
         }
     } else {
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -80,11 +68,15 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     setFormData(prev => ({ ...prev, pay_type: type }));
   };
 
+  // ✅ [수정] 고용 형태 버튼 핸들러
+  const handleEmploymentTypeChange = (type: 'freelancer_33' | 'four_insurance') => {
+    setFormData(prev => ({ ...prev, employment_type: type }));
+  };
+
   const handleMonthlyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/,/g, '');
     if (/^\d*$/.test(rawValue)) {
-        const formatted = rawValue === '' ? '' : Number(rawValue).toLocaleString();
-        setMonthlyOverride(formatted);
+        setMonthlyOverride(rawValue === '' ? '' : Number(rawValue).toLocaleString());
     }
   };
 
@@ -104,179 +96,138 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   const handleSave = async () => {
     setSaving(true);
     const isActive = !formData.end_date; 
-
-    // ▼▼▼ [수정] 저장 데이터 (daily_wage 사용) ▼▼▼
     const updates = {
       ...formData,
       is_active: isActive,
-      hire_date: formData.hire_date === '' ? null : formData.hire_date,
-      end_date: formData.end_date === '' ? null : formData.end_date,
-      birth_date: formData.birth_date === '' ? null : formData.birth_date,
-      phone_number: formData.phone_number === '' ? null : formData.phone_number,
-      bank_name: formData.bank_name === '' ? null : formData.bank_name,
-      account_number: formData.account_number === '' ? null : formData.account_number,
-      
+      hire_date: formData.hire_date || null,
+      end_date: formData.end_date || null,
+      birth_date: formData.birth_date || null,
+      phone_number: formData.phone_number || null,
+      bank_name: formData.bank_name || null,
+      account_number: formData.account_number || null,
       hourly_wage: formData.pay_type === 'time' ? formData.hourly_wage : 0,
       daily_wage: formData.pay_type === 'day' ? formData.daily_wage : 0,
-      // default_daily_pay 컬럼이 혹시 있다면 null로 처리하거나 제외 (여기선 제외)
     };
     
     // @ts-ignore
     await onUpdate(employee.id, updates);
 
-    // 고정 월급 저장
     const overrideValue = monthlyOverride.trim() ? Number(monthlyOverride.replace(/,/g, '')) : null;
-    
-    const { error } = await supabase.from('employee_settings').upsert({
+    await supabase.from('employee_settings').upsert({
         employee_id: employee.id,
         monthly_override: overrideValue,
     }, { onConflict: 'employee_id' });
-
-    if (error) console.error('고정 월급 저장 실패:', error);
 
     setSaving(false);
     onClose();
   };
 
-  const getStatusLabel = () => {
-    if (!formData.end_date) return { text: '재직 중', color: 'green' };
-    const today = new Date().toISOString().split('T')[0];
-    return formData.end_date > today 
-      ? { text: `퇴사 예정 (${formData.end_date})`, color: 'orange' } 
-      : { text: `퇴사함 (${formData.end_date})`, color: 'red' };
-  };
-
-  const status = getStatusLabel();
+  const status = !formData.end_date 
+    ? { text: '재직 중', color: 'green' } 
+    : (formData.end_date > new Date().toISOString().split('T')[0] 
+        ? { text: `퇴사 예정 (${formData.end_date})`, color: 'orange' } 
+        : { text: `퇴사함 (${formData.end_date})`, color: 'red' });
 
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={styles.title}>직원 정보 수정</h2>
           <button onClick={onClose} style={styles.closeBtn}>✕</button>
         </div>
 
-        <div style={styles.gridContainer}>
-          {/* 1행: 이름 & 급여 방식 */}
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>이름</label>
-            <input name="name" value={formData.name ?? ''} onChange={handleChange} style={styles.input} />
-          </div>
-
-          <div style={styles.inputGroup}>
-            <label style={{ ...styles.label, display: 'flex', justifyContent: 'space-between' }}>
-                급여 방식
-                <div style={{ display: 'flex', gap: '8px', fontWeight: 'normal' }}>
-                    <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <input 
-                            type="radio" 
-                            name="pay_type" 
-                            checked={formData.pay_type === 'time'} 
-                            onChange={() => handlePayTypeChange('time')}
-                        /> 시급
-                    </label>
-                    <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <input 
-                            type="radio" 
-                            name="pay_type" 
-                            checked={formData.pay_type === 'day'} 
-                            onChange={() => handlePayTypeChange('day')}
-                        /> 일당
-                    </label>
-                </div>
-            </label>
+        <div style={styles.scrollArea}>
+          <div style={styles.gridContainer}>
             
-            {formData.pay_type === 'time' ? (
-                <input 
-                    name="hourly_wage" 
-                    type="text" 
-                    inputMode="numeric"
-                    value={formData.hourly_wage ? formData.hourly_wage.toLocaleString() : ''} 
-                    onChange={handleChange} 
-                    style={styles.input} 
-                    placeholder="시급 입력"
-                />
-            ) : (
-                <input 
-                    name="daily_wage" 
-                    type="text" 
-                    inputMode="numeric"
-                    value={formData.daily_wage ? formData.daily_wage.toLocaleString() : ''} 
-                    onChange={handleChange} 
-                    style={{ ...styles.input, borderColor: '#ffadd2', backgroundColor: '#fff0f6' }} 
-                    placeholder="일당 입력"
-                />
-            )}
-          </div>
+            {/* 이름 */}
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>이름</label>
+              <input name="name" value={formData.name ?? ''} onChange={handleChange} style={styles.input} />
+            </div>
 
-          {/* 이하 나머지 코드는 동일 ... */}
-          <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
-            <label style={{ ...styles.label, color: 'dodgerblue', display: 'flex', justifyContent: 'space-between' }}>
-                <span>고정 월급 (선택)</span>
-                <span style={{fontWeight:'normal', fontSize:11, color:'#888'}}>* 입력 시 시급/일당 계산 무시</span>
-            </label>
-            <input 
-                type="text" 
-                inputMode="numeric"
-                value={monthlyOverride} 
-                onChange={handleMonthlyChange} 
-                placeholder="금액 입력"
-                style={{ ...styles.input, borderColor: '#bae7ff', backgroundColor: '#f0f9ff' }} 
-            />
-          </div>
+            {/* ✅ [수정] 급여 방식 (토글 버튼) */}
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>급여 방식</label>
+              <div style={styles.toggleContainer}>
+                <button type="button" onClick={() => handlePayTypeChange('time')} style={formData.pay_type === 'time' ? styles.activeToggle : styles.inactiveToggle}>시급</button>
+                <button type="button" onClick={() => handlePayTypeChange('day')} style={formData.pay_type === 'day' ? styles.activeToggleOrange : styles.inactiveToggle}>일당</button>
+              </div>
+              
+              <div style={{ position: 'relative', marginTop: 8 }}>
+                {formData.pay_type === 'time' ? (
+                    <input 
+                        name="hourly_wage" type="text" inputMode="numeric"
+                        value={formData.hourly_wage ? formData.hourly_wage.toLocaleString() : ''} 
+                        onChange={handleChange} style={{...styles.input, paddingRight: 40}} placeholder="0"
+                    />
+                ) : (
+                    <input 
+                        name="daily_wage" type="text" inputMode="numeric"
+                        value={formData.daily_wage ? formData.daily_wage.toLocaleString() : ''} 
+                        onChange={handleChange} style={{ ...styles.input, borderColor: '#ffadd2', backgroundColor: '#fff0f6', paddingRight: 40 }} placeholder="0"
+                    />
+                )}
+                <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#999', fontSize: 13 }}>원</span>
+              </div>
+            </div>
 
-          <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
-            <label style={styles.label}>고용 형태</label>
-            <select name="employment_type" value={formData.employment_type ?? 'freelancer'} onChange={handleChange} style={styles.input}>
-              <option value="freelancer_33">3.3% 프리랜서</option>
-              <option value="four_insurance">4대 보험 직원</option>
-            </select>
-          </div>
+            {/* 고정 월급 */}
+            <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
+              <label style={{ ...styles.label, color: 'dodgerblue', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>고정 월급 (선택)</span>
+                  <span style={{fontWeight:'normal', fontSize:11, color:'#888'}}>* 입력 시 시급/일당 무시</span>
+              </label>
+              <input 
+                  type="text" inputMode="numeric" value={monthlyOverride} onChange={handleMonthlyChange} 
+                  placeholder="금액 입력" style={{ ...styles.input, borderColor: '#bae7ff', backgroundColor: '#f0f9ff' }} 
+              />
+            </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>생년월일</label>
-            <DateSelector value={formData.birth_date ?? ''} onChange={(val) => handleDateChange('birth_date', val)} />
-          </div>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>전화번호</label>
-            <input name="phone_number" placeholder="010-1234-5678" value={formData.phone_number ?? ''} onChange={handleChange} style={styles.input} />
-          </div>
+            {/* ✅ [수정] 고용 형태 (탭 버튼 방식 - 드롭다운 제거) */}
+            <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
+              <label style={styles.label}>고용 형태</label>
+              <div style={styles.toggleContainer}>
+                <button type="button" onClick={() => handleEmploymentTypeChange('four_insurance')} 
+                  style={formData.employment_type === 'four_insurance' ? styles.activeToggleBlue : styles.inactiveToggle}>
+                  4대 보험
+                </button>
+                <button type="button" onClick={() => handleEmploymentTypeChange('freelancer_33')} 
+                  style={formData.employment_type === 'freelancer_33' ? styles.activeToggleBlue : styles.inactiveToggle}>
+                  3.3% 프리랜서
+                </button>
+              </div>
+            </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>은행명</label>
-            <input name="bank_name" placeholder="예: 국민" value={formData.bank_name ?? ''} onChange={handleChange} style={styles.input} />
-          </div>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>계좌번호</label>
-            <input name="account_number" placeholder="- 포함 가능" value={formData.account_number ?? ''} onChange={handleChange} style={styles.input} />
-          </div>
+            {/* 입사일 */}
+            <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
+              <label style={styles.label}>입사일</label>
+              <DateSelector value={formData.hire_date ?? ''} onChange={(val) => handleDateChange('hire_date', val)} />
+            </div>
 
-          <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
-            <label style={styles.label}>입사일</label>
-            <DateSelector value={formData.hire_date ?? ''} onChange={(val) => handleDateChange('hire_date', val)} />
-          </div>
+            {/* 기타 정보 (접을 수도 있지만 일단 다 펼침) */}
+            <div style={styles.inputGroup}><label style={styles.label}>생년월일</label><DateSelector value={formData.birth_date ?? ''} onChange={(val) => handleDateChange('birth_date', val)} /></div>
+            <div style={styles.inputGroup}><label style={styles.label}>전화번호</label><input name="phone_number" value={formData.phone_number ?? ''} onChange={handleChange} style={styles.input} /></div>
+            <div style={styles.inputGroup}><label style={styles.label}>은행명</label><input name="bank_name" value={formData.bank_name ?? ''} onChange={handleChange} style={styles.input} /></div>
+            <div style={styles.inputGroup}><label style={styles.label}>계좌번호</label><input name="account_number" value={formData.account_number ?? ''} onChange={handleChange} style={styles.input} /></div>
 
-           <div style={{ ...styles.inputGroup, gridColumn: 'span 2', marginTop: 10, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 8, border: '1px solid #eee' }}>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-               <span style={{ fontSize: 14, fontWeight: 'bold', color: status.color === 'green' ? '#2ecc71' : status.color === 'red' ? '#e74c3c' : '#f1c40f' }}>
-                 ● {status.text}
-               </span>
-               <button onClick={toggleResignation} style={{ padding: '6px 12px', borderRadius: 4, border: '1px solid #ddd', background: '#fff', color: '#555', cursor: 'pointer', fontSize: 12, fontWeight: 'bold' }}>
-                 {formData.end_date ? '퇴사 취소' : '퇴사 처리'}
-               </button>
+            {/* 퇴사 처리 */}
+             <div style={{ ...styles.inputGroup, gridColumn: 'span 2', marginTop: 10, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 8, border: '1px solid #eee' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                 <span style={{ fontSize: 14, fontWeight: 'bold', color: status.color === 'green' ? '#2ecc71' : status.color === 'red' ? '#e74c3c' : '#f1c40f' }}>● {status.text}</span>
+                 <button onClick={toggleResignation} style={{ padding: '6px 12px', borderRadius: 4, border: '1px solid #ddd', background: '#fff', color: '#555', cursor: 'pointer', fontSize: 12 }}>
+                   {formData.end_date ? '퇴사 취소' : '퇴사 처리'}
+                 </button>
+               </div>
+               {formData.end_date && (
+                 <div><label style={{ ...styles.label, marginBottom: 6, display: 'block' }}>퇴사일 선택</label><DateSelector value={formData.end_date ?? ''} onChange={(val) => handleDateChange('end_date', val)} /></div>
+               )}
              </div>
-             <div style={{ opacity: formData.end_date ? 1 : 0.5, pointerEvents: formData.end_date ? 'auto' : 'none', transition: 'opacity 0.2s' }}>
-               <label style={{ ...styles.label, marginBottom: 6, display: 'block' }}>퇴사일 선택</label>
-               <DateSelector value={formData.end_date ?? ''} onChange={(val) => handleDateChange('end_date', val)} />
-             </div>
-           </div>
+          </div>
         </div>
 
         <div style={styles.buttonContainer}>
           <button onClick={onClose} style={styles.cancelButton}>취소</button>
-          <button onClick={handleSave} disabled={saving} style={styles.saveButton}>
-            {saving ? '저장 중...' : '저장하기'}
-          </button>
+          <button onClick={handleSave} disabled={saving} style={styles.saveButton}>{saving ? '저장 중...' : '저장하기'}</button>
         </div>
       </div>
     </div>
@@ -285,14 +236,23 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
 
 const styles = {
   overlay: { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  modal: { backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', width: '90%', maxWidth: '500px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' as const },
+  modal: { backgroundColor: '#ffffff', padding: '24px', borderRadius: '16px', width: '90%', maxWidth: '500px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', maxHeight: '90vh', display: 'flex', flexDirection: 'column' as const },
+  scrollArea: { overflowY: 'auto' as const, flex: 1, paddingRight: 4 },
   title: { margin: 0, color: '#333', fontSize: '20px', fontWeight: 700 },
   closeBtn: { background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#999' },
-  gridContainer: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' },
+  gridContainer: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start', paddingBottom: 10 },
   inputGroup: { display: 'flex', flexDirection: 'column' as const, gap: '6px' },
   label: { fontSize: '13px', color: '#666', fontWeight: 600 },
   input: { width: '100%', padding: '10px 12px', backgroundColor: '#fff', border: '1px solid #ddd', color: '#333', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const },
-  buttonContainer: { display: 'flex', gap: '12px', marginTop: '32px', justifyContent: 'flex-end' },
-  cancelButton: { padding: '12px 24px', background: '#f5f5f5', border: 'none', color: '#666', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },
-  saveButton: { padding: '12px 24px', background: 'dodgerblue', border: 'none', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }
+  
+  // 토글 스타일
+  toggleContainer: { display: 'flex', backgroundColor: '#f0f2f5', padding: '4px', borderRadius: '8px' },
+  activeToggle: { flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: '#fff', color: 'dodgerblue', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', cursor: 'pointer', fontSize: 13 },
+  activeToggleOrange: { flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: '#fff', color: '#e67e22', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', cursor: 'pointer', fontSize: 13 },
+  activeToggleBlue: { flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: '#fff', color: '#2563eb', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', cursor: 'pointer', fontSize: 13 },
+  inactiveToggle: { flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', color: '#888', cursor: 'pointer', fontSize: 13 },
+
+  buttonContainer: { display: 'flex', gap: '12px', marginTop: '20px', paddingTop: 10, borderTop: '1px solid #eee' },
+  cancelButton: { padding: '12px 24px', background: '#f5f5f5', border: 'none', color: '#666', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, flex: 1 },
+  saveButton: { padding: '12px 24px', background: 'dodgerblue', border: 'none', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, flex: 2 }
 };
