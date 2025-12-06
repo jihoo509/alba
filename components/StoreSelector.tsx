@@ -68,7 +68,7 @@ export function StoreSelector({
            ========================================= */
         .store-selector-wrapper {
           width: 100%;
-          margin-bottom: 5px;
+          margin-bottom: 10px;
           position: relative;
           z-index: 20;
         }
@@ -163,7 +163,7 @@ export function StoreSelector({
             display: flex;
             justify-content: center;
             /* 👇 1. 간격 축소 (30px -> 10px) */
-            margin-bottom: 10px; 
+            margin-bottom: 4px; 
           }
           
           .mobile-bar, .dropdown-list { display: none; }
