@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 
-type Store = { id: string; name: string; };
+type Store = { id: string; name: string };
 
-type StoreSelectorProps = {
+type Props = {
   stores: Store[];
   currentStoreId: string | null;
   onChangeStore: (storeId: string) => void;
   creatingStore: boolean;
-  onCreateStore: (storeName: string) => Promise<void> | void;
+  onCreateStore: (name: string) => void;
   onDeleteStore: (storeId: string) => void;
 };
 
@@ -17,186 +17,176 @@ export function StoreSelector({
   stores,
   currentStoreId,
   onChangeStore,
-  creatingStore,
+  creatingStore, // (상위에서 안 쓰면 무시 가능)
   onCreateStore,
   onDeleteStore,
-}: StoreSelectorProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [newStoreName, setNewStoreName] = useState('');
+}: Props) {
   const [isAdding, setIsAdding] = useState(false);
-  
-  // 드롭다운 바깥을 클릭했을 때 닫히게 하기 위한 ref
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [newStoreName, setNewStoreName] = useState('');
 
-  // 외부 클릭 감지 로직
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setIsAdding(false); // 입력 중이었으면 닫기
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleSelect = (id: string) => {
-    onChangeStore(id);
-    setIsOpen(false); // ✅ 선택 즉시 드롭다운 닫기
-  };
-
-  const handleAddSubmit = async () => {
+  const handleAddClick = () => {
     if (newStoreName.trim()) {
-      await onCreateStore(newStoreName);
+      onCreateStore(newStoreName);
       setNewStoreName('');
       setIsAdding(false);
-      setIsOpen(false); // 생성 후 닫기
     }
   };
 
-  const currentStoreName = stores.find((s) => s.id === currentStoreId)?.name || '매장 선택';
-
   return (
-    <div style={{ position: 'relative', width: '100%', marginBottom: 12 }} ref={dropdownRef}>
-      
-      {/* 1. 메인 버튼 (현재 선택된 매장 표시) */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          width: '100%',
-          padding: '12px 16px',
-          height: '50px',
-          backgroundColor: '#333',
-          border: '1px solid #555',
-          borderRadius: '8px',
-          color: '#fff',
-          fontSize: '16px',
-          fontWeight: 'bold',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          cursor: 'pointer',
-          outline: 'none'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>🏢</span>
-            <span>{currentStoreName}</span>
+    <div className="store-selector-wrapper">
+      <style jsx>{`
+        /* 📱 모바일 기본 스타일 (기존 유지) */
+        .store-selector-wrapper {
+          width: 100%;
+          margin-bottom: 20px;
+        }
+        .container {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          width: 100%;
+        }
+        .pc-label {
+          display: none; /* 모바일에서는 숨김 */
+        }
+        .select-box {
+          width: 100%;
+          padding: 12px;
+          font-size: 16px;
+          border: 1px solid #444;
+          background-color: #333;
+          color: #fff;
+          border-radius: 8px;
+          outline: none;
+        }
+        .action-area {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .add-btn {
+          background: none;
+          border: none;
+          color: #ccc;
+          cursor: pointer;
+          font-size: 13px;
+          text-decoration: underline;
+        }
+        .del-btn {
+          background: #e74c3c;
+          border: none;
+          color: #fff;
+          padding: 4px 8px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+        }
+
+        /* 💻 PC 화면 (768px 이상) 스타일 재정의 */
+        @media (min-width: 768px) {
+          .store-selector-wrapper {
+            display: flex;
+            justify-content: center; /* 중앙 정렬 */
+            margin-bottom: 30px;
+          }
+          .container {
+            flex-direction: row; /* 가로 배치 */
+            align-items: center;
+            width: auto; /* 내용물 크기만큼만 */
+            background-color: rgba(255, 255, 255, 0.1); /* 살짝 배경 깔기 */
+            padding: 8px 20px;
+            border-radius: 50px; /* 둥글게 */
+          }
+          .pc-label {
+            display: block;
+            color: #fff;
+            font-weight: bold;
+            margin-right: 12px;
+            font-size: 15px;
+            white-space: nowrap;
+          }
+          .select-box {
+            width: 250px; /* 너비 고정 */
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #666;
+            background-color: #222;
+          }
+          .action-area {
+            gap: 12px;
+            margin-left: 12px;
+          }
+        }
+      `}</style>
+
+      {isAdding ? (
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', width: '100%' }}>
+          <input
+            autoFocus
+            type="text"
+            placeholder="새 매장 이름"
+            value={newStoreName}
+            onChange={(e) => setNewStoreName(e.target.value)}
+            style={{
+              padding: '10px',
+              borderRadius: '6px',
+              border: '1px solid #ddd',
+              flex: 1,
+              maxWidth: '300px'
+            }}
+          />
+          <button
+            onClick={handleAddClick}
+            style={{
+              padding: '10px 16px',
+              background: 'dodgerblue',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            확인
+          </button>
+          <button
+            onClick={() => setIsAdding(false)}
+            style={{
+              padding: '10px 16px',
+              background: '#666',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            취소
+          </button>
         </div>
-        <span style={{ fontSize: '12px', color: '#aaa' }}>{isOpen ? '▲' : '▼'}</span>
-      </button>
+      ) : (
+        <div className="container">
+          {/* PC에서만 보이는 텍스트 */}
+          <span className="pc-label">현재 관리 중인 매장:</span>
 
-      {/* 2. 드롭다운 리스트 (isOpen일 때만 표시) */}
-      {isOpen && (
-        <div style={{
-          position: 'absolute',
-          top: '110%', // 버튼 바로 아래
-          left: 0,
-          width: '100%',
-          backgroundColor: '#fff',
-          borderRadius: '8px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-          zIndex: 9999,
-          overflow: 'hidden',
-          border: '1px solid #ddd'
-        }}>
-          
-          {/* 매장 목록 스크롤 영역 */}
-          <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
-            {stores.map((store) => (
-              <div
-                key={store.id}
-                onClick={() => handleSelect(store.id)}
-                style={{
-                  padding: '12px 16px',
-                  borderBottom: '1px solid #f0f0f0',
-                  color: '#333',
-                  fontSize: '15px',
-                  cursor: 'pointer',
-                  backgroundColor: store.id === currentStoreId ? '#f0f9ff' : '#fff',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <span style={{ fontWeight: store.id === currentStoreId ? 'bold' : 'normal' }}>
-                  {store.name}
-                </span>
-                
-                {/* 삭제 버튼 (리스트 내부에 배치) */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // 부모 클릭(선택) 방지
-                    onDeleteStore(store.id);
-                  }}
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '11px',
-                    color: '#fff',
-                    backgroundColor: '#e74c3c', // 빨간색
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  삭제
-                </button>
-              </div>
+          <select
+            className="select-box"
+            value={currentStoreId || ''}
+            onChange={(e) => onChangeStore(e.target.value)}
+          >
+            {stores.map((s) => (
+              <option key={s.id} value={s.id}>
+                🏢 {s.name}
+              </option>
             ))}
-          </div>
+          </select>
 
-          {/* 매장 추가 영역 (하단 고정) */}
-          <div style={{ padding: '10px', backgroundColor: '#fafafa', borderTop: '1px solid #eee' }}>
-            {isAdding ? (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="새 매장 이름"
-                  value={newStoreName}
-                  onChange={(e) => setNewStoreName(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    borderRadius: '4px',
-                    border: '1px solid #ddd',
-                    fontSize: '14px'
-                  }}
-                />
-                <button
-                  onClick={handleAddSubmit}
-                  disabled={creatingStore}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: 'seagreen',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  확인
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsAdding(true)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  backgroundColor: '#333',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                + 새 매장 추가하기
+          <div className="action-area">
+            <button onClick={() => setIsAdding(true)} className="add-btn">
+              + 매장 추가
+            </button>
+            {currentStoreId && (
+              <button onClick={() => onDeleteStore(currentStoreId)} className="del-btn">
+                삭제
               </button>
             )}
           </div>
