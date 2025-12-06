@@ -10,7 +10,7 @@ import TemplateSection from '@/components/TemplateSection';
 import PayrollSection from '@/components/PayrollSection';
 import { format } from 'date-fns';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
-import TutorialModal from '@/components/TutorialModal'; // ✅ 추가
+import TutorialModal from '@/components/TutorialModal';
 
 type Store = { id: string; name: string; };
 
@@ -20,7 +20,7 @@ export type Employee = {
   id: string; 
   name: string; 
   hourly_wage: number; 
-  employment_type: 'freelancer' | 'employee' | 'freelancer_33' | 'four_insurance'; // 기존 타입에 맞춰 넉넉하게
+  employment_type: 'freelancer' | 'employee' | 'freelancer_33' | 'four_insurance';
   is_active: boolean; 
   hire_date?: string; 
   phone_number?: string; 
@@ -107,6 +107,10 @@ function DashboardContent() {
         id: String(row.id), name: row.name, hourly_wage: row.hourly_wage, employment_type: row.employment_type,
         is_active: row.is_active, hire_date: row.hire_date, phone_number: row.phone_number,
         birth_date: row.birth_date, bank_name: row.bank_name, account_number: row.account_number, end_date: row.end_date,
+        // ✅ [추가] DB에서 불러올 때도 일당 정보 챙기기
+        pay_type: row.pay_type || 'time',
+        daily_wage: row.daily_wage || 0,
+        default_daily_pay: row.daily_wage || 0, // 호환성
       })));
     }
     setLoadingEmployees(false);
@@ -149,6 +153,7 @@ function DashboardContent() {
 
   }, [supabase]);
 
+  // ✅ [핵심 수정] 새 직원 등록 시 일당 정보(daily_wage)도 같이 저장!
   const handleCreateEmployee = useCallback(async (payload: any) => {
     if (!currentStoreId) return;
     const { error } = await supabase.from('employees').insert({
@@ -158,6 +163,9 @@ function DashboardContent() {
       employment_type: payload.employmentType,
       hire_date: payload.hireDate || null,
       is_active: true,
+      // ▼▼▼ 여기 추가됨 ▼▼▼
+      pay_type: payload.pay_type || 'time',
+      daily_wage: payload.default_daily_pay || 0, // EmployeeSection에서 보내준 값 사용
     });
     if (error) alert('추가 실패'); else await loadEmployees(currentStoreId);
   }, [currentStoreId, supabase, loadEmployees]);
@@ -169,6 +177,7 @@ function DashboardContent() {
   }, [currentStoreId, supabase, loadEmployees]);
 
   const handleUpdateEmployee = useCallback(async (id: string, updates: Partial<Employee>) => {
+    // 여기도 혹시 몰라 추가 (일당 업데이트)
     await supabase.from('employees').update(updates).eq('id', id);
     if (currentStoreId) await loadEmployees(currentStoreId);
   }, [supabase, currentStoreId, loadEmployees]);
@@ -208,16 +217,13 @@ function DashboardContent() {
     if (currentTab === 'home') {
       return (
         <div style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
-          {/* ✅ [수정] 반응형 그리드 & 높이 자동 조절 */}
-          {/* PC: 2열, 모바일: 1열 / align-items: start (내용물만큼만 높이 차지) */}
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
             gap: 24, 
-            alignItems: 'start' // ✅ 핵심: 내용물 높이에 맞춤 (늘어지지 않음)
+            alignItems: 'start'
           }}>
             
-            {/* 카드 1: 오늘 근무자 */}
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #eee', paddingBottom: 8, color: '#000' }}>
                 📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
@@ -241,32 +247,18 @@ function DashboardContent() {
               )}
             </div>
 
-            {/* 카드 2: 급여 지출 */}
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#555' }}>💰 11월 예상 급여 지출 (세전)</h3>
               <div style={{ fontSize: 32, fontWeight: 'bold', color: '#000' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
             </div>
 
-<div style={cardStyle}>
-  <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#e67e22' }}>💡 사장님 필수 상식</h3>
-  <p style={{ color: '#333', lineHeight: '1.6' }}>
-    <strong>주휴수당이란?</strong><br/>
-    1주일에 15시간 이상 근무하고 개근한 근로자에게는 하루치 임금을 추가로 지급해야 합니다.
-  </p>
-</div>
-
-            {/* ✅ [추가] 꿀팁/법령 카드 예시 (사장님을 위한 공간) */}
-            {/* 아래 div 덩어리를 복사해서 내용만 바꾸면 계속 추가됩니다! */}
-            {/* <div style={cardStyle}>
+            <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#e67e22' }}>💡 사장님 필수 상식</h3>
               <p style={{ color: '#333', lineHeight: '1.6' }}>
-                <strong>해고 예고 제도:</strong><br/>
-                근로자를 해고하려면 적어도 30일 전에 예고해야 하며, 30일 전에 예고하지 않았을 경우 30일분 이상의 통상임금(해고예고수당)을 지급해야 합니다.
-                <br/><span style={{ fontSize: 12, color: '#999' }}>(단, 근로기간 3개월 미만 등 예외 있음)</span>
+                <strong>주휴수당이란?</strong><br/>
+                1주일에 15시간 이상 근무하고 개근한 근로자에게는 하루치 임금을 추가로 지급해야 합니다.
               </p>
             </div>
-            */}
-
           </div>
         </div>
       );
@@ -304,7 +296,6 @@ function DashboardContent() {
   return (
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
       
-      {/* 🔴 [헤더 영역] */}
       <div className="header-wrapper">
         <div style={{ width: '100%', maxWidth: '750px', margin: '0 auto', boxSizing: 'border-box' }}>
           
@@ -328,7 +319,6 @@ function DashboardContent() {
             />
           </div>
 
-          {/* 🟢 [메뉴 탭] */}
           {stores.length > 0 && currentStoreId && (
             <div className="mobile-sticky-nav">
               <div className="mobile-tab-container" style={{ 
@@ -362,7 +352,6 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* 🔵 [콘텐츠 영역] */}
       <div 
         className="content-spacer"
         style={{ 
@@ -371,7 +360,6 @@ function DashboardContent() {
           boxSizing: 'border-box' 
         }}
       >
-      {/* ✅ [추가] 모바일에서만 보이는 20px 빈 공간 (Spacer) */}
       <div className="mobile-only" style={{ height: '20px' }}></div>
 
         {stores.length > 0 && currentStoreId && (
