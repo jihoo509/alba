@@ -206,6 +206,9 @@ export default function AuthPage() {
 
       <div style={{ position: 'absolute', bottom: '10px', color: 'rgba(255,255,255,0.5)', fontSize: '11px' }}>
         © 2025 Easy Alba. All rights reserved.
+        © 사업자 바르게 담다
+        문의 메일 inserr509@daum.net
+        문의 전화 010-4554-5587
       </div>
     </div>
   );
