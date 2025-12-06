@@ -282,7 +282,10 @@ function DashboardContent() {
         <div>
           <h2 style={{ fontSize: 24, marginBottom: 8, color: '#fff', fontWeight: 'bold' }}>스케줄 관리</h2>
           <p style={{ color: '#ddd', marginBottom: 32 }}>월간 스케줄을 확인하고 관리합니다.</p>
-          <TemplateSection currentStoreId={currentStoreId} />
+          <TemplateSection 
+            currentStoreId={currentStoreId} 
+            employees={employees} 
+          />
         </div>
       );
     }
