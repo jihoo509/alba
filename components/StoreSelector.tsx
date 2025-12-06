@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 
 type Store = { id: string; name: string };
 
@@ -23,24 +23,6 @@ export function StoreSelector({
 }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
-  
-  // ✅ 모바일 드롭다운 열림 여부
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const currentStore = stores.find(s => s.id === currentStoreId);
-  const currentStoreName = currentStore ? currentStore.name : '매장 선택';
-
-  // 외부 클릭 시 드롭다운 닫기
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const handleAddClick = () => {
     if (newStoreName.trim()) {
@@ -50,132 +32,98 @@ export function StoreSelector({
     }
   };
 
-  const handleMobileSelect = (storeId: string) => {
-    onChangeStore(storeId);
-    setIsDropdownOpen(false);
-  };
-
-  const handleMobileDelete = (e: React.MouseEvent, storeId: string) => {
-    e.stopPropagation(); // 선택 이벤트 방지
-    onDeleteStore(storeId);
-  };
-
   return (
     <div className="store-selector-wrapper">
       <style jsx>{`
-        /* 📱 모바일 스타일 */
+        /* 📱 모바일 스타일 (어두운 바 안에 모두 포함) */
         .store-selector-wrapper {
           width: 100%;
           margin-bottom: 10px;
-          position: relative; /* 드롭다운 기준점 */
-          z-index: 20;
         }
-
-        /* 1. 모바일 메인 바 (어두운 배경) */
-        .mobile-bar {
+        .container {
           display: flex;
-          justify-content: space-between;
+          flex-direction: row; /* 가로 배치 */
           align-items: center;
-          background-color: #333;
+          justify-content: space-between;
+          background-color: #333; /* 어두운 배경 */
           border-radius: 8px;
-          padding: 12px 16px;
+          padding: 8px 12px;
           border: 1px solid #444;
-          color: #fff;
-          cursor: pointer;
         }
-        .store-name {
+        .pc-label {
+          display: none;
+        }
+        /* 선택 박스 (배경 투명, 글자 흰색) */
+        .select-box {
+          flex: 1;
+          width: 100%;
+          background-color: transparent;
+          color: #fff;
+          border: none;
           font-size: 16px;
           font-weight: bold;
+          outline: none;
+          padding: 4px 0;
+          cursor: pointer;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          max-width: 70%;
+          /* 기본 화살표 스타일링 (브라우저마다 다름) */
+          appearance: none; 
+          background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+          background-repeat: no-repeat;
+          background-position: right 0px top 50%;
+          background-size: 10px auto;
+          padding-right: 20px; /* 화살표 공간 확보 */
         }
-        .right-group {
+        /* 옵션 배경은 어둡게 (안 그러면 흰 배경에 흰 글씨 됨) */
+        .select-box option {
+          background-color: #333;
+          color: #fff;
+        }
+
+        .action-area {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
+          margin-left: 12px;
+          flex-shrink: 0;
         }
-        .mobile-add-btn {
+        /* 모바일용 버튼 스타일 (작고 심플하게) */
+        .add-btn {
           background: #555;
           border: 1px solid #666;
           color: #fff;
-          padding: 4px 8px;
+          padding: 6px 10px;
           border-radius: 4px;
-          font-size: 12px;
           cursor: pointer;
-        }
-        .arrow-icon {
           font-size: 12px;
-          color: #aaa;
+          white-space: nowrap;
         }
-
-        /* 2. 모바일 드롭다운 목록 */
-        .dropdown-list {
-          position: absolute;
-          top: 100%;
-          left: 0;
-          width: 100%;
-          background-color: #fff;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          margin-top: 4px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-          overflow: hidden;
-          z-index: 30;
-        }
-        .list-item {
-          padding: 12px 16px;
-          border-bottom: 1px solid #f0f0f0;
-          color: #333;
-          font-size: 15px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          cursor: pointer;
-        }
-        .list-item:last-child {
-          border-bottom: none;
-        }
-        .list-item.active {
-          background-color: #f0f9ff;
-          color: dodgerblue;
-          font-weight: bold;
-        }
-        
-        /* 목록 안의 삭제 버튼 */
-        .list-del-btn {
-          background: #ffecec;
-          border: 1px solid #ffcccc;
-          color: #e74c3c;
-          padding: 4px 8px;
+        .del-btn {
+          background: #e74c3c;
+          border: none;
+          color: #fff;
+          padding: 6px 10px;
           border-radius: 4px;
-          font-size: 12px;
           cursor: pointer;
+          font-size: 12px;
+          white-space: nowrap;
         }
 
-        /* PC용 컨테이너 숨김 */
-        .pc-container { display: none; }
-
-        /* 💻 PC 화면 (768px 이상) - 아까 디자인 유지 */
+        /* 💻 PC 화면 스타일 재정의 (기존 유지) */
         @media (min-width: 768px) {
           .store-selector-wrapper {
             display: flex;
             justify-content: center;
             margin-bottom: 30px;
           }
-          /* 모바일 요소 숨김 */
-          .mobile-bar, .dropdown-list { display: none; }
-
-          /* PC 요소 보임 */
-          .pc-container {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
+          .container {
             width: auto;
             background-color: rgba(255, 255, 255, 0.1);
             padding: 12px 30px;
             border-radius: 50px;
+            border: none;
             gap: 16px;
           }
           .pc-label {
@@ -186,46 +134,42 @@ export function StoreSelector({
             margin: 0;
           }
           .select-box {
+            flex: none;
             width: 280px;
             padding: 8px 12px;
             font-size: 15px;
             border: 1px solid #666;
             background-color: #222;
+            border-radius: 8px;
             text-align: center;
             text-align-last: center;
-            cursor: pointer;
-            border-radius: 8px;
-            color: #fff;
+            background-image: none; /* PC는 기본 화살표 사용 */
+            padding-right: 12px;
+            appearance: auto;
           }
-          .pc-action-area {
-            display: flex;
+          .action-area {
             gap: 16px;
-            align-items: center;
+            margin-left: 0;
           }
-          .pc-add-btn {
+          /* PC용 버튼 스타일 (텍스트 형태) */
+          .add-btn {
             background: none;
             border: none;
             font-size: 16px; 
             font-weight: bold;
-            color: #fff;
-            text-decoration: none;
+            padding: 0;
             opacity: 0.8;
-            cursor: pointer;
           }
-          .pc-add-btn:hover { opacity: 1; }
-          .pc-del-btn {
-            background: #e74c3c;
-            border: none;
-            color: #fff;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
+          .add-btn:hover {
+            opacity: 1;
+          }
+          .del-btn {
             font-size: 13px;
+            padding: 6px 12px;
           }
         }
       `}</style>
 
-      {/* --- 매장 추가 모드 (공통) --- */}
       {isAdding ? (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', width: '100%' }}>
           <input
@@ -245,83 +189,60 @@ export function StoreSelector({
           />
           <button
             onClick={handleAddClick}
-            style={{ padding: '10px 16px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+            style={{
+              padding: '10px 16px',
+              background: 'dodgerblue',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
           >
             확인
           </button>
           <button
             onClick={() => setIsAdding(false)}
-            style={{ padding: '10px 16px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+            style={{
+              padding: '10px 16px',
+              background: '#666',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
           >
             취소
           </button>
         </div>
       ) : (
-        <>
-          {/* 📱 [모바일] 커스텀 드롭다운 */}
-          <div ref={dropdownRef} style={{ width: '100%' }}>
-            {/* 1. 메인 바 */}
-            <div className="mobile-bar" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-              <span className="store-name">{currentStoreName}</span>
-              <div className="right-group">
-                <button 
-                    className="mobile-add-btn" 
-                    onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
-                >
-                    + 추가
-                </button>
-                <span className="arrow-icon">{isDropdownOpen ? '▲' : '▼'}</span>
-              </div>
-            </div>
+        <div className="container">
+          <span className="pc-label">현재 관리 중인 매장:</span>
 
-            {/* 2. 열리는 목록 (삭제 버튼 포함) */}
-            {isDropdownOpen && (
-              <div className="dropdown-list">
-                {stores.map(store => (
-                  <div 
-                    key={store.id} 
-                    className={`list-item ${store.id === currentStoreId ? 'active' : ''}`}
-                    onClick={() => handleMobileSelect(store.id)}
-                  >
-                    <span>{store.name}</span>
-                    <button 
-                        className="list-del-btn"
-                        onClick={(e) => handleMobileDelete(e, store.id)}
-                    >
-                        삭제
-                    </button>
-                  </div>
-                ))}
-              </div>
+          <select
+            className="select-box"
+            value={currentStoreId || ''}
+            onChange={(e) => onChangeStore(e.target.value)}
+          >
+            {stores.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+
+          <div className="action-area">
+            <button onClick={() => setIsAdding(true)} className="add-btn">
+              + 매장 추가
+            </button>
+            
+            {currentStoreId && (
+              <button onClick={() => onDeleteStore(currentStoreId)} className="del-btn">
+                삭제
+              </button>
             )}
           </div>
-
-          {/* 💻 [PC] 기존 디자인 유지 */}
-          <div className="pc-container">
-            <span className="pc-label">현재 관리 중인 매장:</span>
-            <select
-              className="select-box"
-              value={currentStoreId || ''}
-              onChange={(e) => onChangeStore(e.target.value)}
-            >
-              {stores.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <div className="pc-action-area">
-              <button onClick={() => setIsAdding(true)} className="pc-add-btn">
-                + 매장 추가
-              </button>
-              {currentStoreId && (
-                <button onClick={() => onDeleteStore(currentStoreId)} className="pc-del-btn">
-                  삭제
-                </button>
-              )}
-            </div>
-          </div>
-        </>
+        </div>
       )}
     </div>
   );
