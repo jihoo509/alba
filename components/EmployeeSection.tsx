@@ -17,7 +17,7 @@ type Props = {
 
 function getEmploymentLabel(type: string) {
   if (type === 'four_insurance' || type === 'employee' || type === 'insured') return '4대 보험';
-  if (type === 'freelancer_33' || type === 'freelancer') return '3.3%';
+  if (type === 'freelancer_33' || type === 'freelancer') return '프리랜서';
   return type;
 }
 
