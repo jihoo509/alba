@@ -42,7 +42,6 @@ export function EmployeeSection({
 
   if (!currentStoreId) return null;
 
-  // ✅ 숫자 포맷팅 핸들러
   const handleNumberInput = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
     const raw = e.target.value.replace(/,/g, '');
     if (/^\d*$/.test(raw)) {
@@ -53,13 +52,11 @@ export function EmployeeSection({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 콤마 제거 후 숫자 변환
     const wage = Number(newEmpWage.replace(/,/g, ''));
     const dailyPay = Number(newDailyWage.replace(/,/g, ''));
 
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
 
-    // 유효성 검사
     if (payType === 'time' && !wage) return alert('시급을 입력해주세요.');
     if (payType === 'day' && !dailyPay) return alert('일당을 입력해주세요.');
 
@@ -72,7 +69,6 @@ export function EmployeeSection({
       default_daily_pay: payType === 'day' ? dailyPay : 0,
     });
 
-    // 고정 월급 설정 로직
     if (newEmpMonthly.trim()) {
         const { data: createdEmp } = await supabase
             .from('employees')
@@ -92,7 +88,6 @@ export function EmployeeSection({
         }
     }
 
-    // 초기화
     setNewEmpName('');
     setNewEmpWage('');
     setNewEmpMonthly('');
@@ -118,13 +113,20 @@ export function EmployeeSection({
                 {getEmploymentLabel(emp.employment_type)}
               </span>
             </div>
-            {/* ✅ 리스트 표시 수정: 일당직이면 '일 150,000', 시급직이면 '10,030원' */}
+
+            {/* ✅ 깔끔한 정석 코드 (빨간 줄 이제 안 뜸!) */}
             <div className="emp-wage">
-              {emp.pay_type === 'day' && emp.default_daily_pay 
-                ? `일 ${emp.default_daily_pay.toLocaleString()}원`
-                : `${emp.hourly_wage?.toLocaleString()}원`
-              }
+              {(emp.pay_type === 'day' || emp.pay_type === '일당') ? (
+                <span style={{ color: '#e67e22', fontWeight: 'bold' }}>
+                  일 {Number(emp.daily_wage || emp.default_daily_pay || 0).toLocaleString()}원
+                </span>
+              ) : (
+                <span>
+                  {Number(emp.hourly_wage || 0).toLocaleString()}원
+                </span>
+              )}
             </div>
+
           </div>
           <div className="emp-info-row">
             {emp.phone_number ? <span className="emp-phone">{emp.phone_number}</span> : <span className="emp-no-phone">(연락처 미입력)</span>}
@@ -141,18 +143,15 @@ export function EmployeeSection({
 
   return (
     <section>
-      {/* 새 직원 등록 폼 */}
       <div className="new-employee-form-card">
         <h3 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 12, color: '#333' }}>새 직원 등록</h3>
         <form onSubmit={handleSubmit}>
           <div className="form-grid">
-            {/* 1. 이름 입력 */}
             <div className="form-group">
               <label>이름</label>
               <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} placeholder="이름 입력" />
             </div>
             
-            {/* 2. ✅ 급여 방식 선택 (여기가 수정된 부분입니다) */}
             <div className="form-group">
               <label style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 급여 방식
@@ -186,7 +185,6 @@ export function EmployeeSection({
               )}
             </div>
 
-            {/* 3. 고정 월급 */}
             <div className="form-group">
               <label style={{color: 'dodgerblue'}}>고정 월급 (선택)</label>
               <input 
@@ -199,7 +197,6 @@ export function EmployeeSection({
               />
             </div>
 
-            {/* 4. 고용 형태 */}
             <div className="form-group">
               <label>고용 형태</label>
               <select value={newEmpType} onChange={(e) => setNewEmpType(e.target.value as any)}>
@@ -208,13 +205,11 @@ export function EmployeeSection({
               </select>
             </div>
 
-            {/* 5. 입사일 */}
             <div className="form-group date-group">
               <label>입사일</label>
               <DateSelector value={newEmpHireDate} onChange={setNewEmpHireDate} />
             </div>
 
-            {/* 버튼 */}
             <div className="form-group btn-group">
               <button type="submit" className="btn-add">+ 추가</button>
             </div>

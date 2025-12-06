@@ -85,13 +85,24 @@ export function calculateMonthlyPayroll(
         
         const deductedMins = rawMins - breakMins;
 
-        // ▼▼▼ [수정] 일당 vs 시급 분기 처리 시작 ▼▼▼
-        const isDaily = s.pay_type === 'day';
-        const dailyPay = s.daily_pay_amount || 0;
+        // ▼▼▼ [수정 핵심] 일당 vs 시급 판단 로직 강화 ▼▼▼
+        // 1. 스케줄 자체에 '일당'이라고 박혀있거나 OR 직원의 기본 설정이 '일당'인 경우
+        // (DB에 저장된 값이 'day' 일수도, '일당' 일수도 있어서 둘 다 체크)
+        const isEmpDaily = emp.pay_type === 'day' || emp.pay_type === '일당'; 
+        const isScheduleDaily = s.pay_type === 'day' || s.pay_type === '일당';
+        
+        // 둘 중 하나라도 해당하면 일당직으로 계산
+        const isDaily = isScheduleDaily || isEmpDaily;
 
-        // 1. 시급 기준 계산 (기존 로직)
-        const basePayDeducted = Math.floor((deductedMins / 60) * emp.hourly_wage);
-        const basePayNoDeduct = Math.floor((rawMins / 60) * emp.hourly_wage);
+        // 2. 금액 결정: 스케줄에 적힌 금액이 1순위, 없으면 직원 기본 일당(daily_wage) 사용
+        const dailyPay = Number(s.daily_pay_amount || 0) > 0 
+                         ? Number(s.daily_pay_amount) 
+                         : Number(emp.daily_wage || 0);
+
+        // 1. 시급 기준 계산 (기존 로직 - 시급직일 때만 의미 있음)
+        const hourlyWage = Number(emp.hourly_wage || 0);
+        const basePayDeducted = Math.floor((deductedMins / 60) * hourlyWage);
+        const basePayNoDeduct = Math.floor((rawMins / 60) * hourlyWage);
         
         // 2. 적용할 금액 결정
         const useBreak = cfg.auto_deduct_break;
@@ -107,19 +118,20 @@ export function calculateMonthlyPayroll(
 
         const activeMins = useBreak ? deductedMins : rawMins;
 
-        // 3. 수당 계산 (일당제인 경우 '시간 무시' 원칙에 따라 0원 처리)
+        // 3. 수당 계산 (일당제인 경우 보통 추가수당 없음 -> 0원 처리)
+        // (만약 일당직도 야간수당을 준다면 여기 로직을 수정해야 함. 일단 0원으로 둡니다)
         const nightMins = calculateNightMinutes(s.start_time, s.end_time);
-        const potentialNightPay = isDaily ? 0 : Math.floor((nightMins / 60) * emp.hourly_wage * 0.5);
+        const potentialNightPay = isDaily ? 0 : Math.floor((nightMins / 60) * hourlyWage * 0.5);
 
         let overMins = 0;
         if (activeMins > 480) overMins = activeMins - 480;
-        const potentialOvertimePay = isDaily ? 0 : Math.floor((overMins / 60) * emp.hourly_wage * 0.5);
+        const potentialOvertimePay = isDaily ? 0 : Math.floor((overMins / 60) * hourlyWage * 0.5);
 
         let potentialHolidayWorkPay = 0;
         if (s.is_holiday_work && !isDaily) {
-            potentialHolidayWorkPay = Math.floor((activeMins / 60) * emp.hourly_wage * 0.5);
+            potentialHolidayWorkPay = Math.floor((activeMins / 60) * hourlyWage * 0.5);
         }
-        // ▲▲▲ [수정] 분기 처리 끝 ▲▲▲
+        // ▲▲▲ [수정 끝] ▲▲▲
 
         // 지급 여부 결정
         const nightPay = cfg.pay_night ? potentialNightPay : 0;
@@ -169,11 +181,11 @@ export function calculateMonthlyPayroll(
 
       if (isSameMonth(weekSunday, monthStart)) {
         let potentialWeeklyPay = 0;
-        // 주휴수당은 시급(hourly_wage) 기준으로 계산됨.
-        // 일당제 직원의 경우 시급을 0으로 설정했다면 주휴수당도 0원이 됨 (일당에 포함된 개념으로 간주)
-        if (weekMinutes >= 900) { 
+        // 주휴수당 로직: 일당직은 시급(hourlyWage)이 0원이면 주휴도 0원 처리됨.
+        const hourlyWage = Number(emp.hourly_wage || 0);
+        if (weekMinutes >= 900 && hourlyWage > 0) { 
            const cappedWeekMinutes = Math.min(weekMinutes, 40 * 60); 
-           potentialWeeklyPay = Math.floor((cappedWeekMinutes / 40 / 60) * 8 * emp.hourly_wage);
+           potentialWeeklyPay = Math.floor((cappedWeekMinutes / 40 / 60) * 8 * hourlyWage);
         }
 
         const weeklyPay = cfg.pay_weekly ? potentialWeeklyPay : 0;
@@ -208,13 +220,14 @@ export function calculateMonthlyPayroll(
     if (cfg.no_tax_deduction) {
         taxDetails.total = 0;
     } else {
-        if (emp.employment_type.includes('four')) {
+        if (emp.employment_type && emp.employment_type.includes('four')) {
             taxDetails.pension = Math.floor(totalPay * RATES.pension / 10) * 10;
             taxDetails.health = Math.floor(totalPay * RATES.health / 10) * 10;
             taxDetails.care = Math.floor(taxDetails.health * RATES.care / 10) * 10;
             taxDetails.employment = Math.floor(totalPay * RATES.employment / 10) * 10;
             taxDetails.total = taxDetails.pension + taxDetails.health + taxDetails.care + taxDetails.employment;
         } else {
+            // 3.3% 공제
             taxDetails.incomeTax = Math.floor(totalPay * RATES.incomeTax / 10) * 10;
             taxDetails.localTax = Math.floor(taxDetails.incomeTax * RATES.localTax / 10) * 10;
             taxDetails.total = taxDetails.incomeTax + taxDetails.localTax;
@@ -225,6 +238,7 @@ export function calculateMonthlyPayroll(
       empId: emp.id,
       name: emp.name,
       wage: emp.hourly_wage,
+      dailyWage: emp.daily_wage, // ✅ 일당 정보 추가
       type: emp.employment_type,
       totalHours: (totalWorkMinutes / 60).toFixed(1), 
       basePay: totalBasePay,

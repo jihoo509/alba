@@ -34,9 +34,10 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         bank_name: employee.bank_name || '',
         account_number: employee.account_number || '',
         is_active: employee.is_active,
-        // ▼▼▼ [추가] 일당 관련 데이터 불러오기 ▼▼▼
+        
+        // ▼▼▼ [수정] DB 컬럼명(daily_wage)과 일치시킴 ▼▼▼
         pay_type: employee.pay_type || 'time',
-        default_daily_pay: employee.default_daily_pay || 0,
+        daily_wage: employee.daily_wage || 0, 
       });
 
       const fetchSettings = async () => {
@@ -61,8 +62,8 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    // ▼▼▼ [수정] 시급 또는 일당 입력 시 콤마 처리 로직 통합 ▼▼▼
-    if (name === 'hourly_wage' || name === 'default_daily_pay') {
+    // ▼▼▼ [수정] daily_wage로 변경 ▼▼▼
+    if (name === 'hourly_wage' || name === 'daily_wage') {
         const rawValue = value.replace(/,/g, ''); // 콤마 제거
         if (/^\d*$/.test(rawValue)) { // 숫자만 허용
             setFormData(prev => ({ 
@@ -75,12 +76,10 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     }
   };
 
-  // 라디오 버튼 전용 핸들러 (시급/일당 전환)
   const handlePayTypeChange = (type: 'time' | 'day') => {
     setFormData(prev => ({ ...prev, pay_type: type }));
   };
 
-  // 고정 월급 입력 핸들러 (콤마 자동 추가)
   const handleMonthlyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/,/g, '');
     if (/^\d*$/.test(rawValue)) {
@@ -106,7 +105,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     setSaving(true);
     const isActive = !formData.end_date; 
 
-    // ▼▼▼ [수정] 저장할 데이터 구성 (일당/시급 로직 포함) ▼▼▼
+    // ▼▼▼ [수정] 저장 데이터 (daily_wage 사용) ▼▼▼
     const updates = {
       ...formData,
       is_active: isActive,
@@ -117,9 +116,9 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
       bank_name: formData.bank_name === '' ? null : formData.bank_name,
       account_number: formData.account_number === '' ? null : formData.account_number,
       
-      // 시급제면 일당 0, 일당제면 시급 0으로 정리해서 저장 (선택 사항이지만 데이터 깔끔하게)
       hourly_wage: formData.pay_type === 'time' ? formData.hourly_wage : 0,
-      default_daily_pay: formData.pay_type === 'day' ? formData.default_daily_pay : 0,
+      daily_wage: formData.pay_type === 'day' ? formData.daily_wage : 0,
+      // default_daily_pay 컬럼이 혹시 있다면 null로 처리하거나 제외 (여기선 제외)
     };
     
     // @ts-ignore
@@ -164,7 +163,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             <input name="name" value={formData.name ?? ''} onChange={handleChange} style={styles.input} />
           </div>
 
-          {/* ▼▼▼ [수정] 급여 설정 (시급/일당 선택 UI) ▼▼▼ */}
           <div style={styles.inputGroup}>
             <label style={{ ...styles.label, display: 'flex', justifyContent: 'space-between' }}>
                 급여 방식
@@ -200,10 +198,10 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
                 />
             ) : (
                 <input 
-                    name="default_daily_pay" 
+                    name="daily_wage" 
                     type="text" 
                     inputMode="numeric"
-                    value={formData.default_daily_pay ? formData.default_daily_pay.toLocaleString() : ''} 
+                    value={formData.daily_wage ? formData.daily_wage.toLocaleString() : ''} 
                     onChange={handleChange} 
                     style={{ ...styles.input, borderColor: '#ffadd2', backgroundColor: '#fff0f6' }} 
                     placeholder="일당 입력"
@@ -211,7 +209,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             )}
           </div>
 
-          {/* 2행: 고정 월급 */}
+          {/* 이하 나머지 코드는 동일 ... */}
           <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
             <label style={{ ...styles.label, color: 'dodgerblue', display: 'flex', justifyContent: 'space-between' }}>
                 <span>고정 월급 (선택)</span>
@@ -227,7 +225,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             />
           </div>
 
-          {/* 3행: 고용 형태 */}
           <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
             <label style={styles.label}>고용 형태</label>
             <select name="employment_type" value={formData.employment_type ?? 'freelancer'} onChange={handleChange} style={styles.input}>
@@ -236,7 +233,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             </select>
           </div>
 
-          {/* 4행: 생년월일 & 전화번호 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>생년월일</label>
             <DateSelector value={formData.birth_date ?? ''} onChange={(val) => handleDateChange('birth_date', val)} />
@@ -246,7 +242,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             <input name="phone_number" placeholder="010-1234-5678" value={formData.phone_number ?? ''} onChange={handleChange} style={styles.input} />
           </div>
 
-          {/* 5행: 은행 정보 */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>은행명</label>
             <input name="bank_name" placeholder="예: 국민" value={formData.bank_name ?? ''} onChange={handleChange} style={styles.input} />
@@ -256,30 +251,20 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             <input name="account_number" placeholder="- 포함 가능" value={formData.account_number ?? ''} onChange={handleChange} style={styles.input} />
           </div>
 
-          {/* 6행: 입사일 */}
           <div style={{ ...styles.inputGroup, gridColumn: 'span 2' }}>
             <label style={styles.label}>입사일</label>
             <DateSelector value={formData.hire_date ?? ''} onChange={(val) => handleDateChange('hire_date', val)} />
           </div>
 
-          {/* 퇴사일 & 상태 표시 */}
            <div style={{ ...styles.inputGroup, gridColumn: 'span 2', marginTop: 10, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 8, border: '1px solid #eee' }}>
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                <span style={{ fontSize: 14, fontWeight: 'bold', color: status.color === 'green' ? '#2ecc71' : status.color === 'red' ? '#e74c3c' : '#f1c40f' }}>
                  ● {status.text}
                </span>
-               <button 
-                 onClick={toggleResignation}
-                 style={{ 
-                   padding: '6px 12px', borderRadius: 4, border: '1px solid #ddd', 
-                   background: '#fff', 
-                   color: '#555', cursor: 'pointer', fontSize: 12, fontWeight: 'bold'
-                 }}
-               >
+               <button onClick={toggleResignation} style={{ padding: '6px 12px', borderRadius: 4, border: '1px solid #ddd', background: '#fff', color: '#555', cursor: 'pointer', fontSize: 12, fontWeight: 'bold' }}>
                  {formData.end_date ? '퇴사 취소' : '퇴사 처리'}
                </button>
              </div>
-             
              <div style={{ opacity: formData.end_date ? 1 : 0.5, pointerEvents: formData.end_date ? 'auto' : 'none', transition: 'opacity 0.2s' }}>
                <label style={{ ...styles.label, marginBottom: 6, display: 'block' }}>퇴사일 선택</label>
                <DateSelector value={formData.end_date ?? ''} onChange={(val) => handleDateChange('end_date', val)} />
@@ -299,23 +284,14 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
 }
 
 const styles = {
-  overlay: {
-    position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-  },
-  modal: {
-    backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', width: '90%', maxWidth: '500px',
-    boxShadow: '0 10px 40px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' as const
-  },
+  overlay: { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+  modal: { backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', width: '90%', maxWidth: '500px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' as const },
   title: { margin: 0, color: '#333', fontSize: '20px', fontWeight: 700 },
   closeBtn: { background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#999' },
   gridContainer: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' },
   inputGroup: { display: 'flex', flexDirection: 'column' as const, gap: '6px' },
   label: { fontSize: '13px', color: '#666', fontWeight: 600 },
-  input: {
-    width: '100%', padding: '10px 12px', backgroundColor: '#fff', border: '1px solid #ddd',
-    color: '#333', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const
-  },
+  input: { width: '100%', padding: '10px 12px', backgroundColor: '#fff', border: '1px solid #ddd', color: '#333', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const },
   buttonContainer: { display: 'flex', gap: '12px', marginTop: '32px', justifyContent: 'flex-end' },
   cancelButton: { padding: '12px 24px', background: '#f5f5f5', border: 'none', color: '#666', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },
   saveButton: { padding: '12px 24px', background: 'dodgerblue', border: 'none', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }

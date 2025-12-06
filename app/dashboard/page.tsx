@@ -28,10 +28,9 @@ export type Employee = {
   bank_name?: string; 
   account_number?: string; 
   end_date?: string;
-
-  // ▼▼▼ 아래 2줄을 추가해주세요 ▼▼▼
-  pay_type?: 'time' | 'day';      // 시급(time) 또는 일당(day)
-  default_daily_pay?: number;     // 일당 금액
+  pay_type?: string;          // 급여 형태 ('time' 또는 'day')
+  daily_wage?: number;        // 일당 금액 (메인)
+  default_daily_pay?: number; // 일당 금액 (서브/호환용)
 };
 
 function DashboardContent() {
@@ -372,6 +371,9 @@ function DashboardContent() {
           boxSizing: 'border-box' 
         }}
       >
+      {/* ✅ [추가] 모바일에서만 보이는 20px 빈 공간 (Spacer) */}
+      <div className="mobile-only" style={{ height: '20px' }}></div>
+
         {stores.length > 0 && currentStoreId && (
           <div style={{ width: '100%' }} className={currentTab === 'schedules' ? 'shrink-on-mobile' : ''}>
             {renderTabContent()}

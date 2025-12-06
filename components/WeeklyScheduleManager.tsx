@@ -258,9 +258,13 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
 
         const rule = pattern.weekly_rules[dayOfWeek];
         if (rule) {
-          // ▼▼▼ [추가된 로직] 일당직인지 확인하고 정보 넣기 ▼▼▼
-          const isDailyPay = employee.pay_type === 'day';
-          const dailyAmount = isDailyPay ? (employee.default_daily_pay || 0) : 0;
+          // ▼▼▼ [수정된 핵심 로직] 일당직 정보 반영 ▼▼▼
+          // 직원 데이터(employee)에서 pay_type과 daily_wage를 확인
+          // (주의: 직원 정보 타입이 확실치 않으면 as any 사용 가능)
+          const empAny = employee as any;
+          const isDailyPay = empAny.pay_type === 'day' || empAny.pay_type === '일당';
+          // 일당 금액 가져오기 (없으면 0)
+          const dailyAmount = isDailyPay ? Number(empAny.daily_wage || empAny.default_daily_pay || 0) : 0;
 
           newSchedules.push({
             store_id: currentStoreId,
@@ -270,7 +274,8 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
             end_time: rule.end,
             color: pattern.color || '#4ECDC4',
             memo: pattern.name,
-            // 추가된 필드
+            
+            // ✅ DB에 일당 정보 함께 저장
             pay_type: isDailyPay ? 'day' : 'time',
             daily_pay_amount: dailyAmount,
           });

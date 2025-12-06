@@ -27,7 +27,10 @@ type Schedule = {
   employees?: { name: string };
   exclude_holiday_pay?: boolean;
   is_holiday_work?: boolean;
-  memo?: string; 
+  memo?: string;
+  // ✅ [추가] 일당 관련 필드
+  daily_pay_amount?: number;
+  pay_type?: string;
 };
 
 const getEmployeeColor = (empId: string | null, employees: Employee[]) => {
@@ -60,7 +63,10 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   const [editExcludePay, setEditExcludePay] = useState(false);
   const [editIsHolidayWork, setEditIsHolidayWork] = useState(false);
   
-  // ✅ [추가] 분 단위 선택 상태 (기본 30분)
+  // ✅ [추가] 일당 수정 상태
+  const [editDailyPay, setEditDailyPay] = useState('');
+
+  // ✅ 분 단위 선택 상태 (기본 30분)
   const [minuteInterval, setMinuteInterval] = useState(30);
 
   const [isDeleteMode, setIsDeleteMode] = useState(false);
@@ -88,6 +94,23 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
+
+  // ✅ 직원 변경 시 일당 자동 세팅 로직
+  useEffect(() => {
+    if (editEmpId) {
+        const emp = employees.find(e => e.id === editEmpId) as any;
+        // 직원이 일당직이고, 현재 입력된 금액이 없거나(초기상태), 새 스케줄 작성 중일 때
+        // 직원의 기본 일당을 가져와서 세팅해줌
+        if (emp && (emp.pay_type === 'day' || emp.pay_type === '일당')) {
+            // 이미 값이 있으면 유지, 없으면 기본값
+            if (editDailyPay === '' || isNew) {
+                const defaultWage = emp.daily_wage || emp.default_daily_pay || 0;
+                setEditDailyPay(defaultWage > 0 ? defaultWage.toLocaleString() : '');
+            }
+        }
+    }
+  }, [editEmpId, employees, isNew]); 
+  // 주의: editDailyPay를 의존성에 넣으면 무한루프 돌 수 있으니 제외하거나 로직 주의
 
   const handleDownloadImage = async () => {
     if (!calendarRef.current) return;
@@ -170,7 +193,11 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
       setEditEmpId(sch.employee_id);
       setEditExcludePay(sch.exclude_holiday_pay || false);
       setEditIsHolidayWork(sch.is_holiday_work || false);
-      setMinuteInterval(30); // 팝업 열 때 30분 기본값 리셋
+      
+      // ✅ 기존에 저장된 일당 금액 불러오기
+      setEditDailyPay(sch.daily_pay_amount ? sch.daily_pay_amount.toLocaleString() : '');
+
+      setMinuteInterval(30); 
       setIsNew(false);
       setPopupOpen(true);
     }
@@ -185,13 +212,30 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     setEditEmpId(null);
     setEditExcludePay(false);
     setEditIsHolidayWork(false);
-    setMinuteInterval(30); // 팝업 열 때 30분 기본값 리셋
+    
+    // ✅ 초기화
+    setEditDailyPay('');
+
+    setMinuteInterval(30); 
     setIsNew(true);
     setPopupOpen(true);
   };
 
+  // ✅ 숫자 입력 핸들러
+  const handleDailyPayInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/,/g, '');
+    if (/^\d*$/.test(val)) {
+        setEditDailyPay(val === '' ? '' : Number(val).toLocaleString());
+    }
+  };
+
   const handleSave = async () => {
     if (!currentStoreId) return;
+
+    // ✅ 선택된 직원이 일당직인지 확인
+    const selectedEmp = employees.find(e => e.id === editEmpId) as any;
+    const isDaily = selectedEmp && (selectedEmp.pay_type === 'day' || selectedEmp.pay_type === '일당');
+
     const payload = {
       store_id: currentStoreId,
       date: editDate,
@@ -200,8 +244,13 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
       employee_id: editEmpId,
       exclude_holiday_pay: editExcludePay,
       is_holiday_work: editIsHolidayWork,
-      color: '#4ECDC4'
+      color: '#4ECDC4',
+      
+      // ✅ [추가] 일당 관련 데이터 저장
+      pay_type: isDaily ? 'day' : 'time',
+      daily_pay_amount: isDaily ? Number(editDailyPay.replace(/,/g, '')) : 0,
     };
+
     let error;
     if (isNew) {
       const { error: insertError } = await supabase.from('schedules').insert(payload);
@@ -210,7 +259,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
       const { error: updateError } = await supabase.from('schedules').update(payload).eq('id', targetSchedule.id);
       error = updateError;
     }
-    if (error) alert('저장 실패');
+    if (error) alert('저장 실패: ' + error.message);
     else { fetchSchedules(); setPopupOpen(false); }
   };
 
@@ -219,6 +268,10 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     const { error } = await supabase.from('schedules').delete().eq('id', targetSchedule.id);
     if (!error) { fetchSchedules(); setPopupOpen(false); }
   };
+
+  // 현재 선택된 직원이 일당직인지 확인 (렌더링용)
+  const selectedEmpObj = employees.find(e => e.id === editEmpId) as any;
+  const isSelectedEmpDaily = selectedEmpObj && (selectedEmpObj.pay_type === 'day' || selectedEmpObj.pay_type === '일당');
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -291,6 +344,9 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                       const isSelectedForDelete = selectedDeleteIds.includes(sch.id);
                       const patternName = sch.memo; 
 
+                      // 일당 금액 표시 여부 확인
+                      const showDailyAmount = sch.pay_type === 'day' && sch.daily_pay_amount;
+
                       return (
                         <div key={sch.id} onClick={(e) => handleScheduleClick(e, sch)} className="schedule-box" style={{ backgroundColor: isDeleteMode ? (isSelectedForDelete ? 'darkred' : '#eee') : bgColor, color: isDeleteMode && !isSelectedForDelete ? '#aaa' : '#fff', fontSize: 12, padding: '6px', borderRadius: 6, cursor: 'pointer', border: isDeleteMode ? (isSelectedForDelete ? '2px solid red' : '1px solid #ccc') : (sch.employee_id ? 'none' : '2px dashed #999'), textAlign: 'center', opacity: isDeleteMode && !isSelectedForDelete ? 0.5 : 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                           <div className="schedule-emp-name" style={{ fontWeight: 'bold', fontSize: 13 }}>
@@ -299,6 +355,12 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                             {sch.exclude_holiday_pay && <span style={{fontSize: 10, marginLeft: 4}}>🚫</span>}
                           </div>
                           <div className="schedule-time" style={{ fontSize: 11, opacity: 0.9 }}>{start} ~ {end}</div>
+                          {/* ✅ 일당 금액이 있으면 표시 */}
+                          {showDailyAmount && (
+                              <div style={{ fontSize: 11, fontWeight: 'bold', color: '#ffec3d' }}>
+                                  ￦{Number(sch.daily_pay_amount).toLocaleString()}
+                              </div>
+                          )}
                           <div className="schedule-pattern-only mobile-only-block" style={{ fontSize: 11, fontWeight: 'bold' }}>{patternName || ''}</div>
                         </div>
                       );
@@ -319,7 +381,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <label style={{ fontSize: 13, color: '#666' }}>근무 시간</label>
-                {/* ✅ [추가] 분 단위 선택 버튼 */}
+                {/* ✅ 분 단위 선택 버튼 */}
                 <div style={{ display: 'flex', gap: 4 }}>
                   {[30, 10, 5].map((min) => (
                     <button key={min} onClick={() => setMinuteInterval(min)} style={{ padding: '2px 8px', fontSize: 11, borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer', backgroundColor: minuteInterval === min ? 'dodgerblue' : '#f0f0f0', color: minuteInterval === min ? '#fff' : '#666' }}>{min}분</button>
@@ -341,6 +403,23 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                 {employees.map(emp => (<option key={emp.id} value={emp.id}>{emp.name}</option>))}
               </select>
             </div>
+
+            {/* ✅ [추가] 일당직 직원일 때만 보이는 금액 입력칸 */}
+            {isSelectedEmpDaily && (
+                <div style={{ marginBottom: 20, padding: 12, backgroundColor: '#fffbe6', borderRadius: 8, border: '1px solid #ffe58f' }}>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 'bold', color: '#d48806', marginBottom: 8 }}>💰 일당 (금액 수정)</label>
+                    <input 
+                        type="text" 
+                        inputMode="numeric"
+                        value={editDailyPay} 
+                        onChange={handleDailyPayInput} 
+                        placeholder="일당 입력"
+                        style={{ width: '100%', padding: 10, border: '1px solid #ffe58f', borderRadius: 6, fontSize: 14, fontWeight: 'bold', color: '#333' }}
+                    />
+                    <div style={{fontSize: 11, color: '#d48806', marginTop: 4}}>* 이 날만 적용되는 금액입니다.</div>
+                </div>
+            )}
+
             <div style={{ marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: '#e74c3c', fontWeight: 'bold', fontSize: 14 }}>
                 <input type="checkbox" checked={editIsHolidayWork} onChange={(e) => setEditIsHolidayWork(e.target.checked)} style={{ width: 18, height: 18 }} />
