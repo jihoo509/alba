@@ -214,7 +214,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     }
   };
 
-const handleAutoGenerate = async () => {
+  const handleAutoGenerate = async () => {
     if (!genStartDate || !genEndDate) return alert('시작일과 종료일을 설정해주세요.');
     if (genStartDate > genEndDate) return alert('시작일이 종료일보다 늦을 수 없습니다.');
     if (selectedPatternIds.length === 0) return alert('생성할 패턴을 하나 이상 체크해주세요.');
@@ -245,10 +245,10 @@ const handleAutoGenerate = async () => {
 
         const employee = employees.find(e => e.id === empId);
         
-        // ✅ [안전장치 1] 직원 정보가 없으면(이미 목록에서 사라진 퇴사자) 건너뜀
+        // ✅ [안전장치 1] 직원 정보가 없으면 건너뜀
         if (!employee) continue;
 
-        // ✅ [안전장치 2] 직원 정보는 있지만, '생성하려는 날짜'가 '퇴사일'보다 미래면 건너뜀
+        // ✅ [안전장치 2] 퇴사일 체크
         if (employee.end_date && dateStr > employee.end_date) {
             continue; 
         }
@@ -258,6 +258,10 @@ const handleAutoGenerate = async () => {
 
         const rule = pattern.weekly_rules[dayOfWeek];
         if (rule) {
+          // ▼▼▼ [추가된 로직] 일당직인지 확인하고 정보 넣기 ▼▼▼
+          const isDailyPay = employee.pay_type === 'day';
+          const dailyAmount = isDailyPay ? (employee.default_daily_pay || 0) : 0;
+
           newSchedules.push({
             store_id: currentStoreId,
             employee_id: empId,
@@ -265,14 +269,17 @@ const handleAutoGenerate = async () => {
             start_time: rule.start,
             end_time: rule.end,
             color: pattern.color || '#4ECDC4',
-            memo: pattern.name 
+            memo: pattern.name,
+            // 추가된 필드
+            pay_type: isDailyPay ? 'day' : 'time',
+            daily_pay_amount: dailyAmount,
           });
         }
       }
     }
 
     if (newSchedules.length === 0) {
-      alert('생성할 스케줄이 없거나, 퇴사일 등의 이유로 제외되었습니다.');
+      alert('생성할 스케줄이 없거나, 이미 생성되어 있습니다.');
       setLoading(false);
       return;
     }
@@ -339,7 +346,7 @@ const handleAutoGenerate = async () => {
         * 체크된 패턴에 대해서만 스케줄이 생성됩니다.
       </p>
 
-      {/* ✅ [추가] 구분선 (스케줄 설정 <-> 패턴 만들기 사이) */}
+      {/* 구분선 */}
       <div style={{ borderTop: '1px solid #ddd', margin: '40px 0' }}></div>
 
       <div className="weekly-container">

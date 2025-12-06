@@ -17,9 +17,21 @@ type Store = { id: string; name: string; };
 type TabKey = 'home' | 'employees' | 'schedules' | 'payroll';
 
 export type Employee = {
-  id: string; name: string; hourly_wage: number; employment_type: 'freelancer' | 'employee';
-  is_active: boolean; hire_date?: string; phone_number?: string; birth_date?: string;
-  bank_name?: string; account_number?: string; end_date?: string;
+  id: string; 
+  name: string; 
+  hourly_wage: number; 
+  employment_type: 'freelancer' | 'employee' | 'freelancer_33' | 'four_insurance'; // 기존 타입에 맞춰 넉넉하게
+  is_active: boolean; 
+  hire_date?: string; 
+  phone_number?: string; 
+  birth_date?: string;
+  bank_name?: string; 
+  account_number?: string; 
+  end_date?: string;
+
+  // ▼▼▼ 아래 2줄을 추가해주세요 ▼▼▼
+  pay_type?: 'time' | 'day';      // 시급(time) 또는 일당(day)
+  default_daily_pay?: number;     // 일당 금액
 };
 
 function DashboardContent() {

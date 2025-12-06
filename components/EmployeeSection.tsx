@@ -25,8 +25,10 @@ export function EmployeeSection({
   currentStoreId, employees, loadingEmployees, onCreateEmployee, onDeleteEmployee, onUpdateEmployee,
 }: Props) {
   const [newEmpName, setNewEmpName] = useState('');
-  const [newEmpWage, setNewEmpWage] = useState(''); // 콤마 포함 문자열
-  const [newEmpMonthly, setNewEmpMonthly] = useState(''); // 콤마 포함 문자열
+  const [newEmpWage, setNewEmpWage] = useState(''); 
+  const [newEmpMonthly, setNewEmpMonthly] = useState(''); 
+  const [payType, setPayType] = useState<'time' | 'day'>('time'); 
+  const [newDailyWage, setNewDailyWage] = useState(''); 
   const [newEmpType, setNewEmpType] = useState<'freelancer_33' | 'four_insurance'>('four_insurance');
   const [newEmpHireDate, setNewEmpHireDate] = useState('');
 
@@ -50,18 +52,27 @@ export function EmployeeSection({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const wage = Number(newEmpWage.replace(/,/g, ''));
     
+    // 콤마 제거 후 숫자 변환
+    const wage = Number(newEmpWage.replace(/,/g, ''));
+    const dailyPay = Number(newDailyWage.replace(/,/g, ''));
+
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
-    if (!wage) return alert('시급을 입력해주세요.');
+
+    // 유효성 검사
+    if (payType === 'time' && !wage) return alert('시급을 입력해주세요.');
+    if (payType === 'day' && !dailyPay) return alert('일당을 입력해주세요.');
 
     await onCreateEmployee({
       name: newEmpName,
-      hourlyWage: wage,           
-      employmentType: newEmpType, 
+      hourlyWage: payType === 'time' ? wage : 0, 
+      employmentType: newEmpType,
       hireDate: newEmpHireDate || undefined,
+      pay_type: payType,
+      default_daily_pay: payType === 'day' ? dailyPay : 0,
     });
 
+    // 고정 월급 설정 로직
     if (newEmpMonthly.trim()) {
         const { data: createdEmp } = await supabase
             .from('employees')
@@ -81,11 +92,14 @@ export function EmployeeSection({
         }
     }
 
+    // 초기화
     setNewEmpName('');
     setNewEmpWage('');
     setNewEmpMonthly('');
-    setNewEmpType('four_insurance'); 
+    setNewEmpType('four_insurance');
     setNewEmpHireDate('');
+    setPayType('time');
+    setNewDailyWage('');
   };
 
   const handleEditClick = (emp: Employee) => { setSelectedEmployee(emp); setIsEditOpen(true); };
@@ -104,8 +118,12 @@ export function EmployeeSection({
                 {getEmploymentLabel(emp.employment_type)}
               </span>
             </div>
+            {/* ✅ 리스트 표시 수정: 일당직이면 '일 150,000', 시급직이면 '10,030원' */}
             <div className="emp-wage">
-              {emp.hourly_wage?.toLocaleString()}원
+              {emp.pay_type === 'day' && emp.default_daily_pay 
+                ? `일 ${emp.default_daily_pay.toLocaleString()}원`
+                : `${emp.hourly_wage?.toLocaleString()}원`
+              }
             </div>
           </div>
           <div className="emp-info-row">
@@ -128,36 +146,60 @@ export function EmployeeSection({
         <h3 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 12, color: '#333' }}>새 직원 등록</h3>
         <form onSubmit={handleSubmit}>
           <div className="form-grid">
+            {/* 1. 이름 입력 */}
             <div className="form-group">
               <label>이름</label>
               <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} placeholder="이름 입력" />
             </div>
             
+            {/* 2. ✅ 급여 방식 선택 (여기가 수정된 부분입니다) */}
             <div className="form-group">
-              <label>시급 (원)</label>
-              {/* ✅ 콤마 적용된 시급 입력 */}
-              <input 
-                type="text" 
-                inputMode="numeric"
-                value={newEmpWage} 
-                onChange={(e) => handleNumberInput(e, setNewEmpWage)} 
-                placeholder="10,030" 
-              />
+              <label style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                급여 방식
+                <div style={{ display: 'flex', gap: '10px', fontSize: '13px', fontWeight: 'normal' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '4px' }}>
+                    <input type="radio" checked={payType === 'time'} onChange={() => setPayType('time')} /> 시급
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '4px' }}>
+                    <input type="radio" checked={payType === 'day'} onChange={() => setPayType('day')} /> 일당
+                  </label>
+                </div>
+              </label>
+
+              {payType === 'time' ? (
+                <input 
+                  type="text" 
+                  inputMode="numeric"
+                  value={newEmpWage} 
+                  onChange={(e) => handleNumberInput(e, setNewEmpWage)} 
+                  placeholder="시급 입력 (예: 10,030)" 
+                />
+              ) : (
+                <input 
+                  type="text" 
+                  inputMode="numeric"
+                  value={newDailyWage} 
+                  onChange={(e) => handleNumberInput(e, setNewDailyWage)} 
+                  placeholder="일당 입력 (예: 150,000)" 
+                  style={{ borderColor: '#ffadd2', backgroundColor: '#fff0f6' }} 
+                />
+              )}
             </div>
 
+            {/* 3. 고정 월급 */}
             <div className="form-group">
               <label style={{color: 'dodgerblue'}}>고정 월급 (선택)</label>
-              {/* ✅ 콤마 적용된 고정 월급 입력 */}
               <input 
                 type="text" 
                 inputMode="numeric"
                 value={newEmpMonthly} 
                 onChange={(e) => handleNumberInput(e, setNewEmpMonthly)} 
-                placeholder="입력 시 시급 무시" 
+                placeholder="입력 시 시급/일당 무시" 
                 style={{borderColor: '#bae7ff', background:'#f0f9ff'}} 
               />
             </div>
 
+            {/* 4. 고용 형태 */}
             <div className="form-group">
               <label>고용 형태</label>
               <select value={newEmpType} onChange={(e) => setNewEmpType(e.target.value as any)}>
@@ -165,10 +207,14 @@ export function EmployeeSection({
                 <option value="freelancer_33">3.3% 프리랜서</option>
               </select>
             </div>
+
+            {/* 5. 입사일 */}
             <div className="form-group date-group">
               <label>입사일</label>
               <DateSelector value={newEmpHireDate} onChange={setNewEmpHireDate} />
             </div>
+
+            {/* 버튼 */}
             <div className="form-group btn-group">
               <button type="submit" className="btn-add">+ 추가</button>
             </div>
