@@ -24,14 +24,14 @@ export function StoreSelector({
   const [isAdding, setIsAdding] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
    
-  // ✅ 모바일 드롭다운 관련 상태 (새 기능 유지)
+  // ✅ 모바일 드롭다운 관련 상태
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentStore = stores.find(s => s.id === currentStoreId);
   const currentStoreName = currentStore ? currentStore.name : '매장 선택';
 
-  // 외부 클릭 시 드롭다운 닫기 (모바일용)
+  // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -50,15 +50,13 @@ export function StoreSelector({
     }
   };
 
-  // 모바일 목록에서 매장 선택 시
   const handleMobileSelect = (storeId: string) => {
     onChangeStore(storeId);
     setIsDropdownOpen(false);
   };
 
-  // 모바일 목록 내 삭제 버튼 클릭 시
   const handleMobileDelete = (e: React.MouseEvent, storeId: string) => {
-    e.stopPropagation(); // 드롭다운 닫힘 방지
+    e.stopPropagation(); 
     onDeleteStore(storeId);
   };
 
@@ -66,7 +64,7 @@ export function StoreSelector({
     <div className="store-selector-wrapper">
       <style jsx>{`
         /* =========================================
-           📱 모바일 스타일 (새로운 디자인 유지)
+           📱 모바일 스타일 (변경 없음)
            ========================================= */
         .store-selector-wrapper {
           width: 100%;
@@ -75,7 +73,6 @@ export function StoreSelector({
           z-index: 20;
         }
 
-        /* 모바일 메인 바 */
         .mobile-bar {
           display: flex;
           justify-content: space-between;
@@ -114,7 +111,6 @@ export function StoreSelector({
           color: #aaa;
         }
 
-        /* 모바일 드롭다운 목록 */
         .dropdown-list {
           position: absolute;
           top: 100%;
@@ -156,34 +152,34 @@ export function StoreSelector({
           cursor: pointer;
         }
 
-        /* PC 컨테이너 기본 숨김 */
         .pc-container { display: none; }
 
 
         /* =========================================
-           💻 PC 화면 (768px 이상) - 원본 디자인 복구
+           💻 PC 화면 (768px 이상) - 깨짐 방지 수정
            ========================================= */
         @media (min-width: 768px) {
           .store-selector-wrapper {
             display: flex;
             justify-content: center;
-            margin-bottom: 30px; /* 원본 여백 복구 */
+            margin-bottom: 30px;
           }
           
-          /* 모바일 요소 숨김 */
           .mobile-bar, .dropdown-list { display: none; }
 
-          /* PC 요소 보임 */
           .pc-container {
             display: flex;
             flex-direction: row;
             align-items: center;
-            width: auto;
+            width: auto; /* 내용물만큼 늘어나게 */
+            max-width: 100%; /* 화면 밖으로 나가지 않게 */
             background-color: rgba(255, 255, 255, 0.1);
-            padding: 12px 30px; /* 원본 패딩 복구 */
+            padding: 12px 30px;
             border-radius: 50px;
             border: none;
             gap: 16px;
+            /* 내용물이 넘치면 줄바꿈되지 않고 스크롤되거나 유지되도록 */
+            flex-wrap: nowrap; 
           }
           .pc-label {
             display: block;
@@ -191,9 +187,12 @@ export function StoreSelector({
             font-weight: bold;
             font-size: 16px;
             margin: 0;
+            /* 👇 핵심 수정: 줄바꿈 금지 & 찌그러짐 방지 */
+            white-space: nowrap; 
+            flex-shrink: 0;
           }
           .select-box {
-            width: 280px; /* 원본 너비 복구 */
+            width: 280px;
             padding: 8px 12px;
             font-size: 15px;
             border: 1px solid #666;
@@ -204,13 +203,16 @@ export function StoreSelector({
             cursor: pointer;
             color: #fff;
             appearance: auto;
-            flex: none; /* 크기 줄어듦 방지 */
+            /* 👇 핵심 수정: 줄어들지 않도록 고정 */
+            flex-shrink: 0; 
           }
           .pc-action-area {
             display: flex;
             gap: 16px;
             align-items: center;
             margin-left: 0;
+            /* 👇 버튼들도 줄어들지 않게 */
+            flex-shrink: 0;
           }
           .pc-add-btn {
             background: none;
@@ -221,7 +223,8 @@ export function StoreSelector({
             opacity: 0.8;
             cursor: pointer;
             padding: 0;
-            white-space: nowrap; /* 줄바꿈 방지 */
+            /* 👇 핵심 수정: 줄바꿈 금지 */
+            white-space: nowrap;
           }
           .pc-add-btn:hover { opacity: 1; }
           
@@ -233,6 +236,7 @@ export function StoreSelector({
             border-radius: 4px;
             cursor: pointer;
             font-size: 13px;
+            /* 👇 핵심 수정: 줄바꿈 금지 */
             white-space: nowrap;
           }
         }
@@ -271,7 +275,7 @@ export function StoreSelector({
         </div>
       ) : (
         <>
-          {/* 📱 [모바일] 커스텀 드롭다운 (새 기능) */}
+          {/* 📱 [모바일] 커스텀 드롭다운 */}
           <div ref={dropdownRef} style={{ width: '100%' }}>
             <div className="mobile-bar" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
               <span className="store-name">{currentStoreName}</span>
@@ -307,7 +311,7 @@ export function StoreSelector({
             )}
           </div>
 
-          {/* 💻 [PC] 원본 디자인 복구 */}
+          {/* 💻 [PC] 수정된 코드 */}
           <div className="pc-container">
             <span className="pc-label">현재 관리 중인 매장:</span>
             <select
