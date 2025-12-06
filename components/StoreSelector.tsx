@@ -163,7 +163,7 @@ export function StoreSelector({
             display: flex;
             justify-content: center;
             /* 👇 1. 간격 축소 (30px -> 10px) */
-            margin-bottom: 4px; 
+            margin-bottom: 0px; 
           }
           
           .mobile-bar, .dropdown-list { display: none; }
