@@ -204,12 +204,22 @@ export default function AuthPage() {
         </div>
       </div>
 
-      <div style={{ position: 'absolute', bottom: '10px', color: 'rgba(255,255,255,0.5)', fontSize: '11px' }}>
-        © 2025 Easy Alba. All rights reserved.
-        © 사업자 바르게 담다
-        문의 메일 inserr509@daum.net
-        문의 전화 010-4554-5587
-      </div>
+<div 
+  style={{ 
+    position: 'absolute', 
+    bottom: '20px',  // 바닥에서 조금 더 띄움
+    left: '0',       // 왼쪽 끝부터
+    width: '100%',   // 화면 전체 너비를 써서
+    textAlign: 'center', // 가운데 정렬
+    color: 'rgba(255,255,255,0.5)', 
+    fontSize: '11px',
+    lineHeight: '1.5' // 줄 간격을 조금 넓혀서 읽기 편하게
+  }}
+>
+  © 2025 Easy Alba. All rights reserved.<br />
+  © 사업자 바르게 담다<br />
+  문의: inserr509@daum.net | 010-4554-5587
+</div>
     </div>
   );
 }
