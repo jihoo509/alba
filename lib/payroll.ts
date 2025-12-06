@@ -29,13 +29,21 @@ export function calculateMonthlyPayroll(
     // 이 직원을 위한 개별 설정이 있는지 확인
     const override = overrides.find(o => o.employee_id === emp.id);
 
-    // 적용할 설정값 결정
+    // ✅ [수정] 일당직 여부 확인
+    const isEmpDaily = emp.pay_type === 'day' || emp.pay_type === '일당';
+
+    // ✅ [수정] 적용할 설정값 결정 (일당직이면 주휴/휴게차감 기본값 false)
     const cfg = {
-        pay_weekly: override?.pay_weekly ?? storeSettings.pay_weekly,
+        // 주휴: 개별설정 있으면 그거 쓰고, 없으면 -> (일당직이면 false, 아니면 매장설정 따라감)
+        pay_weekly: override?.pay_weekly ?? (isEmpDaily ? false : storeSettings.pay_weekly),
+        
         pay_night: override?.pay_night ?? (storeSettings.is_five_plus && storeSettings.pay_night),
         pay_overtime: override?.pay_overtime ?? (storeSettings.is_five_plus && storeSettings.pay_overtime),
         pay_holiday: override?.pay_holiday ?? (storeSettings.is_five_plus && storeSettings.pay_holiday),
-        auto_deduct_break: override?.auto_deduct_break ?? (storeSettings.auto_deduct_break !== false),
+        
+        // 휴게차감: 개별설정 있으면 그거 쓰고, 없으면 -> (일당직이면 false, 아니면 매장설정 따라감)
+        auto_deduct_break: override?.auto_deduct_break ?? (isEmpDaily ? false : (storeSettings.auto_deduct_break !== false)),
+        
         no_tax_deduction: override?.no_tax_deduction ?? (storeSettings.no_tax_deduction || false)
     };
     

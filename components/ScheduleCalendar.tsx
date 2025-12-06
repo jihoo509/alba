@@ -355,12 +355,12 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                             {sch.exclude_holiday_pay && <span style={{fontSize: 10, marginLeft: 4}}>🚫</span>}
                           </div>
                           <div className="schedule-time" style={{ fontSize: 11, opacity: 0.9 }}>{start} ~ {end}</div>
-                          {/* ✅ 일당 금액이 있으면 표시 */}
-                          {showDailyAmount && (
-                              <div style={{ fontSize: 11, fontWeight: 'bold', color: '#ffec3d' }}>
-                                  ￦{Number(sch.daily_pay_amount).toLocaleString()}
-                              </div>
-                          )}
+                          
+                          {/* ❌ [삭제됨] 여기에 있던 금액 표시 코드 제거 
+                             {showDailyAmount && (...)} 이 부분을 지웠습니다.
+                             이제 달력에는 금액이 안 뜨고, 클릭해서 수정 창을 열어야만 보입니다.
+                          */}
+                          
                           <div className="schedule-pattern-only mobile-only-block" style={{ fontSize: 11, fontWeight: 'bold' }}>{patternName || ''}</div>
                         </div>
                       );

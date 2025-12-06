@@ -114,7 +114,6 @@ export function EmployeeSection({
               </span>
             </div>
 
-            {/* ✅ 깔끔한 정석 코드 (빨간 줄 이제 안 뜸!) */}
             <div className="emp-wage">
               {(emp.pay_type === 'day' || emp.pay_type === '일당') ? (
                 <span style={{ color: '#e67e22', fontWeight: 'bold' }}>
@@ -152,36 +151,74 @@ export function EmployeeSection({
               <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} placeholder="이름 입력" />
             </div>
             
+            {/* ▼▼▼ [수정] 디자인 개선된 급여 방식 선택 ▼▼▼ */}
             <div className="form-group">
-              <label style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                급여 방식
-                <div style={{ display: 'flex', gap: '10px', fontSize: '13px', fontWeight: 'normal' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '4px' }}>
-                    <input type="radio" checked={payType === 'time'} onChange={() => setPayType('time')} /> 시급
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '4px' }}>
-                    <input type="radio" checked={payType === 'day'} onChange={() => setPayType('day')} /> 일당
-                  </label>
-                </div>
-              </label>
+              <label>급여 방식</label>
+              
+              {/* 토글 버튼 UI */}
+              <div style={{ display: 'flex', backgroundColor: '#f0f2f5', padding: '4px', borderRadius: '8px', marginBottom: '12px' }}>
+                <button
+                    type="button"
+                    onClick={() => setPayType('time')}
+                    style={{
+                        flex: 1,
+                        padding: '8px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        backgroundColor: payType === 'time' ? '#fff' : 'transparent',
+                        color: payType === 'time' ? 'dodgerblue' : '#888',
+                        fontWeight: payType === 'time' ? 'bold' : 'normal',
+                        boxShadow: payType === 'time' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    시급
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setPayType('day')}
+                    style={{
+                        flex: 1,
+                        padding: '8px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        backgroundColor: payType === 'day' ? '#fff' : 'transparent',
+                        color: payType === 'day' ? '#e67e22' : '#888',
+                        fontWeight: payType === 'day' ? 'bold' : 'normal',
+                        boxShadow: payType === 'day' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    일당
+                </button>
+              </div>
 
               {payType === 'time' ? (
-                <input 
-                  type="text" 
-                  inputMode="numeric"
-                  value={newEmpWage} 
-                  onChange={(e) => handleNumberInput(e, setNewEmpWage)} 
-                  placeholder="시급 입력 (예: 10,030)" 
-                />
+                <div style={{ position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      inputMode="numeric"
+                      value={newEmpWage} 
+                      onChange={(e) => handleNumberInput(e, setNewEmpWage)} 
+                      placeholder="0" 
+                      style={{ paddingRight: '40px' }} 
+                    />
+                    <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#888', fontSize: '14px' }}>원</span>
+                </div>
               ) : (
-                <input 
-                  type="text" 
-                  inputMode="numeric"
-                  value={newDailyWage} 
-                  onChange={(e) => handleNumberInput(e, setNewDailyWage)} 
-                  placeholder="일당 입력 (예: 150,000)" 
-                  style={{ borderColor: '#ffadd2', backgroundColor: '#fff0f6' }} 
-                />
+                <div style={{ position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      inputMode="numeric"
+                      value={newDailyWage} 
+                      onChange={(e) => handleNumberInput(e, setNewDailyWage)} 
+                      placeholder="0" 
+                      style={{ borderColor: '#ffadd2', backgroundColor: '#fff0f6', paddingRight: '40px' }} 
+                    />
+                    <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#e67e22', fontSize: '14px' }}>원</span>
+                </div>
               )}
             </div>
 
