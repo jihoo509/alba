@@ -156,13 +156,14 @@ export function StoreSelector({
 
 
         /* =========================================
-           💻 PC 화면 (768px 이상) - 깨짐 방지 수정
+           💻 PC 화면 (768px 이상) - 버튼 스타일 및 간격 수정
            ========================================= */
         @media (min-width: 768px) {
           .store-selector-wrapper {
             display: flex;
             justify-content: center;
-            margin-bottom: 30px;
+            /* 👇 1. 간격 축소 (30px -> 10px) */
+            margin-bottom: 10px; 
           }
           
           .mobile-bar, .dropdown-list { display: none; }
@@ -171,14 +172,13 @@ export function StoreSelector({
             display: flex;
             flex-direction: row;
             align-items: center;
-            width: auto; /* 내용물만큼 늘어나게 */
-            max-width: 100%; /* 화면 밖으로 나가지 않게 */
+            width: auto;
+            max-width: 100%;
             background-color: rgba(255, 255, 255, 0.1);
             padding: 12px 30px;
             border-radius: 50px;
             border: none;
             gap: 16px;
-            /* 내용물이 넘치면 줄바꿈되지 않고 스크롤되거나 유지되도록 */
             flex-wrap: nowrap; 
           }
           .pc-label {
@@ -187,7 +187,6 @@ export function StoreSelector({
             font-weight: bold;
             font-size: 16px;
             margin: 0;
-            /* 👇 핵심 수정: 줄바꿈 금지 & 찌그러짐 방지 */
             white-space: nowrap; 
             flex-shrink: 0;
           }
@@ -203,30 +202,33 @@ export function StoreSelector({
             cursor: pointer;
             color: #fff;
             appearance: auto;
-            /* 👇 핵심 수정: 줄어들지 않도록 고정 */
             flex-shrink: 0; 
           }
           .pc-action-area {
             display: flex;
-            gap: 16px;
+            gap: 12px; /* 버튼 사이 간격 살짝 조정 */
             align-items: center;
             margin-left: 0;
-            /* 👇 버튼들도 줄어들지 않게 */
             flex-shrink: 0;
           }
+
+          /* 👇 2. 매장 추가 버튼 스타일 (버튼 형태로 변경) */
           .pc-add-btn {
-            background: none;
-            border: none;
-            font-size: 16px; 
-            font-weight: bold;
+            background: #555; /* 어두운 배경 (파란색을 원하면 dodgerblue로 변경 가능) */
+            border: 1px solid #666;
             color: #fff;
-            opacity: 0.8;
+            font-size: 13px; 
+            font-weight: bold;
+            padding: 6px 12px; /* 패딩 추가 */
+            border-radius: 4px; /* 둥근 모서리 */
             cursor: pointer;
-            padding: 0;
-            /* 👇 핵심 수정: 줄바꿈 금지 */
             white-space: nowrap;
+            transition: background 0.2s;
           }
-          .pc-add-btn:hover { opacity: 1; }
+          .pc-add-btn:hover { 
+            background: #666; 
+            opacity: 1; 
+          }
           
           .pc-del-btn {
             background: #e74c3c;
@@ -236,7 +238,6 @@ export function StoreSelector({
             border-radius: 4px;
             cursor: pointer;
             font-size: 13px;
-            /* 👇 핵심 수정: 줄바꿈 금지 */
             white-space: nowrap;
           }
         }
@@ -326,8 +327,9 @@ export function StoreSelector({
               ))}
             </select>
             <div className="pc-action-area">
+              {/* 👇 + 기호 제거하고 버튼 스타일 적용됨 */}
               <button onClick={() => setIsAdding(true)} className="pc-add-btn">
-                + 매장 추가
+                매장 추가
               </button>
               {currentStoreId && (
                 <button onClick={() => onDeleteStore(currentStoreId)} className="pc-del-btn">
