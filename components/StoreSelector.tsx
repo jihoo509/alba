@@ -35,19 +35,23 @@ export function StoreSelector({
   return (
     <div className="store-selector-wrapper">
       <style jsx>{`
-        /* 📱 모바일 기본 스타일 (꽉 찬 너비, 세로 배치) */
+        /* 📱 모바일 기본 스타일 (완전 초기화 상태) */
         .store-selector-wrapper {
           width: 100%;
           margin-bottom: 20px;
         }
+        /* 컨테이너: 모바일에서는 아무런 디자인 요소가 없어야 함 */
         .container {
           display: flex;
-          flex-direction: column; /* 모바일은 세로로 */
+          flex-direction: column;
           gap: 10px;
           width: 100%;
+          padding: 0;
+          background-color: transparent;
+          border-radius: 0;
         }
         .pc-label {
-          display: none; /* 모바일에서는 라벨 숨김 */
+          display: none;
         }
         .select-box {
           width: 100%;
@@ -58,21 +62,22 @@ export function StoreSelector({
           color: #fff;
           border-radius: 8px;
           outline: none;
-          text-align: left; /* 모바일은 왼쪽 정렬이 국룰 */
         }
+        /* 버튼 영역: 모바일에서는 패딩 없이 양끝 정렬 */
         .action-area {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0 4px;
+          padding: 0; 
         }
         .add-btn {
           background: none;
           border: none;
           color: #ccc;
           cursor: pointer;
-          font-size: 13px;
+          font-size: 14px; /* 모바일 폰트 크기 */
           text-decoration: underline;
+          padding: 0;
         }
         .del-btn {
           background: #e74c3c;
@@ -87,17 +92,17 @@ export function StoreSelector({
         /* 💻 PC 화면 (768px 이상) 스타일 재정의 */
         @media (min-width: 768px) {
           .store-selector-wrapper {
-            display: flex;
-            justify-content: center; /* 화면 중앙 정렬 */
+            justify-content: center;
             margin-bottom: 30px;
           }
+          /* PC 전용 디자인 컨테이너 */
           .container {
-            flex-direction: row; /* 가로 배치 */
+            flex-direction: row;
             align-items: center;
-            width: auto; /* 내용물 크기만큼만 */
+            width: auto;
             background-color: rgba(255, 255, 255, 0.1); /* 둥근 배경 */
-            padding: 12px 30px;
-            border-radius: 50px;
+            padding: 12px 30px; /* 패딩 */
+            border-radius: 50px; /* 둥근 모서리 */
             gap: 16px;
           }
           .pc-label {
@@ -105,30 +110,23 @@ export function StoreSelector({
             color: #fff;
             font-weight: bold;
             font-size: 16px;
-            white-space: nowrap;
             margin: 0;
           }
           .select-box {
-            width: 280px; /* 적당한 고정 너비 */
+            width: 280px;
             padding: 8px 12px;
             font-size: 15px;
             border: 1px solid #666;
             background-color: #222;
-            text-align: center; /* 텍스트 가운데 정렬 */
-            text-align-last: center; /* 크롬 등에서 강제 가운데 정렬 */
+            text-align: center;
+            text-align-last: center;
             cursor: pointer;
           }
-          /* 드롭다운 옵션도 가운데 정렬 시도 (브라우저마다 다를 수 있음) */
-          .select-box option {
-            text-align: center;
-          }
-
           .action-area {
             gap: 16px;
-            padding: 0;
             justify-content: flex-start;
           }
-          /* '+ 매장 추가' 버튼을 라벨과 똑같은 스타일로 변경 */
+          /* PC에서는 버튼 스타일을 라벨과 통일 */
           .add-btn {
             font-size: 16px; 
             font-weight: bold;
@@ -139,10 +137,7 @@ export function StoreSelector({
           }
           .add-btn:hover {
             opacity: 1;
-          }
-          .del-btn {
-            font-size: 13px;
-            padding: 6px 12px;
+            text-decoration: none;
           }
         }
       `}</style>
@@ -194,7 +189,6 @@ export function StoreSelector({
         </div>
       ) : (
         <div className="container">
-          {/* PC용 라벨 */}
           <span className="pc-label">현재 관리 중인 매장:</span>
 
           <select
@@ -210,7 +204,6 @@ export function StoreSelector({
           </select>
 
           <div className="action-area">
-            {/* PC에서는 라벨과 같은 스타일, 모바일에서는 작은 링크 스타일 */}
             <button onClick={() => setIsAdding(true)} className="add-btn">
               + 매장 추가
             </button>
