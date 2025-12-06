@@ -17,7 +17,7 @@ type Props = {
 
 function getEmploymentLabel(type: string) {
   if (type === 'four_insurance' || type === 'employee' || type === 'insured') return '4대 보험';
-  if (type === 'freelancer_33' || type === 'freelancer') return '프리랜서';
+  if (type === 'freelancer_33' || type === 'freelancer') return '3.3% 프리랜서';
   return type;
 }
 
@@ -35,6 +35,9 @@ export function EmployeeSection({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   
+  // ✅ [추가] 고용 형태 드롭다운 열림 상태
+  const [isTypeOpen, setIsTypeOpen] = useState(false);
+
   const supabase = createSupabaseBrowserClient();
   const today = new Date().toISOString().split('T')[0];
   const activeEmployees = employees.filter(emp => !emp.end_date || emp.end_date >= today);
@@ -47,6 +50,12 @@ export function EmployeeSection({
     if (/^\d*$/.test(raw)) {
       setter(raw === '' ? '' : Number(raw).toLocaleString());
     }
+  };
+
+  // ✅ 고용 형태 선택 핸들러 (즉시 닫힘)
+  const handleSelectType = (value: 'freelancer_33' | 'four_insurance') => {
+    setNewEmpType(value);
+    setIsTypeOpen(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -142,88 +151,124 @@ export function EmployeeSection({
 
   return (
     <section>
+      <style jsx>{`
+        /* ✅ PC용 반응형 그리드 설정 */
+        .form-grid-layout {
+          display: grid;
+          gap: 16px;
+          /* 모바일: 1열 */
+          grid-template-columns: 1fr; 
+        }
+
+        /* PC (768px 이상): 3열로 꽉 채우기 */
+        @media (min-width: 768px) {
+          .form-grid-layout {
+            grid-template-columns: 1fr 1fr 1fr;
+            align-items: end; /* 버튼 높이 맞춤 */
+          }
+          /* 급여 설정 부분은 좀 더 넓게 */
+          .pay-setting-group {
+            grid-column: span 1; 
+          }
+        }
+      `}</style>
+
       <div className="new-employee-form-card">
-        <h3 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 12, color: '#333' }}>새 직원 등록</h3>
-        <form onSubmit={handleSubmit}>
+        <h3 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16, color: '#333' }}>새 직원 등록</h3>
+        <form onSubmit={handleSubmit} className="form-grid-layout">
           
-          {/* ✅ [수정] 반응형 그리드 레이아웃 적용 */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            
-            {/* 1행: 이름 & 고정 월급 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div className="form-group">
-                    <label>이름</label>
-                    <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} placeholder="이름 입력" style={{width:'100%', boxSizing:'border-box'}} />
-                </div>
-                <div className="form-group">
-                    <label style={{color: 'dodgerblue'}}>고정 월급 (선택)</label>
-                    <input 
-                        type="text" 
-                        inputMode="numeric"
-                        value={newEmpMonthly} 
-                        onChange={(e) => handleNumberInput(e, setNewEmpMonthly)} 
-                        placeholder="입력 시 시급/일당 무시" 
-                        style={{borderColor: '#bae7ff', background:'#f0f9ff', width:'100%', boxSizing:'border-box'}} 
-                    />
-                </div>
-            </div>
-
-            {/* 2행: 급여 방식 & 금액 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div className="form-group">
-                    <label>급여 방식</label>
-                    {/* 토글 버튼 UI */}
-                    <div style={{ display: 'flex', backgroundColor: '#f0f2f5', padding: '4px', borderRadius: '8px', marginBottom: '8px' }}>
-                        <button type="button" onClick={() => setPayType('time')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: payType === 'time' ? '#fff' : 'transparent', color: payType === 'time' ? 'dodgerblue' : '#888', fontWeight: payType === 'time' ? 'bold' : 'normal', boxShadow: payType === 'time' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}>시급</button>
-                        <button type="button" onClick={() => setPayType('day')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: payType === 'day' ? '#fff' : 'transparent', color: payType === 'day' ? '#e67e22' : '#888', fontWeight: payType === 'day' ? 'bold' : 'normal', boxShadow: payType === 'day' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}>일당</button>
-                    </div>
-
-                    {/* 금액 입력란 (box-sizing과 width: 100%로 튀어나감 방지) */}
-                    <div style={{ position: 'relative', width: '100%' }}>
-                        {payType === 'time' ? (
-                            <input 
-                                type="text" 
-                                inputMode="numeric"
-                                value={newEmpWage} 
-                                onChange={(e) => handleNumberInput(e, setNewEmpWage)} 
-                                placeholder="0" 
-                                style={{ width: '100%', boxSizing: 'border-box', paddingRight: '40px' }} 
-                            />
-                        ) : (
-                            <input 
-                                type="text" 
-                                inputMode="numeric"
-                                value={newDailyWage} 
-                                onChange={(e) => handleNumberInput(e, setNewDailyWage)} 
-                                placeholder="0" 
-                                style={{ width: '100%', boxSizing: 'border-box', borderColor: '#ffadd2', backgroundColor: '#fff0f6', paddingRight: '40px' }} 
-                            />
-                        )}
-                        <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: payType === 'time' ? '#888' : '#e67e22', fontSize: '14px', pointerEvents: 'none' }}>원</span>
-                    </div>
-                </div>
-
-                <div className="form-group">
-                    <label>고용 형태</label>
-                    <select value={newEmpType} onChange={(e) => setNewEmpType(e.target.value as any)} style={{width:'100%', boxSizing:'border-box'}}>
-                        <option value="four_insurance">4대 보험</option>
-                        <option value="freelancer_33">3.3% 프리랜서</option>
-                    </select>
-                </div>
-            </div>
-
-            {/* 3행: 입사일 & 버튼 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'flex-end' }}>
-                <div className="form-group date-group">
-                    <label>입사일</label>
-                    <DateSelector value={newEmpHireDate} onChange={setNewEmpHireDate} />
-                </div>
-                <div className="form-group btn-group" style={{marginTop: 'auto'}}>
-                    <button type="submit" className="btn-add" style={{width:'100%'}}>+ 직원 추가</button>
-                </div>
-            </div>
-
+          {/* 1. 이름 */}
+          <div className="form-group">
+            <label>이름</label>
+            <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} placeholder="이름 입력" style={{width:'100%', boxSizing:'border-box'}} />
           </div>
+
+          {/* 2. 고용 형태 (커스텀 드롭다운) */}
+          <div className="form-group" style={{ position: 'relative' }}>
+            <label>고용 형태</label>
+            <div 
+                onClick={() => setIsTypeOpen(!isTypeOpen)}
+                style={{
+                    width: '100%', padding: '10px 12px', boxSizing: 'border-box',
+                    border: '1px solid #ddd', borderRadius: '6px', backgroundColor: '#fff',
+                    cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    fontSize: '14px', color: '#333'
+                }}
+            >
+                <span>{getEmploymentLabel(newEmpType)}</span>
+                <span style={{ fontSize: '10px', color: '#888' }}>▼</span>
+            </div>
+            
+            {isTypeOpen && (
+                <div style={{
+                    position: 'absolute', top: '100%', left: 0, width: '100%',
+                    backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '6px',
+                    marginTop: '4px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}>
+                    <div 
+                        onClick={() => handleSelectType('four_insurance')}
+                        style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', fontSize: '14px' }}
+                    >
+                        4대 보험
+                    </div>
+                    <div 
+                        onClick={() => handleSelectType('freelancer_33')}
+                        style={{ padding: '12px', cursor: 'pointer', fontSize: '14px' }}
+                    >
+                        3.3% 프리랜서
+                    </div>
+                </div>
+            )}
+          </div>
+
+          {/* 3. 입사일 */}
+          <div className="form-group date-group">
+            <label>입사일</label>
+            <DateSelector value={newEmpHireDate} onChange={setNewEmpHireDate} />
+          </div>
+
+          {/* 4. 급여 방식 & 금액 (PC에서는 2열로 배치될 수 있음) */}
+          <div className="form-group pay-setting-group">
+            <label>급여 설정</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+                {/* 토글 버튼 */}
+                <div style={{ display: 'flex', backgroundColor: '#f0f2f5', padding: '2px', borderRadius: '6px', flexShrink: 0 }}>
+                    <button type="button" onClick={() => setPayType('time')} style={{ padding: '8px 12px', borderRadius: '4px', border: 'none', backgroundColor: payType === 'time' ? '#fff' : 'transparent', color: payType === 'time' ? 'dodgerblue' : '#888', fontWeight: payType === 'time' ? 'bold' : 'normal', boxShadow: payType === 'time' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontSize: 13 }}>시급</button>
+                    <button type="button" onClick={() => setPayType('day')} style={{ padding: '8px 12px', borderRadius: '4px', border: 'none', backgroundColor: payType === 'day' ? '#fff' : 'transparent', color: payType === 'day' ? '#e67e22' : '#888', fontWeight: payType === 'day' ? 'bold' : 'normal', boxShadow: payType === 'day' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontSize: 13 }}>일당</button>
+                </div>
+
+                {/* 금액 입력란 */}
+                <div style={{ position: 'relative', flex: 1 }}>
+                    {payType === 'time' ? (
+                        <input 
+                            type="text" inputMode="numeric" value={newEmpWage} onChange={(e) => handleNumberInput(e, setNewEmpWage)} 
+                            placeholder="0" style={{ width: '100%', boxSizing: 'border-box', paddingRight: '30px' }} 
+                        />
+                    ) : (
+                        <input 
+                            type="text" inputMode="numeric" value={newDailyWage} onChange={(e) => handleNumberInput(e, setNewDailyWage)} 
+                            placeholder="0" style={{ width: '100%', boxSizing: 'border-box', borderColor: '#ffadd2', backgroundColor: '#fff0f6', paddingRight: '30px' }} 
+                        />
+                    )}
+                    <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888', fontSize: '13px', pointerEvents: 'none' }}>원</span>
+                </div>
+            </div>
+          </div>
+
+          {/* 5. 고정 월급 */}
+          <div className="form-group">
+            <label style={{color: 'dodgerblue'}}>고정 월급 (선택)</label>
+            <input 
+                type="text" inputMode="numeric" value={newEmpMonthly} onChange={(e) => handleNumberInput(e, setNewEmpMonthly)} 
+                placeholder="입력 시 자동계산 무시" style={{borderColor: '#bae7ff', background:'#f0f9ff', width:'100%', boxSizing:'border-box'}} 
+            />
+          </div>
+
+          {/* 6. 추가 버튼 */}
+          <div className="form-group btn-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button type="submit" className="btn-add" style={{width:'100%', height: '42px'}}>+ 직원 추가</button>
+          </div>
+
         </form>
       </div>
 
