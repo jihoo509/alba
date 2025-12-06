@@ -35,74 +35,95 @@ export function StoreSelector({
   return (
     <div className="store-selector-wrapper">
       <style jsx>{`
-        /* 📱 모바일 기본 스타일 (완전 초기화 상태) */
+        /* 📱 모바일 스타일 (어두운 바 안에 모두 포함) */
         .store-selector-wrapper {
           width: 100%;
-          margin-bottom: 20px;
+          margin-bottom: 10px;
         }
-        /* 컨테이너: 모바일에서는 아무런 디자인 요소가 없어야 함 */
         .container {
           display: flex;
-          flex-direction: column;
-          gap: 10px;
-          width: 100%;
-          padding: 0;
-          background-color: transparent;
-          border-radius: 0;
+          flex-direction: row; /* 가로 배치 */
+          align-items: center;
+          justify-content: space-between;
+          background-color: #333; /* 어두운 배경 */
+          border-radius: 8px;
+          padding: 8px 12px;
+          border: 1px solid #444;
         }
         .pc-label {
           display: none;
         }
+        /* 선택 박스 (배경 투명, 글자 흰색) */
         .select-box {
+          flex: 1;
           width: 100%;
-          padding: 12px;
+          background-color: transparent;
+          color: #fff;
+          border: none;
           font-size: 16px;
-          border: 1px solid #444;
+          font-weight: bold;
+          outline: none;
+          padding: 4px 0;
+          cursor: pointer;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          /* 기본 화살표 스타일링 (브라우저마다 다름) */
+          appearance: none; 
+          background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+          background-repeat: no-repeat;
+          background-position: right 0px top 50%;
+          background-size: 10px auto;
+          padding-right: 20px; /* 화살표 공간 확보 */
+        }
+        /* 옵션 배경은 어둡게 (안 그러면 흰 배경에 흰 글씨 됨) */
+        .select-box option {
           background-color: #333;
           color: #fff;
-          border-radius: 8px;
-          outline: none;
         }
-        /* 버튼 영역: 모바일에서는 패딩 없이 양끝 정렬 */
+
         .action-area {
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          padding: 0; 
+          gap: 8px;
+          margin-left: 12px;
+          flex-shrink: 0;
         }
+        /* 모바일용 버튼 스타일 (작고 심플하게) */
         .add-btn {
-          background: none;
-          border: none;
-          color: #ccc;
+          background: #555;
+          border: 1px solid #666;
+          color: #fff;
+          padding: 6px 10px;
+          border-radius: 4px;
           cursor: pointer;
-          font-size: 14px; /* 모바일 폰트 크기 */
-          text-decoration: underline;
-          padding: 0;
+          font-size: 12px;
+          white-space: nowrap;
         }
         .del-btn {
           background: #e74c3c;
           border: none;
           color: #fff;
-          padding: 6px 12px;
+          padding: 6px 10px;
           border-radius: 4px;
           cursor: pointer;
-          font-size: 13px;
+          font-size: 12px;
+          white-space: nowrap;
         }
 
-        /* 💻 PC 화면 (768px 이상) 스타일 재정의 */
+        /* 💻 PC 화면 스타일 재정의 (기존 유지) */
         @media (min-width: 768px) {
           .store-selector-wrapper {
+            display: flex;
             justify-content: center;
             margin-bottom: 30px;
           }
-          /* PC 전용 디자인 컨테이너 */
           .container {
-            flex-direction: row;
-            align-items: center;
             width: auto;
-            background-color: rgba(255, 255, 255, 0.1); /* 둥근 배경 */
-            padding: 12px 30px; /* 패딩 */
-            border-radius: 50px; /* 둥근 모서리 */
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 12px 30px;
+            border-radius: 50px;
+            border: none;
             gap: 16px;
           }
           .pc-label {
@@ -113,31 +134,38 @@ export function StoreSelector({
             margin: 0;
           }
           .select-box {
+            flex: none;
             width: 280px;
             padding: 8px 12px;
             font-size: 15px;
             border: 1px solid #666;
             background-color: #222;
+            border-radius: 8px;
             text-align: center;
             text-align-last: center;
-            cursor: pointer;
+            background-image: none; /* PC는 기본 화살표 사용 */
+            padding-right: 12px;
+            appearance: auto;
           }
           .action-area {
             gap: 16px;
-            justify-content: flex-start;
+            margin-left: 0;
           }
-          /* PC에서는 버튼 스타일을 라벨과 통일 */
+          /* PC용 버튼 스타일 (텍스트 형태) */
           .add-btn {
+            background: none;
+            border: none;
             font-size: 16px; 
             font-weight: bold;
-            color: #fff;
-            text-decoration: none;
+            padding: 0;
             opacity: 0.8;
-            transition: opacity 0.2s;
           }
           .add-btn:hover {
             opacity: 1;
-            text-decoration: none;
+          }
+          .del-btn {
+            font-size: 13px;
+            padding: 6px 12px;
           }
         }
       `}</style>
