@@ -68,7 +68,7 @@ export function StoreSelector({
            ========================================= */
         .store-selector-wrapper {
           width: 100%;
-          margin-bottom: 10px;
+          margin-bottom: 5px;
           position: relative;
           z-index: 20;
         }
