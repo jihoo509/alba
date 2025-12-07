@@ -13,6 +13,7 @@ import { calculateMonthlyPayroll } from '@/lib/payroll';
 import TutorialModal from '@/components/TutorialModal';
 import AdditionalInfoModal from '@/components/AdditionalInfoModal';
 import AccountSettingsModal from '@/components/AccountSettingsModal';
+import InitialStoreSetup from '@/components/InitialStoreSetup'; // ✅ [추가] 초기 설정 컴포넌트
 
 type Store = { id: string; name: string; };
 
@@ -42,6 +43,7 @@ function DashboardContent() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null); // ✅ [추가] userId 상태
   const [userEmail, setUserEmail] = useState('');
   const [userPhone, setUserPhone] = useState(''); 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -81,9 +83,11 @@ function DashboardContent() {
     updateUrl('home', storeId);
   };
 
-  const loadStores = useCallback(async (userId: string) => {
-    const { data, error } = await supabase.from('stores').select('*').eq('owner_id', userId);
+  const loadStores = useCallback(async (uid: string) => {
+    const { data, error } = await supabase.from('stores').select('*').eq('owner_id', uid); // ✅ user_id -> owner_id 확인 필요 (DB 컬럼명에 따름)
     if (error) { setErrorMsg('매장 로딩 실패'); return; }
+    
+    // id를 문자열로 변환
     const list = (data ?? []).map((row: any) => ({ id: String(row.id), name: row.name }));
     setStores(list);
 
@@ -221,6 +225,7 @@ function DashboardContent() {
       if (!session) { router.replace('/'); return; }
       
       const user = session.user;
+      setUserId(user.id); // ✅ [추가] userId 저장
       setUserEmail(user.email || '');
       setUserPhone(user.user_metadata?.phone || ''); 
 
@@ -243,7 +248,9 @@ function DashboardContent() {
   }, [currentStoreId, loadEmployees, loadHomeStats]);
 
   const renderTabContent = () => {
-    if (!currentStoreId) return <p style={{ color: '#ddd', textAlign: 'center', marginTop: 40 }}>매장을 선택해주세요.</p>;
+    // ✅ [수정] 매장이 없는 경우의 UI는 메인 로직에서 InitialStoreSetup으로 대체됨
+    // 여기서는 매장이 있지만 선택되지 않은 에러 상황만 처리
+    if (!currentStoreId) return null;
 
     if (currentTab === 'home') {
       return (
@@ -334,14 +341,13 @@ function DashboardContent() {
         <div style={{ width: '100%', maxWidth: '750px', margin: '0 auto', boxSizing: 'border-box' }}>
           
           <div style={{ padding: '12px 20px 0 20px' }}>
-            {/* ✅ 수정: 로고의 강제 마진 제거 및 paddingLeft 제거 */}
             <header style={{ 
               display: 'flex', 
-              justifyContent: 'center', // ✨ [변경] space-between -> center (가운데 정렬)
+              justifyContent: 'center', 
               alignItems: 'center', 
               marginBottom: 12,
-              gap: '16px', // ✨ [추가] 로고와 버튼 사이의 간격 (원하는 만큼 조절하세요)
-              flexWrap: 'wrap' // ✨ [추가] 모바일 화면이 너무 좁을 때 자연스럽게 줄바꿈 처리
+              gap: '16px',
+              flexWrap: 'wrap'
             }}>
               <h1 className="mobile-logo-text" style={{ 
                 fontSize: 28, 
@@ -361,16 +367,20 @@ function DashboardContent() {
 
             {errorMsg && <div style={{ marginBottom: 10, color: 'salmon' }}>{errorMsg}</div>}
 
-            <StoreSelector
-              stores={stores}
-              currentStoreId={currentStoreId}
-              onChangeStore={handleStoreChange}
-              creatingStore={creatingStore}
-              onCreateStore={handleCreateStore}
-              onDeleteStore={handleDeleteStore}
-            />
+            {/* ✅ [수정] 매장이 하나라도 있을 때만 Selector 보여줌 */}
+            {stores.length > 0 && (
+              <StoreSelector
+                stores={stores}
+                currentStoreId={currentStoreId}
+                onChangeStore={handleStoreChange}
+                creatingStore={creatingStore}
+                onCreateStore={handleCreateStore}
+                onDeleteStore={handleDeleteStore}
+              />
+            )}
           </div>
 
+          {/* 탭 버튼들도 매장이 있을 때만 표시 */}
           {stores.length > 0 && currentStoreId && (
             <div className="mobile-sticky-nav">
               <div className="mobile-tab-container" style={{ 
@@ -414,14 +424,22 @@ function DashboardContent() {
       >
       <div className="mobile-only" style={{ height: '20px' }}></div>
 
-        {stores.length > 0 && currentStoreId && (
-          <div style={{ width: '100%' }} className={currentTab === 'schedules' ? 'shrink-on-mobile' : ''}>
-            {renderTabContent()}
-          </div>
+        {/* ✅ [핵심 로직] 매장이 없을 경우 -> InitialStoreSetup 표시 */}
+        {stores.length === 0 && userId ? (
+           <InitialStoreSetup 
+             userId={userId} 
+             onComplete={() => loadStores(userId)} 
+           />
+        ) : (
+           // 매장이 있을 경우 -> 대시보드 표시
+           currentStoreId && (
+            <div style={{ width: '100%' }} className={currentTab === 'schedules' ? 'shrink-on-mobile' : ''}>
+              {renderTabContent()}
+            </div>
+           )
         )}
       </div>
 
-      {/* ✅ 추가 정보 입력 모달 */}
       {showAdditionalInfo && (
         <AdditionalInfoModal 
           isOpen={showAdditionalInfo}
@@ -430,7 +448,6 @@ function DashboardContent() {
         />
       )}
 
-      {/* ✅ 계정 설정 모달 */}
       <AccountSettingsModal 
         isOpen={showAccountSettings}
         onClose={() => setShowAccountSettings(false)}
