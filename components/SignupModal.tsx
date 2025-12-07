@@ -153,7 +153,7 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
               </div>
             </div>
             
-            {/* ✅ 개인정보 동의 (버튼 하단 배치 수정) */}
+            {/* ✅ 개인정보 동의 (간격 축소) */}
             <div className="privacy-area">
                <div className="privacy-row">
                  <input 
@@ -171,7 +171,7 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
                  </label>
                </div>
                
-               {/* ✅ 버튼을 아래로 내리고 왼쪽 들여쓰기 적용 */}
+               {/* 간격을 줄여서 바로 밑에 붙임 */}
                <button 
                   type="button" 
                   className="detail-btn"
@@ -195,7 +195,7 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
         </div>
       </div>
 
-      {/* ✅ 약관 상세 내용 팝업 */}
+      {/* 약관 상세 내용 팝업 */}
       {showPrivacyDetail && (
         <div className="detail-overlay" onClick={() => setShowPrivacyDetail(false)}>
           <div className="detail-content" onClick={(e) => e.stopPropagation()}>
@@ -225,7 +225,7 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
       )}
 
       <style jsx>{`
-        /* ...기존 스타일 유지... */
+        /* ...기존 스타일 ... */
         .modal-overlay {
           position: fixed;
           top: 0; left: 0; right: 0; bottom: 0;
@@ -313,16 +313,16 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
         }
         .dash { color: #888; font-weight: bold; flex-shrink: 0; }
 
-        /* ✅ 개선된 개인정보 영역 (세로 배치) */
+        /* ✅ 개선된 개인정보 영역 (간격 최소화) */
         .privacy-area {
             display: flex;
-            flex-direction: column; /* 세로 정렬 */
-            align-items: flex-start; /* 왼쪽 정렬 */
+            flex-direction: column; 
+            align-items: flex-start;
             background-color: #f5f7fa;
             padding: 12px;
             border-radius: 8px;
             margin-top: 5px;
-            gap: 6px;
+            gap: 0px; /* ✅ 간격 제거하여 꽉 차게 */
         }
         .privacy-row {
             display: flex;
@@ -352,16 +352,17 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
             word-break: keep-all;
         }
         
-        /* ✅ 약관보기 버튼 스타일 수정 */
         .detail-btn {
             background: none;
             border: none;
-            padding: 4px 0;
+            padding: 0; /* 패딩 제거 */
             font-size: 12px;
             color: #666;
             cursor: pointer;
             text-decoration: underline;
-            margin-left: 26px; /* 체크박스 크기만큼 들여쓰기해서 텍스트랑 라인 맞춤 */
+            margin-left: 26px; /* 들여쓰기 유지 */
+            margin-top: 2px;   /* 위쪽 요소와 살짝만 띄움 */
+            display: block;
         }
         .detail-btn:hover {
             color: #0052cc;
