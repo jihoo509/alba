@@ -337,9 +337,11 @@ function DashboardContent() {
             {/* ✅ 수정: 로고의 강제 마진 제거 및 paddingLeft 제거 */}
             <header style={{ 
               display: 'flex', 
-              justifyContent: 'space-between', 
+              justifyContent: 'center', // ✨ [변경] space-between -> center (가운데 정렬)
               alignItems: 'center', 
-              marginBottom: 12
+              marginBottom: 12,
+              gap: '16px', // ✨ [추가] 로고와 버튼 사이의 간격 (원하는 만큼 조절하세요)
+              flexWrap: 'wrap' // ✨ [추가] 모바일 화면이 너무 좁을 때 자연스럽게 줄바꿈 처리
             }}>
               <h1 className="mobile-logo-text" style={{ 
                 fontSize: 28, 
