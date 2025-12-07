@@ -8,10 +8,18 @@ export default function AdminMembersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 관리자 비밀번호 같은 걸 걸어두면 좋습니다 (간단하게 prompt로 처리 예시)
   useEffect(() => {
-    // const pw = prompt('관리자 비밀번호를 입력하세요');
-    // if (pw !== '1234') { history.back(); } 
+    // 1. 들어오자마자 비밀번호 물어보기
+    const pw = prompt('관리자 비밀번호를 입력하세요');
+    
+    // 2. 비밀번호가 '996633225588'이 아니면 쫓아내기
+    if (pw !== '996633225588') { 
+       alert('관리자만 접근할 수 있습니다.');
+       window.location.href = '/'; // 메인 화면으로 강제 이동
+       return;
+    } 
+    
+    // 3. 맞으면 데이터 불러오기
     fetchUsers();
   }, []);
 
