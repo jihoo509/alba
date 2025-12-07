@@ -11,20 +11,20 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
   const [name, setName] = useState('');
   const [isFivePlus, setIsFivePlus] = useState(false);
   
-  // 수당 설정 (기본값)
+  // ✅ [수정 1] 기본값 변경: 주휴만 true, 나머지는 false
   const [payWeekly, setPayWeekly] = useState(true); 
-  const [payNight, setPayNight] = useState(true);   
-  const [payHoliday, setPayHoliday] = useState(true); 
-  const [payOvertime, setPayOvertime] = useState(true); 
+  const [payNight, setPayNight] = useState(false);   
+  const [payHoliday, setPayHoliday] = useState(false); 
+  const [payOvertime, setPayOvertime] = useState(false); 
 
-  // 5인 이상 체크 시 자동 설정 로직
+  // ✅ [수정 2] 5인 이상 체크/해제 시 연동 로직
   const handle5PlusChange = (checked: boolean) => {
     setIsFivePlus(checked);
-    if (checked) {
-      setPayNight(true);
-      setPayHoliday(true);
-      setPayOvertime(true);
-    }
+    // 체크하면 -> 수당 3종 세트 자동 켜기
+    // 해제하면 -> 수당 3종 세트 자동 끄기
+    setPayNight(checked);
+    setPayHoliday(checked);
+    setPayOvertime(checked);
   };
 
   const handleSave = async () => {
@@ -36,9 +36,8 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
     try {
       setLoading(true);
 
-      // ✅ [수정 1] 컬럼명 수정: user_id -> owner_id
       const { error } = await supabase.from('stores').insert({
-        owner_id: userId, // 👈 여기가 원인이었습니다. DB 컬럼명에 맞게 수정!
+        owner_id: userId,
         name: name,
         
         is_five_plus: isFivePlus,      
@@ -57,7 +56,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
       onComplete(); 
       
     } catch (e: any) {
-      console.error(e); // 콘솔에도 에러 찍어두기
+      console.error(e);
       alert('매장 등록 중 오류가 발생했습니다.\n' + e.message);
     } finally {
       setLoading(false);
@@ -67,10 +66,10 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{ fontSize: '40px', marginBottom: '10px' }}>🎉</div>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ fontSize: '36px', marginBottom: '8px' }}>🎉</div>
           <h2 style={{ color: '#111', margin: 0, fontSize: '22px', fontWeight: '800' }}>환영합니다, 사장님!</h2>
-          <p style={{ color: '#666', marginTop: '8px', fontSize: '14px', lineHeight: '1.5' }}>
+          <p style={{ color: '#666', marginTop: '6px', fontSize: '14px', lineHeight: '1.5' }}>
             관리할 첫 매장을 등록하고<br />
             쉽고 편한 알바 관리를 시작해보세요.
           </p>
@@ -88,16 +87,15 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
           />
         </div>
 
-        {/* ✅ [수정 2 & 3] 디자인 개선 및 글자 클릭 가능하게 변경 */}
         {/* 5인 이상 체크박스 (강조 박스) */}
         <div 
-          onClick={() => handle5PlusChange(!isFivePlus)} // 박스 클릭 시 토글
+          onClick={() => handle5PlusChange(!isFivePlus)}
           style={{ 
             ...checkboxRowStyle, 
             backgroundColor: isFivePlus ? '#eef6ff' : '#f9f9f9', 
             border: isFivePlus ? '1px solid #0052cc' : '1px solid #eee',
             padding: '16px',
-            marginBottom: '24px',
+            marginBottom: '20px',
             transition: 'all 0.2s',
             cursor: 'pointer'
           }}
@@ -106,7 +104,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
             <input
               type="checkbox"
               checked={isFivePlus}
-              onChange={() => {}} // 부모 div onClick으로 처리
+              onChange={() => {}} 
               style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#0052cc' }}
             />
           </div>
@@ -120,10 +118,10 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
           </div>
         </div>
 
-        <label style={{ ...labelStyle, marginBottom: '12px', display: 'block' }}>수당 설정</label>
+        <label style={{ ...labelStyle, marginBottom: '10px', display: 'block' }}>수당 설정</label>
         
-        {/* 수당 설정 리스트 (모바일 보기 편하게 세로형 리스트로 변경) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {/* 수당 설정 리스트 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <CheckboxItem 
             label="주휴수당 지급" 
             subLabel="(주 15시간↑)" 
@@ -158,28 +156,27 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
   );
 }
 
-// ✅ [개선됨] 전체 클릭 가능한 체크박스 아이템
 function CheckboxItem({ label, subLabel, checked, onChange }: any) {
   return (
     <div 
-      onClick={() => onChange(!checked)} // 박스 전체 클릭 이벤트
+      onClick={() => onChange(!checked)} 
       style={{ 
         display: 'flex', 
         alignItems: 'center', 
         gap: '12px',
-        padding: '14px',
+        padding: '12px 14px',
         borderRadius: '10px',
         backgroundColor: '#fff',
         border: checked ? '1px solid #0052cc' : '1px solid #eee',
         cursor: 'pointer',
         transition: 'all 0.2s',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+        boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
       }}
     >
       <input
         type="checkbox"
         checked={checked}
-        onChange={() => {}} // div 클릭으로 제어
+        onChange={() => {}}
         style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#0052cc' }}
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
@@ -190,19 +187,28 @@ function CheckboxItem({ label, subLabel, checked, onChange }: any) {
   );
 }
 
-// --- 스타일 ---
+// --- 스타일 수정 ---
 const containerStyle = {
-  display: 'flex', justifyContent: 'center', alignItems: 'center',
-  minHeight: '90vh', width: '100%', padding: '20px', boxSizing: 'border-box' as const,
-  backgroundColor: '#f5f7fa' // 전체 배경색 살짝 넣어줌
+  display: 'flex', 
+  justifyContent: 'center', 
+  alignItems: 'center', // 화면 중앙 정렬
+  minHeight: '80vh',      // 높이를 너무 꽉 채우지 않도록 조정
+  width: '100%', 
+  padding: '20px', 
+  boxSizing: 'border-box' as const,
+  backgroundColor: 'transparent' // ✅ [수정 3] 배경색 제거 (투명하게)
 };
 
 const cardStyle = {
-  backgroundColor: 'white', padding: '32px 24px', borderRadius: '20px',
-  boxShadow: '0 10px 40px rgba(0,0,0,0.08)', width: '100%', maxWidth: '420px'
+  backgroundColor: 'white', 
+  padding: '32px 24px', 
+  borderRadius: '20px',
+  boxShadow: '0 10px 40px rgba(0,0,0,0.1)', // 그림자 살짝 진하게 해서 팝업 느낌 강조
+  width: '100%', 
+  maxWidth: '420px'
 };
 
-const sectionStyle = { marginBottom: '24px', display: 'flex', flexDirection: 'column' as const, gap: '8px' };
+const sectionStyle = { marginBottom: '20px', display: 'flex', flexDirection: 'column' as const, gap: '8px' };
 const labelStyle = { fontSize: '14px', fontWeight: 'bold', color: '#333' };
 const inputStyle = { 
   padding: '14px', borderRadius: '10px', border: '1px solid #ddd', 
@@ -212,7 +218,7 @@ const inputStyle = {
 const checkboxRowStyle = { display: 'flex', alignItems: 'flex-start', gap: '12px', borderRadius: '12px' };
 
 const buttonStyle = {
-  marginTop: '32px', width: '100%', padding: '16px', backgroundColor: '#0052cc', color: 'white',
+  marginTop: '28px', width: '100%', padding: '16px', backgroundColor: '#0052cc', color: 'white',
   border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer',
   boxShadow: '0 4px 12px rgba(0, 82, 204, 0.2)'
 };
