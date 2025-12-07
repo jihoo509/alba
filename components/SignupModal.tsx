@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 
-// ✅ [수정 1] Props 타입 정의를 3개 인자 받는 형태로 확실히 맞춤
 type Props = {
   isOpen: boolean;
   onClose: () => void;
@@ -71,13 +70,10 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
     }
 
     const fullPhone = `${phonePart1}-${phonePart2}-${phonePart3}`;
-    
-    // ✅ 여기서 에러가 사라집니다 (Props 정의와 일치하므로)
     onSignup(email, password, fullPhone);
   };
 
   return (
-    // ✅ 전체를 감싸는 오버레이 시작
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
@@ -124,7 +120,7 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
             )}
           </div>
 
-          {/* 전화번호 (3단 분리) */}
+          {/* 전화번호 (3단 분리 - 모바일 튀어나옴 방지 적용) */}
           <div className="input-wrapper">
             <label>휴대전화</label>
             <div className="phone-container">
@@ -154,21 +150,20 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
             </div>
           </div>
           
-          {/* 개인정보 동의 */}
+          {/* 개인정보 동의 (레이아웃 개선) */}
           <div className="privacy-area">
              <input 
                 type="checkbox" 
                 id="privacy" 
                 checked={agreePrivacy}
                 onChange={(e) => setAgreePrivacy(e.target.checked)}
-                style={{ cursor:'pointer', width: '16px', height: '16px' }}
+                style={{ cursor:'pointer', width: '18px', height: '18px', marginTop: '2px' }}
              />
-             <label htmlFor="privacy" style={{ fontSize:'13px', color:'#333', cursor:'pointer', flex: 1, textAlign: 'left' }}>
-                <span style={{color: '#0052cc', fontWeight: 'bold'}}>(필수)</span> 개인정보 수집 및 이용에 동의합니다.
-                <br/>
-                <span style={{fontSize: '11px', color: '#888'}}>
+             <label htmlFor="privacy" className="privacy-label">
+                <span className="required-tag">(필수)</span> 개인정보 수집 및 이용에 동의합니다.
+                <div className="sub-text">
                     서비스 이용 및 마케팅 정보 수신 동의 포함
-                </span>
+                </div>
              </label>
           </div>
 
@@ -183,9 +178,8 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
                 로그인하기
             </span>
         </div>
-      </div> {/* 모달 콘텐츠 끝 */}
+      </div>
 
-      {/* ✅ [수정 2] 스타일 태그는 오버레이 div 안쪽에 있어야 합니다 */}
       <style jsx>{`
         .modal-overlay {
           position: fixed;
@@ -211,6 +205,8 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
           text-align: center;
           position: relative;
           box-sizing: border-box;
+          max-height: 90vh;
+          overflow-y: auto; /* 화면 작을 때 스크롤 */
         }
 
         .form-group {
@@ -247,26 +243,24 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
           border-color: #0052cc;
           background-color: #fff;
         }
-        .input-field.error {
-            border-color: red;
-            background-color: #fff0f0;
-        }
 
+        /* ✅ 전화번호 스타일 (모바일 대응 강화) */
         .phone-container {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px; /* 간격 축소 */
+            width: 100%;
         }
         .phone-input {
-            flex: 1;
-            padding: 12px;
+            flex: 1; /* 비율로 공간 차지 (화면 뚫고 나감 방지) */
+            min-width: 0; /* Flexbox 축소 허용 */
+            padding: 12px 4px; /* 내부 패딩 축소 */
             border: 1px solid #ddd;
             border-radius: 8px;
             font-size: 14px;
             text-align: center;
             outline: none;
             background-color: #f9f9f9;
-            width: 100%;
             box-sizing: border-box;
         }
         .phone-input:focus {
@@ -276,16 +270,37 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
         .dash {
             color: #888;
             font-weight: bold;
+            flex-shrink: 0; /* 줄어들지 않음 */
         }
 
+        /* ✅ 개인정보 동의 스타일 개선 */
         .privacy-area {
             display: flex;
-            align-items: flex-start;
+            align-items: flex-start; /* 상단 정렬 */
             gap: 10px;
             background-color: #f5f7fa;
             padding: 12px;
             border-radius: 8px;
             margin-top: 5px;
+            text-align: left;
+        }
+        .privacy-label {
+            font-size: 13px;
+            color: #333;
+            cursor: pointer;
+            flex: 1;
+            line-height: 1.4;
+        }
+        .required-tag {
+            color: #0052cc;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+        .sub-text {
+            font-size: 11px;
+            color: #888;
+            margin-top: 2px;
+            display: block; /* 줄바꿈 확실하게 */
         }
 
         .signup-btn {
@@ -299,16 +314,23 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
           font-size: 16px;
           font-weight: bold;
           cursor: pointer;
-          transition: background 0.2s;
         }
-        .signup-btn:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        .signup-btn:hover:not(:disabled) {
-          background-color: #218838;
+
+        /* 📱 모바일 전용 스타일 (더 작은 화면 대응) */
+        @media (max-width: 480px) {
+            .modal-content {
+                padding: 24px 20px; /* 패딩 축소 */
+                width: 90%;
+            }
+            .phone-input {
+                font-size: 13px; /* 폰트 살짝 축소 */
+                padding: 10px 2px;
+            }
+            .privacy-label {
+                font-size: 12px;
+            }
         }
       `}</style>
-    </div> // ✅ 여기가 진짜 오버레이 끝 (괄호 문제 해결)
+    </div>
   );
 }
