@@ -11,6 +11,7 @@ import PayrollSection from '@/components/PayrollSection';
 import { format } from 'date-fns';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
 import TutorialModal from '@/components/TutorialModal';
+import AdditionalInfoModal from '@/components/AdditionalInfoModal'; // ✅ 추가됨
 
 type Store = { id: string; name: string; };
 
@@ -47,6 +48,10 @@ function DashboardContent() {
   const [creatingStore, setCreatingStore] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
+
+  // ✅ 추가 정보 모달 상태
+  const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
 
   const [currentTab, setCurrentTab] = useState<TabKey>(
     (searchParams.get('tab') as TabKey) || 'home'
@@ -107,10 +112,9 @@ function DashboardContent() {
         id: String(row.id), name: row.name, hourly_wage: row.hourly_wage, employment_type: row.employment_type,
         is_active: row.is_active, hire_date: row.hire_date, phone_number: row.phone_number,
         birth_date: row.birth_date, bank_name: row.bank_name, account_number: row.account_number, end_date: row.end_date,
-        // ✅ [추가] DB에서 불러올 때도 일당 정보 챙기기
         pay_type: row.pay_type || 'time',
         daily_wage: row.daily_wage || 0,
-        default_daily_pay: row.daily_wage || 0, // 호환성
+        default_daily_pay: row.daily_wage || 0,
       })));
     }
     setLoadingEmployees(false);
@@ -153,7 +157,6 @@ function DashboardContent() {
 
   }, [supabase]);
 
-  // ✅ [핵심 수정] 새 직원 등록 시 일당 정보(daily_wage)도 같이 저장!
   const handleCreateEmployee = useCallback(async (payload: any) => {
     if (!currentStoreId) return;
     const { error } = await supabase.from('employees').insert({
@@ -163,9 +166,8 @@ function DashboardContent() {
       employment_type: payload.employmentType,
       hire_date: payload.hireDate || null,
       is_active: true,
-      // ▼▼▼ 여기 추가됨 ▼▼▼
       pay_type: payload.pay_type || 'time',
-      daily_wage: payload.default_daily_pay || 0, // EmployeeSection에서 보내준 값 사용
+      daily_wage: payload.default_daily_pay || 0,
     });
     if (error) alert('추가 실패'); else await loadEmployees(currentStoreId);
   }, [currentStoreId, supabase, loadEmployees]);
@@ -177,7 +179,6 @@ function DashboardContent() {
   }, [currentStoreId, supabase, loadEmployees]);
 
   const handleUpdateEmployee = useCallback(async (id: string, updates: Partial<Employee>) => {
-    // 여기도 혹시 몰라 추가 (일당 업데이트)
     await supabase.from('employees').update(updates).eq('id', id);
     if (currentStoreId) await loadEmployees(currentStoreId);
   }, [supabase, currentStoreId, loadEmployees]);
@@ -193,11 +194,39 @@ function DashboardContent() {
     }
   }, [supabase]);
 
+  // ✅ 추가 정보 저장 핸들러
+  const handleUpdateInfo = async (password: string, phone: string) => {
+    try {
+      setUpdateLoading(true);
+      const { error } = await supabase.auth.updateUser({
+        password: password,
+        data: { phone: phone } 
+      });
+      if (error) throw error;
+      
+      alert('정보가 성공적으로 등록되었습니다.');
+      setShowAdditionalInfo(false);
+    } catch (e: any) {
+      alert('정보 저장 중 오류가 발생했습니다: ' + e.message);
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace('/'); return; }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.replace('/'); return; }
+      
+      const user = session.user;
       setUserEmail(user.email || '');
+
+      // ✅ 소셜 로그인 사용자 체크: 전화번호가 없으면 모달 띄우기
+      const userPhone = user.user_metadata?.phone;
+      if (!userPhone) {
+        setShowAdditionalInfo(true);
+      }
+
       await loadStores(user.id);
       setLoading(false);
     }
@@ -371,6 +400,15 @@ function DashboardContent() {
           </div>
         )}
       </div>
+
+      {/* ✅ 추가 정보 입력 모달 (조건부 렌더링) */}
+      {showAdditionalInfo && (
+        <AdditionalInfoModal 
+          isOpen={showAdditionalInfo}
+          onUpdate={handleUpdateInfo}
+          loading={updateLoading}
+        />
+      )}
 
       <TutorialModal 
         tutorialKey="seen_home_tutorial_v1"
