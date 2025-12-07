@@ -1,7 +1,8 @@
 import './globals.css';
 import React from 'react';
 import Script from 'next/script'; 
-import InstallPrompt from './InstallPrompt'; // ✅ [수정됨] 점 하나(.)로 바뀝니다!
+import InstallPrompt from './InstallPrompt'; 
+import VisitTracker from '@/components/VisitTracker'; // ✅ [추가] 방문자 감지기
 
 export const metadata = {
   title: "Alba Manager",
@@ -24,6 +25,9 @@ export default function RootLayout({
         />
       </head>
       <body>
+        {/* ✅ [추가] 사이트 방문 시 자동으로 카운팅 */}
+        <VisitTracker />
+
         {children}
         
         {/* 설치 버튼 컴포넌트 */}

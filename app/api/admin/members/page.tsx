@@ -1,34 +1,40 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import * as XLSX from 'xlsx'; // 엑셀 라이브러리 (이미 설치되어 있음)
+import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 
 export default function AdminMembersPage() {
   const [users, setUsers] = useState<any[]>([]);
+  // 통계 상태 추가
+  const [stats, setStats] = useState({ userCount: 0, storeCount: 0, visitCount: 0 });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // 1. 들어오자마자 비밀번호 물어보기
+    // 비밀번호 체크
     const pw = prompt('관리자 비밀번호를 입력하세요');
-    
-    // 2. 비밀번호가 '996633225588'이 아니면 쫓아내기
     if (pw !== '996633225588') { 
        alert('관리자만 접근할 수 있습니다.');
-       window.location.href = '/'; // 메인 화면으로 강제 이동
+       window.location.href = '/'; 
        return;
     } 
     
-    // 3. 맞으면 데이터 불러오기
-    fetchUsers();
+    fetchData();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/users');
-      const data = await res.json();
-      if (data.users) setUsers(data.users);
+      // 1. 회원 리스트 가져오기
+      const resUsers = await fetch('/api/admin/users');
+      const dataUsers = await resUsers.json();
+      if (dataUsers.users) setUsers(dataUsers.users);
+
+      // 2. 통계 데이터 가져오기 (새로 만든 API)
+      const resStats = await fetch('/api/admin/stats');
+      const dataStats = await resStats.json();
+      if (dataStats.userCount !== undefined) setStats(dataStats);
+
     } catch (e) {
       alert('데이터 로딩 실패');
     } finally {
@@ -37,7 +43,6 @@ export default function AdminMembersPage() {
   };
 
   const handleDownloadExcel = () => {
-    // 엑셀용 데이터 변환
     const excelData = users.map((u) => ({
       '이메일': u.email,
       '전화번호': u.phone,
@@ -53,23 +58,35 @@ export default function AdminMembersPage() {
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+      <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '30px', color: '#333' }}>
+        관리자 대시보드 🛠️
+      </h1>
+
+      {/* 📊 통계 카드 영역 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '40px' }}>
+        <StatCard title="총 방문 수 (View)" count={stats.visitCount} color="#3498db" icon="👀" />
+        <StatCard title="생성된 매장 수" count={stats.storeCount} color="#e67e22" icon="🏪" />
+        <StatCard title="가입 회원 수" count={stats.userCount} color="#2ecc71" icon="👥" />
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>관리자 - 회원 목록 ({users.length}명)</h1>
+        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#555' }}>회원 목록 상세</h2>
         <button 
           onClick={handleDownloadExcel}
           style={{ 
             backgroundColor: '#27ae60', color: 'white', padding: '10px 20px', 
-            border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' 
+            border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
+            boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
           }}
         >
           엑셀 다운로드 📥
         </button>
       </div>
 
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-          <thead style={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
+          <thead style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #eee' }}>
             <tr>
               <th style={thStyle}>이메일</th>
               <th style={thStyle}>전화번호</th>
@@ -79,9 +96,9 @@ export default function AdminMembersPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center' }}>로딩 중...</td></tr>
+              <tr><td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: '#888' }}>데이터를 불러오는 중입니다...</td></tr>
             ) : users.map((user) => (
-              <tr key={user.id} style={{ borderBottom: '1px solid #eee' }}>
+              <tr key={user.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                 <td style={tdStyle}>{user.email}</td>
                 <td style={tdStyle}>{user.phone}</td>
                 <td style={tdStyle}>{format(new Date(user.created_at), 'yyyy-MM-dd')}</td>
@@ -95,5 +112,24 @@ export default function AdminMembersPage() {
   );
 }
 
-const thStyle = { padding: '12px 16px', textAlign: 'left' as const, color: '#555', fontWeight: 'bold' };
-const tdStyle = { padding: '12px 16px', color: '#333' };
+// 통계 카드 컴포넌트
+function StatCard({ title, count, color, icon }: any) {
+  return (
+    <div style={{ 
+      backgroundColor: 'white', padding: '24px', borderRadius: '16px', 
+      boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '20px',
+      borderLeft: `5px solid ${color}`
+    }}>
+      <div style={{ fontSize: '40px' }}>{icon}</div>
+      <div>
+        <div style={{ fontSize: '14px', color: '#888', marginBottom: '4px' }}>{title}</div>
+        <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>
+          {count ? count.toLocaleString() : 0}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const thStyle = { padding: '16px', textAlign: 'left' as const, color: '#555', fontWeight: 'bold' };
+const tdStyle = { padding: '16px', color: '#333' };
