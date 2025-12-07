@@ -3,8 +3,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
+import SignupModal from '@/components/SignupModal'; // ✅ 모달 불러오기
 
-// ✅ Naver 제거
 type OAuthProvider = 'google' | 'kakao';
 
 export default function AuthPage() {
@@ -16,7 +16,9 @@ export default function AuthPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   
-  const [isSignUpMode, setIsSignUpMode] = useState(false);
+  // ✅ 기존 isSignUpMode 제거 -> 모달 상태 추가
+  const [isSignupOpen, setIsSignupOpen] = useState(false);
+  
   const [rememberId, setRememberId] = useState(false);
 
   // 초기 로딩 시 자동 로그인 & 아이디 불러오기
@@ -36,7 +38,8 @@ export default function AuthPage() {
     checkSession();
   }, [supabase, router]);
 
-  async function handleAuth() {
+  // ✅ 로그인 처리 함수 (회원가입 로직 분리됨)
+  async function handleLogin() {
     try {
       setMsg(null);
       setLoading(true);
@@ -47,27 +50,48 @@ export default function AuthPage() {
         localStorage.removeItem('savedEmail');
       }
 
-      if (isSignUpMode) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
-        if (!data.session) {
-          setMsg('가입 확인 메일을 보냈습니다. 이메일을 확인해주세요.');
-          alert('가입 확인 메일을 보냈습니다. 확인 후 로그인해주세요.');
-          setIsSignUpMode(false);
+      // 오직 로그인만 수행
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+      router.push('/dashboard');
+      
+    } catch (e: any) {
+      setMsg(e?.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ✅ 회원가입 처리 함수 (모달에서 호출)
+  async function handleSignup(signupEmail: string, signupPw: string, signupPhone: string) {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email: signupEmail,
+        password: signupPw,
+        options: {
+            // 전화번호를 메타데이터에 저장 (필요시 employees 테이블 연동은 별도 로직 필요)
+            data: {
+                phone: signupPhone,
+            }
         }
+      });
+
+      if (error) throw error;
+
+      if (!data.session) {
+        alert('가입 확인 메일을 보냈습니다. 이메일을 확인해주세요.');
+        setIsSignupOpen(false); // 모달 닫기
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
+        // 세션이 바로 생기는 설정이라면 바로 이동
         router.push('/dashboard');
       }
     } catch (e: any) {
-      setMsg(e?.message || String(e));
+      alert(e?.message || '회원가입 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -137,10 +161,10 @@ export default function AuthPage() {
           />
           <input
             type="password"
-            placeholder="비밀번호 (6자 이상)"
+            placeholder="비밀번호"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
+            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             style={inputStyle}
           />
         </div>
@@ -158,12 +182,13 @@ export default function AuthPage() {
 
         {msg && <div style={{ color: 'salmon', fontSize: '12px', textAlign: 'center' }}>{msg}</div>}
 
+        {/* ✅ 로그인 버튼 (고정) */}
         <button
-          onClick={handleAuth}
+          onClick={handleLogin}
           disabled={loading}
           style={{
             padding: '12px',
-            backgroundColor: isSignUpMode ? '#28a745' : '#0052cc', 
+            backgroundColor: '#0052cc', 
             color: '#fff',
             border: 'none',
             borderRadius: '8px',
@@ -174,16 +199,17 @@ export default function AuthPage() {
             transition: 'background-color 0.2s',
           }}
         >
-          {loading ? '처리 중...' : (isSignUpMode ? '회원가입 완료' : '로그인')}
+          {loading ? '처리 중...' : '로그인'}
         </button>
 
         <div style={{ textAlign: 'center', fontSize: '12px', color: '#666' }}>
-          {isSignUpMode ? '이미 계정이 있으신가요?' : '아직 계정이 없으신가요?'}
+          아직 계정이 없으신가요?
+          {/* ✅ 모달 오픈 버튼으로 변경 */}
           <span 
-            onClick={() => { setIsSignUpMode(!isSignUpMode); setMsg(null); }}
+            onClick={() => { setIsSignupOpen(true); setMsg(null); }}
             style={{ color: '#0052cc', fontWeight: 'bold', cursor: 'pointer', marginLeft: '6px', textDecoration: 'underline' }}
           >
-            {isSignUpMode ? '로그인하기' : '회원가입하기'}
+            회원가입하기
           </span>
         </div>
 
@@ -193,7 +219,6 @@ export default function AuthPage() {
           <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
         </div>
 
-        {/* ✅ 네이버 제거, 구글/카카오만 남김 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <button onClick={() => handleOAuthLogin('google')} style={{ ...socialBtnStyle, background: '#c0c0c0ff', border: '1px solid #ddd', color: '#333' }}>
             <span style={{ marginRight: '8px', fontWeight: 'bold', color: '#ea4335' }}>G</span> Google 계정으로 계속
@@ -204,22 +229,30 @@ export default function AuthPage() {
         </div>
       </div>
 
-<div 
-  style={{ 
-    position: 'absolute', 
-    bottom: '20px',  // 바닥에서 조금 더 띄움
-    left: '0',       // 왼쪽 끝부터
-    width: '100%',   // 화면 전체 너비를 써서
-    textAlign: 'center', // 가운데 정렬
-    color: 'rgba(255,255,255,0.5)', 
-    fontSize: '11px',
-    lineHeight: '1.5' // 줄 간격을 조금 넓혀서 읽기 편하게
-  }}
->
-  © 2025 Easy Alba. All rights reserved.<br />
-  © 사업자 바르게 담다<br />
-  문의: inserr509@daum.net | 010-4554-5587
-</div>
+      <div 
+        style={{ 
+          position: 'absolute', 
+          bottom: '20px',
+          left: '0', 
+          width: '100%', 
+          textAlign: 'center',
+          color: 'rgba(255,255,255,0.5)', 
+          fontSize: '11px',
+          lineHeight: '1.5'
+        }}
+      >
+        © 2025 Easy Alba. All rights reserved.<br />
+        © 사업자 바르게 담다<br />
+        문의: inserr509@daum.net | 010-4554-5587
+      </div>
+
+      {/* ✅ 회원가입 모달 연결 */}
+      <SignupModal 
+        isOpen={isSignupOpen} 
+        onClose={() => setIsSignupOpen(false)} 
+        onSignup={handleSignup}
+        loading={loading}
+      />
     </div>
   );
 }
