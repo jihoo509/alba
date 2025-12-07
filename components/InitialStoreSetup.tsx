@@ -11,13 +11,13 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
   const [name, setName] = useState('');
   const [isFivePlus, setIsFivePlus] = useState(false);
   
-  // ✅ [수정 1] 기본값 변경: 주휴만 true, 나머지는 false
+  // 수당 설정 (기본값: 주휴만 켜고 나머지는 끔)
   const [payWeekly, setPayWeekly] = useState(true); 
   const [payNight, setPayNight] = useState(false);   
   const [payHoliday, setPayHoliday] = useState(false); 
   const [payOvertime, setPayOvertime] = useState(false); 
 
-  // ✅ [수정 2] 5인 이상 체크/해제 시 연동 로직
+  // 5인 이상 체크/해제 시 연동 로직
   const handle5PlusChange = (checked: boolean) => {
     setIsFivePlus(checked);
     // 체크하면 -> 수당 3종 세트 자동 켜기
@@ -36,6 +36,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
     try {
       setLoading(true);
 
+      // DB 컬럼명에 맞춰서 데이터 저장
       const { error } = await supabase.from('stores').insert({
         owner_id: userId,
         name: name,
@@ -156,6 +157,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
   );
 }
 
+// 체크박스 아이템 컴포넌트
 function CheckboxItem({ label, subLabel, checked, onChange }: any) {
   return (
     <div 
@@ -187,23 +189,23 @@ function CheckboxItem({ label, subLabel, checked, onChange }: any) {
   );
 }
 
-// --- 스타일 수정 ---
+// --- 스타일 ---
 const containerStyle = {
   display: 'flex', 
   justifyContent: 'center', 
-  alignItems: 'center', // 화면 중앙 정렬
-  minHeight: '80vh',      // 높이를 너무 꽉 채우지 않도록 조정
+  alignItems: 'center', 
+  minHeight: '80vh',      
   width: '100%', 
   padding: '20px', 
   boxSizing: 'border-box' as const,
-  backgroundColor: 'transparent' // ✅ [수정 3] 배경색 제거 (투명하게)
+  backgroundColor: 'transparent' // 배경 투명
 };
 
 const cardStyle = {
   backgroundColor: 'white', 
   padding: '32px 24px', 
   borderRadius: '20px',
-  boxShadow: '0 10px 40px rgba(0,0,0,0.1)', // 그림자 살짝 진하게 해서 팝업 느낌 강조
+  boxShadow: '0 10px 40px rgba(0,0,0,0.1)', 
   width: '100%', 
   maxWidth: '420px'
 };
