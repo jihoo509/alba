@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
+import { useRouter } from 'next/navigation'; // ✅ 라우터 추가
 
 type Props = {
   isOpen: boolean;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export default function AccountSettingsModal({ isOpen, onClose, userEmail, userPhone }: Props) {
+  const router = useRouter(); // ✅ 라우터 초기화
   const supabase = createSupabaseBrowserClient();
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
@@ -73,11 +75,32 @@ export default function AccountSettingsModal({ isOpen, onClose, userEmail, userP
     }
   };
 
+  // ✅ [수정됨] 실제 서버 API를 호출하여 안전하게 탈퇴 처리
   const handleDeleteAccount = async () => {
     if (!confirm('정말 탈퇴하시겠습니까?\n모든 데이터가 삭제되며 복구할 수 없습니다.')) return;
-    alert('회원 탈퇴 처리가 완료되었습니다.\n(실제 데이터 삭제를 위해서는 관리자에게 문의해주세요.)');
-    await supabase.auth.signOut();
-    window.location.href = '/';
+    
+    try {
+      setLoading(true); // 로딩 시작 (버튼 비활성화)
+
+      // 1. Next.js 서버 API에 삭제 요청 (관리자 권한으로 삭제 수행)
+      const res = await fetch('/api/auth/delete-account', {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '탈퇴 처리에 실패했습니다.');
+      }
+
+      // 2. 성공 시 처리
+      alert('탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.');
+      router.replace('/'); // 로그인 페이지로 이동
+      router.refresh();    // 데이터 갱신 (캐시 삭제)
+      
+    } catch (error: any) {
+      alert(error.message);
+      setLoading(false); // 실패 시에만 로딩 해제 (성공 시엔 페이지 이동하므로 유지)
+    }
   };
 
   return (
@@ -111,7 +134,6 @@ export default function AccountSettingsModal({ isOpen, onClose, userEmail, userP
 
         <div className="section">
           <label>전화번호 변경</label>
-          {/* ✅ 모바일 대응: flex로 꽉 차게 */}
           <div className="phone-container">
             <input type="text" value={phone1} onChange={e => setPhone1(e.target.value)} className="phone-input" />
             <span className="dash">-</span>
@@ -121,7 +143,6 @@ export default function AccountSettingsModal({ isOpen, onClose, userEmail, userP
           </div>
         </div>
 
-        {/* ✅ 버튼 크기 1:1로 맞춤 */}
         <div className="btn-group">
           <button onClick={handleUpdate} disabled={loading} className="action-btn save">
             {loading ? '저장 중...' : '변경사항 저장'}
@@ -131,10 +152,15 @@ export default function AccountSettingsModal({ isOpen, onClose, userEmail, userP
 
         <div className="divider"></div>
 
-        {/* ✅ 회원 탈퇴 버튼 디자인 개선 */}
         <div style={{ textAlign: 'center' }}>
-            <button onClick={handleDeleteAccount} className="delete-account-btn">
-                회원 탈퇴
+            {/* ✅ 로딩 중일 때 탈퇴 버튼도 못 누르게 disabled 처리 */}
+            <button 
+                onClick={handleDeleteAccount} 
+                disabled={loading}
+                className="delete-account-btn"
+                style={{ opacity: loading ? 0.5 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
+            >
+                {loading ? '처리 중...' : '회원 탈퇴'}
             </button>
         </div>
       </div>
@@ -144,7 +170,7 @@ export default function AccountSettingsModal({ isOpen, onClose, userEmail, userP
           position: fixed; top: 0; left: 0; right: 0; bottom: 0;
           background: rgba(0,0,0,0.6); z-index: 9999;
           display: flex; align-items: center; justify-content: center;
-          padding: 20px; /* 모바일 여백 */
+          padding: 20px;
         }
         .modal-content {
           background: #fff; width: 100%; max-width: 400px;
@@ -164,11 +190,10 @@ export default function AccountSettingsModal({ isOpen, onClose, userEmail, userP
         }
         .input-field:focus { border-color: #0052cc; background: #fff; }
 
-        /* ✅ 전화번호 입력 스타일 수정 (모바일 튀어나감 방지) */
         .phone-container { display: flex; align-items: center; gap: 4px; width: 100%; }
         .phone-input {
-            flex: 1; /* 비율로 공간 차지 */
-            min-width: 0; /* 내용물 줄어듦 허용 */
+            flex: 1;
+            min-width: 0;
             padding: 14px 4px; 
             border: 1px solid #ddd; border-radius: 8px; text-align: center;
             font-size: 14px; outline: none;
@@ -176,10 +201,9 @@ export default function AccountSettingsModal({ isOpen, onClose, userEmail, userP
         .phone-input:focus { border-color: #0052cc; }
         .dash { color: #888; font-weight: bold; flex-shrink: 0; }
 
-        /* ✅ 버튼 그룹 (1:1 비율) */
         .btn-group { display: flex; gap: 10px; margin-top: 24px; }
         .action-btn {
-            flex: 1; /* 너비 50:50 */
+            flex: 1;
             padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; border: none; font-size: 15px;
         }
         .save { background: #0052cc; color: #fff; }
@@ -187,7 +211,6 @@ export default function AccountSettingsModal({ isOpen, onClose, userEmail, userP
 
         .divider { height: 1px; background: #eee; margin: 24px 0; }
 
-        /* ✅ 탈퇴 버튼 스타일 */
         .delete-account-btn {
             width: 100%;
             padding: 12px;
