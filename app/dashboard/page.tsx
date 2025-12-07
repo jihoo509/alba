@@ -11,7 +11,8 @@ import PayrollSection from '@/components/PayrollSection';
 import { format } from 'date-fns';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
 import TutorialModal from '@/components/TutorialModal';
-import AdditionalInfoModal from '@/components/AdditionalInfoModal'; // ✅ 추가됨
+import AdditionalInfoModal from '@/components/AdditionalInfoModal';
+import AccountSettingsModal from '@/components/AccountSettingsModal'; // ✅ 추가됨
 
 type Store = { id: string; name: string; };
 
@@ -42,6 +43,7 @@ function DashboardContent() {
 
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState('');
+  const [userPhone, setUserPhone] = useState(''); // ✅ 추가됨 (전화번호 상태)
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
   const [currentStoreId, setCurrentStoreId] = useState<string | null>(null);
@@ -49,8 +51,9 @@ function DashboardContent() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
 
-  // ✅ 추가 정보 모달 상태
+  // ✅ 모달 상태들
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false); // ✅ 추가됨
   const [updateLoading, setUpdateLoading] = useState(false);
 
   const [currentTab, setCurrentTab] = useState<TabKey>(
@@ -220,6 +223,7 @@ function DashboardContent() {
       
       const user = session.user;
       setUserEmail(user.email || '');
+      setUserPhone(user.user_metadata?.phone || ''); // ✅ 전화번호 저장
 
       // ✅ 소셜 로그인 사용자 체크: 전화번호가 없으면 모달 띄우기
       const userPhone = user.user_metadata?.phone;
@@ -332,11 +336,22 @@ function DashboardContent() {
         <div style={{ width: '100%', maxWidth: '750px', margin: '0 auto', boxSizing: 'border-box' }}>
           
           <div style={{ padding: '12px 20px 0 20px' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            {/* ✅ 헤더 수정: UserBar에 onOpenSettings 전달 */}
+            <header style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: 12,
+              paddingLeft: '10px' 
+            }}>
               <h1 className="mobile-logo-text" style={{ fontSize: 28, color: '#fff', fontWeight: '900', letterSpacing: '-1px', margin: 0, fontFamily: 'sans-serif' }}>
                 Easy Alba
               </h1>
-              <UserBar email={userEmail} />
+              {/* 이메일은 제거하고 계정 설정 버튼이 포함된 UserBar */}
+              <UserBar 
+                email={userEmail} 
+                onOpenSettings={() => setShowAccountSettings(true)} 
+              />
             </header>
 
             {errorMsg && <div style={{ marginBottom: 10, color: 'salmon' }}>{errorMsg}</div>}
@@ -359,9 +374,9 @@ function DashboardContent() {
               }}>
                 {[
                   { key: 'home', label: '🏠 홈' },
-                  { key: 'employees', label: '👥 직원' },     
-                  { key: 'schedules', label: '🗓️ 스케줄' },   
-                  { key: 'payroll', label: '💰 급여' }      
+                  { key: 'employees', label: '👥 직원' },     
+                  { key: 'schedules', label: '🗓️ 스케줄' },   
+                  { key: 'payroll', label: '💰 급여' }      
                 ].map((tab) => (
                   <button
                     key={tab.key}
@@ -401,7 +416,7 @@ function DashboardContent() {
         )}
       </div>
 
-      {/* ✅ 추가 정보 입력 모달 (조건부 렌더링) */}
+      {/* ✅ 추가 정보 입력 모달 (최초 로그인) */}
       {showAdditionalInfo && (
         <AdditionalInfoModal 
           isOpen={showAdditionalInfo}
@@ -409,6 +424,14 @@ function DashboardContent() {
           loading={updateLoading}
         />
       )}
+
+      {/* ✅ 계정 설정 모달 (상시 접근 가능) */}
+      <AccountSettingsModal 
+        isOpen={showAccountSettings}
+        onClose={() => setShowAccountSettings(false)}
+        userEmail={userEmail}
+        userPhone={userPhone}
+      />
 
       <TutorialModal 
         tutorialKey="seen_home_tutorial_v1"
