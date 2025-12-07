@@ -19,7 +19,7 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
   const [phonePart3, setPhonePart3] = useState('');
 
   const [agreePrivacy, setAgreePrivacy] = useState(false);
-  const [showPrivacyDetail, setShowPrivacyDetail] = useState(false); // ✅ 약관 상세 보기 상태
+  const [showPrivacyDetail, setShowPrivacyDetail] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -153,30 +153,30 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
               </div>
             </div>
             
-            {/* ✅ 개인정보 동의 + 자세히 보기 버튼 */}
+            {/* ✅ 개인정보 동의 (레이아웃 수정됨) */}
             <div className="privacy-area">
-               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1 }}>
+               <div className="privacy-row">
                  <input 
                     type="checkbox" 
                     id="privacy" 
                     checked={agreePrivacy}
                     onChange={(e) => setAgreePrivacy(e.target.checked)}
-                    style={{ cursor:'pointer', width: '18px', height: '18px', marginTop: '2px' }}
+                    style={{ cursor:'pointer', width: '18px', height: '18px', marginTop: '2px', flexShrink: 0 }}
                  />
                  <label htmlFor="privacy" className="privacy-label">
-                    <span className="required-tag">(필수)</span> 개인정보 수집 및 이용에 동의합니다.
+                    <span className="required-tag">(필수)</span> 개인정보 수집 및 이용 동의
                     <div className="sub-text">
                         서비스 이용 및 마케팅 정보 수신 동의 포함
                     </div>
                  </label>
                </div>
-               {/* 자세히 보기 버튼 */}
+               {/* 자세히 보기 버튼 (모바일에서도 줄바꿈 없이 우측 배치) */}
                <button 
                   type="button" 
                   className="detail-btn"
                   onClick={() => setShowPrivacyDetail(true)}
                >
-                  자세히 보기
+                  약관보기
                </button>
             </div>
 
@@ -194,7 +194,7 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
         </div>
       </div>
 
-      {/* ✅ 약관 상세 내용 팝업 (모달 위에 뜨는 모달) */}
+      {/* ✅ 약관 상세 내용 팝업 */}
       {showPrivacyDetail && (
         <div className="detail-overlay" onClick={() => setShowPrivacyDetail(false)}>
           <div className="detail-content" onClick={(e) => e.stopPropagation()}>
@@ -214,7 +214,7 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
               <p>※ 귀하는 개인정보 수집 및 이용에 대한 동의를 거부할 권리가 있습니다. 다만, 동의를 거부할 경우 회원가입이 불가능합니다.</p>
             </div>
             <button className="confirm-btn" onClick={() => {
-                setAgreePrivacy(true); // 내용 확인 후 자동 동의 체크 (편의성)
+                setAgreePrivacy(true);
                 setShowPrivacyDetail(false);
             }}>
               동의하고 닫기
@@ -224,6 +224,7 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
       )}
 
       <style jsx>{`
+        /* ...기존 스타일 유지... */
         .modal-overlay {
           position: fixed;
           top: 0; left: 0; right: 0; bottom: 0;
@@ -315,42 +316,54 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
         .privacy-area {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
+            align-items: center; /* 세로 중앙 정렬 */
             background-color: #f5f7fa;
             padding: 12px;
             border-radius: 8px;
             margin-top: 5px;
             text-align: left;
+            gap: 8px;
+        }
+        .privacy-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            flex: 1;
         }
         .privacy-label {
             font-size: 13px;
             color: #333;
             cursor: pointer;
             line-height: 1.4;
+            /* ✅ 핵심 수정: 단어 단위 줄바꿈 (글자 뚝 끊김 방지) */
+            word-break: keep-all; 
         }
         .required-tag {
             color: #0052cc;
             font-weight: bold;
             margin-right: 4px;
+            white-space: nowrap; /* (필수)는 줄바꿈 안 되게 */
         }
         .sub-text {
             font-size: 11px;
             color: #888;
             margin-top: 2px;
             display: block;
+            word-break: keep-all;
         }
-        /* 자세히 보기 버튼 */
+        
+        /* 약관보기 버튼 */
         .detail-btn {
-            background: none;
+            background: #fff;
             border: 1px solid #ddd;
             border-radius: 4px;
-            padding: 4px 8px;
+            padding: 6px 8px;
             font-size: 11px;
             color: #666;
             cursor: pointer;
-            white-space: nowrap;
-            margin-left: 5px;
-            background-color: #fff;
+            white-space: nowrap; /* 버튼 글자 줄바꿈 방지 */
+            flex-shrink: 0; /* 버튼 크기 줄어듦 방지 */
+            height: fit-content;
         }
 
         .signup-btn {
@@ -366,12 +379,12 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
           cursor: pointer;
         }
 
-        /* ✅ 약관 상세 팝업 스타일 */
+        /* 상세 팝업 스타일 */
         .detail-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background-color: rgba(0,0,0,0.7);
-            z-index: 10000; /* 기존 모달보다 위에 */
+            z-index: 10000;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -422,6 +435,8 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
             }
             .phone-input { font-size: 13px; padding: 10px 2px; }
             .privacy-label { font-size: 12px; }
+            /* 모바일에서 버튼 글자 더 작게 */
+            .detail-btn { font-size: 10px; padding: 4px 6px; }
         }
       `}</style>
     </>
