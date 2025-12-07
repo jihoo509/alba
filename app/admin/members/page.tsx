@@ -6,12 +6,12 @@ import { format } from 'date-fns';
 
 export default function AdminMembersPage() {
   const [users, setUsers] = useState<any[]>([]);
-  // 통계 상태 추가
+  const [stores, setStores] = useState<any[]>([]); // ✅ 매장 목록 상태 추가
   const [stats, setStats] = useState({ userCount: 0, storeCount: 0, visitCount: 0 });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // 비밀번호 체크
+    // 🔒 보안 체크
     const pw = prompt('관리자 비밀번호를 입력하세요');
     if (pw !== '996633225588') { 
        alert('관리자만 접근할 수 있습니다.');
@@ -25,21 +25,32 @@ export default function AdminMembersPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. 회원 리스트 가져오기
+      // 1. 회원 리스트
       const resUsers = await fetch('/api/admin/users');
       const dataUsers = await resUsers.json();
       if (dataUsers.users) setUsers(dataUsers.users);
 
-      // 2. 통계 데이터 가져오기 (새로 만든 API)
+      // 2. 통계
       const resStats = await fetch('/api/admin/stats');
       const dataStats = await resStats.json();
       if (dataStats.userCount !== undefined) setStats(dataStats);
+
+      // 3. ✅ 매장 리스트 (새로 추가됨)
+      const resStores = await fetch('/api/admin/stores');
+      const dataStores = await resStores.json();
+      if (dataStores.stores) setStores(dataStores.stores);
 
     } catch (e) {
       alert('데이터 로딩 실패');
     } finally {
       setLoading(false);
     }
+  };
+
+  // 매장 주인 찾기 (매장의 owner_id와 회원의 id 매칭)
+  const getOwnerEmail = (ownerId: string) => {
+    const owner = users.find(u => u.id === ownerId);
+    return owner ? owner.email : '정보 없음';
   };
 
   const handleDownloadExcel = () => {
@@ -58,20 +69,58 @@ export default function AdminMembersPage() {
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+    <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif' }}>
       <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '30px', color: '#333' }}>
         관리자 대시보드 🛠️
       </h1>
 
-      {/* 📊 통계 카드 영역 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '40px' }}>
-        <StatCard title="총 방문 수 (View)" count={stats.visitCount} color="#3498db" icon="👀" />
+      {/* 1. 통계 카드 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
+        <StatCard title="총 방문 수" count={stats.visitCount} color="#3498db" icon="👀" />
         <StatCard title="생성된 매장 수" count={stats.storeCount} color="#e67e22" icon="🏪" />
         <StatCard title="가입 회원 수" count={stats.userCount} color="#2ecc71" icon="👥" />
       </div>
 
+      <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '40px 0' }} />
+
+      {/* 2. ✅ 등록된 매장 목록 (가로 스크롤) */}
+      <div style={{ marginBottom: '50px' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#555', marginBottom: '16px' }}>
+          🏪 등록된 매장 목록 ({stores.length}개)
+        </h2>
+        
+        {/* 가로 스크롤 컨테이너 */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '16px', 
+          overflowX: 'auto', 
+          paddingBottom: '16px', // 스크롤바 공간 확보
+          whiteSpace: 'nowrap'
+        }}>
+          {stores.length === 0 ? (
+            <div style={{ padding: '20px', color: '#999' }}>등록된 매장이 없습니다.</div>
+          ) : stores.map((store) => (
+            <div key={store.id} style={storeCardStyle}>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333', marginBottom: '8px' }}>
+                {store.name}
+              </div>
+              <div style={{ fontSize: '13px', color: '#666', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span>👤 점주: {getOwnerEmail(store.owner_id)}</span>
+                <span>📞 {store.phone || '(전화번호 없음)'}</span>
+                <span style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+                  {store.is_five_plus ? '✅ 5인 이상' : '⬜ 5인 미만'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '40px 0' }} />
+
+      {/* 3. 회원 목록 테이블 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#555' }}>회원 목록 상세</h2>
+        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#555' }}>👥 회원 목록 상세</h2>
         <button 
           onClick={handleDownloadExcel}
           style={{ 
@@ -112,7 +161,7 @@ export default function AdminMembersPage() {
   );
 }
 
-// 통계 카드 컴포넌트
+// 스타일 정의
 function StatCard({ title, count, color, icon }: any) {
   return (
     <div style={{ 
@@ -130,6 +179,18 @@ function StatCard({ title, count, color, icon }: any) {
     </div>
   );
 }
+
+const storeCardStyle = {
+  minWidth: '240px', // 카드의 최소 너비 (이것보다 작아지지 않음 -> 스크롤 생김)
+  backgroundColor: 'white',
+  padding: '20px',
+  borderRadius: '12px',
+  border: '1px solid #eee',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+  display: 'flex',
+  flexDirection: 'column' as const,
+  justifyContent: 'space-between'
+};
 
 const thStyle = { padding: '16px', textAlign: 'left' as const, color: '#555', fontWeight: 'bold' };
 const tdStyle = { padding: '16px', color: '#333' };
