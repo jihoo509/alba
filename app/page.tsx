@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
-import SignupModal from '@/components/SignupModal'; // ✅ 모달 불러오기
+import SignupModal from '@/components/SignupModal';
 
 type OAuthProvider = 'google' | 'kakao';
 
@@ -16,7 +16,6 @@ export default function AuthPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   
-  // ✅ 기존 isSignUpMode 제거 -> 모달 상태 추가
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   
   const [rememberId, setRememberId] = useState(false);
@@ -38,7 +37,7 @@ export default function AuthPage() {
     checkSession();
   }, [supabase, router]);
 
-  // ✅ 로그인 처리 함수 (회원가입 로직 분리됨)
+  // ✅ [수정됨] 로그인 처리 함수
   async function handleLogin() {
     try {
       setMsg(null);
@@ -56,10 +55,31 @@ export default function AuthPage() {
         password,
       });
 
-      if (error) throw error;
+      // 👇 여기가 수정된 부분입니다 (에러 메시지 한글화)
+      if (error) {
+        console.log('로그인 에러:', error.message); // 디버깅용 로그
+
+        switch (error.message) {
+          case 'Invalid login credentials':
+            setMsg('아이디(이메일) 또는 비밀번호가 일치하지 않습니다.');
+            break;
+          case 'Email not confirmed':
+            setMsg('이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요.');
+            break;
+          case 'User not found':
+            setMsg('가입되지 않은 이메일입니다.');
+            break;
+          default:
+            setMsg('로그인 중 오류가 발생했습니다. (' + error.message + ')');
+        }
+        return; // 에러가 났으니 여기서 함수 종료
+      }
+
+      // 에러가 없으면 이동
       router.push('/dashboard');
       
     } catch (e: any) {
+      // 예상치 못한 에러
       setMsg(e?.message || String(e));
     } finally {
       setLoading(false);
@@ -74,7 +94,6 @@ export default function AuthPage() {
         email: signupEmail,
         password: signupPw,
         options: {
-            // 전화번호를 메타데이터에 저장 (필요시 employees 테이블 연동은 별도 로직 필요)
             data: {
                 phone: signupPhone,
             }
@@ -87,7 +106,6 @@ export default function AuthPage() {
         alert('가입 확인 메일을 보냈습니다. 이메일을 확인해주세요.');
         setIsSignupOpen(false); // 모달 닫기
       } else {
-        // 세션이 바로 생기는 설정이라면 바로 이동
         router.push('/dashboard');
       }
     } catch (e: any) {
@@ -180,9 +198,9 @@ export default function AuthPage() {
           <label htmlFor="rememberId" style={{ fontSize: '13px', color: '#555', cursor: 'pointer' }}>아이디 기억하기</label>
         </div>
 
+        {/* 에러 메시지 표시 영역 */}
         {msg && <div style={{ color: 'salmon', fontSize: '12px', textAlign: 'center' }}>{msg}</div>}
 
-        {/* ✅ 로그인 버튼 (고정) */}
         <button
           onClick={handleLogin}
           disabled={loading}
@@ -204,7 +222,6 @@ export default function AuthPage() {
 
         <div style={{ textAlign: 'center', fontSize: '12px', color: '#666' }}>
           아직 계정이 없으신가요?
-          {/* ✅ 모달 오픈 버튼으로 변경 */}
           <span 
             onClick={() => { setIsSignupOpen(true); setMsg(null); }}
             style={{ color: '#0052cc', fontWeight: 'bold', cursor: 'pointer', marginLeft: '6px', textDecoration: 'underline' }}
@@ -246,7 +263,6 @@ export default function AuthPage() {
         문의: inserr509@daum.net | 010-4554-5587
       </div>
 
-      {/* ✅ 회원가입 모달 연결 */}
       <SignupModal 
         isOpen={isSignupOpen} 
         onClose={() => setIsSignupOpen(false)} 
