@@ -103,10 +103,10 @@ export default function AdminMembersPage() {
           <thead style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #eee' }}>
             <tr>
               <th style={thStyle}>이메일</th>
+              <th style={thStyle}>운영 중인 매장</th> {/* ✅ 추가된 컬럼 */}
               <th style={thStyle}>전화번호</th>
               <th style={thStyle}>가입일</th>
               <th style={thStyle}>최근 접속</th>
-              <th style={thStyle}>운영 중인 매장</th> {/* ✅ 추가된 컬럼 */}
             </tr>
           </thead>
           <tbody>
