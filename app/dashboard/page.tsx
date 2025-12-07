@@ -197,7 +197,6 @@ function DashboardContent() {
     }
   }, [supabase]);
 
-  // 추가 정보 저장 핸들러
   const handleUpdateInfo = async (password: string, phone: string) => {
     try {
       setUpdateLoading(true);
@@ -225,7 +224,6 @@ function DashboardContent() {
       setUserEmail(user.email || '');
       setUserPhone(user.user_metadata?.phone || ''); 
 
-      // 소셜 로그인 사용자 체크: 전화번호가 없으면 모달 띄우기
       const userPhone = user.user_metadata?.phone;
       if (!userPhone) {
         setShowAdditionalInfo(true);
@@ -336,22 +334,20 @@ function DashboardContent() {
         <div style={{ width: '100%', maxWidth: '750px', margin: '0 auto', boxSizing: 'border-box' }}>
           
           <div style={{ padding: '12px 20px 0 20px' }}>
+            {/* ✅ 수정: 로고의 강제 마진 제거 및 paddingLeft 제거 */}
             <header style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
               alignItems: 'center', 
-              marginBottom: 12,
-              paddingLeft: '10px' 
+              marginBottom: 12
             }}>
-              {/* ✅ 로고를 오른쪽으로 이동 (marginLeft 추가) */}
               <h1 className="mobile-logo-text" style={{ 
                 fontSize: 28, 
                 color: '#fff', 
                 fontWeight: '900', 
                 letterSpacing: '-1px', 
                 margin: 0, 
-                fontFamily: 'sans-serif',
-                marginLeft: '100px' // 로고 우측 이동 (매장 박스 라인 맞춤 시도)
+                fontFamily: 'sans-serif'
               }}>
                 Easy Alba
               </h1>
@@ -423,6 +419,7 @@ function DashboardContent() {
         )}
       </div>
 
+      {/* ✅ 추가 정보 입력 모달 */}
       {showAdditionalInfo && (
         <AdditionalInfoModal 
           isOpen={showAdditionalInfo}
@@ -431,14 +428,13 @@ function DashboardContent() {
         />
       )}
 
-      {showAccountSettings && (
-        <AccountSettingsModal 
-          isOpen={showAccountSettings}
-          onClose={() => setShowAccountSettings(false)}
-          userEmail={userEmail}
-          userPhone={userPhone}
-        />
-      )}
+      {/* ✅ 계정 설정 모달 */}
+      <AccountSettingsModal 
+        isOpen={showAccountSettings}
+        onClose={() => setShowAccountSettings(false)}
+        userEmail={userEmail}
+        userPhone={userPhone}
+      />
 
       <TutorialModal 
         tutorialKey="seen_home_tutorial_v1"
@@ -447,7 +443,7 @@ function DashboardContent() {
             title: "환영합니다, 사장님! 👋",
             description: "Easy Alba에 오신 것을 환영합니다. 매장 관리의 모든 것을 쉽고 편하게 도와드릴게요.",
           },
-          // ... (기존 튜토리얼 내용 생략, 위 코드와 동일) ...
+          // ... (튜토리얼 내용 생략) ...
           {
             title: "준비 되셨나요?",
             description: "이제 복잡한 급여 계산과 스케줄 관리는 저희에게 맡기고, 사업에만 집중하세요!",
