@@ -351,7 +351,7 @@ function DashboardContent() {
                 letterSpacing: '-1px', 
                 margin: 0, 
                 fontFamily: 'sans-serif',
-                marginLeft: '36px' // 로고 우측 이동 (매장 박스 라인 맞춤 시도)
+                marginLeft: '100px' // 로고 우측 이동 (매장 박스 라인 맞춤 시도)
               }}>
                 Easy Alba
               </h1>
