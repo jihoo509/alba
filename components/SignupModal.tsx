@@ -153,32 +153,34 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
               </div>
             </div>
             
-            {/* ✅ 개인정보 동의 (간격 축소) */}
+            {/* ✅ 개인정보 동의 (높이 최소화 & 인라인 배치) */}
             <div className="privacy-area">
-               <div className="privacy-row">
-                 <input 
-                    type="checkbox" 
-                    id="privacy" 
-                    checked={agreePrivacy}
-                    onChange={(e) => setAgreePrivacy(e.target.checked)}
-                    style={{ cursor:'pointer', width: '18px', height: '18px', marginTop: '2px', flexShrink: 0 }}
-                 />
-                 <label htmlFor="privacy" className="privacy-label">
+                <input 
+                  type="checkbox" 
+                  id="privacy" 
+                  checked={agreePrivacy}
+                  onChange={(e) => setAgreePrivacy(e.target.checked)}
+                  style={{ cursor:'pointer', width: '18px', height: '18px', marginTop: '3px', flexShrink: 0 }}
+                />
+                <label htmlFor="privacy" className="privacy-label">
+                  <div>
                     <span className="required-tag">(필수)</span> 개인정보 수집 및 이용 동의
-                    <div className="sub-text">
-                        서비스 이용 및 마케팅 정보 수신 동의 포함
-                    </div>
-                 </label>
-               </div>
-               
-               {/* 간격을 줄여서 바로 밑에 붙임 */}
-               <button 
-                  type="button" 
-                  className="detail-btn"
-                  onClick={() => setShowPrivacyDetail(true)}
-               >
-                  약관 상세 보기 &gt;
-               </button>
+                  </div>
+                  <div className="sub-text">
+                      서비스 이용 및 마케팅 정보 수신 동의 포함
+                      {/* ✅ 버튼을 텍스트 바로 뒤에 인라인으로 붙임 */}
+                      <button 
+                        type="button" 
+                        className="detail-btn"
+                        onClick={(e) => {
+                          e.preventDefault(); // 체크박스 토글 방지
+                          setShowPrivacyDetail(true);
+                        }}
+                      >
+                        [약관 상세 보기]
+                      </button>
+                  </div>
+                </label>
             </div>
 
             <button type="submit" className="signup-btn" disabled={loading}>
@@ -313,22 +315,15 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
         }
         .dash { color: #888; font-weight: bold; flex-shrink: 0; }
 
-        /* ✅ 개선된 개인정보 영역 (간격 최소화) */
+        /* ✅ 개선된 개인정보 영역 (최소 공간) */
         .privacy-area {
             display: flex;
-            flex-direction: column; 
             align-items: flex-start;
+            gap: 10px;
             background-color: #f5f7fa;
             padding: 12px;
             border-radius: 8px;
             margin-top: 5px;
-            gap: 0px; /* ✅ 간격 제거하여 꽉 차게 */
-        }
-        .privacy-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            width: 100%;
             text-align: left;
         }
         .privacy-label {
@@ -336,6 +331,8 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
             color: #333;
             cursor: pointer;
             line-height: 1.4;
+            flex: 1;
+            /* 글자 끊김 방지 */
             word-break: keep-all; 
         }
         .required-tag {
@@ -352,20 +349,22 @@ export default function SignupModal({ isOpen, onClose, onSignup, loading }: Prop
             word-break: keep-all;
         }
         
+        /* 약관보기 버튼 (인라인 스타일) */
         .detail-btn {
             background: none;
             border: none;
-            padding: 0; /* 패딩 제거 */
-            font-size: 12px;
+            padding: 0;
+            font-size: 11px;
             color: #666;
             cursor: pointer;
             text-decoration: underline;
-            margin-left: 26px; /* 들여쓰기 유지 */
-            margin-top: 2px;   /* 위쪽 요소와 살짝만 띄움 */
-            display: block;
+            margin-left: 6px; 
+            display: inline-block; /* 텍스트 옆에 붙게 */
+            vertical-align: baseline;
         }
         .detail-btn:hover {
             color: #0052cc;
+            font-weight: bold;
         }
 
         .signup-btn {
