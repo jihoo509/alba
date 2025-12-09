@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 
 interface EditModalProps {
@@ -35,13 +37,11 @@ export default function PayrollEditModal({
   const finalPay = basePay + (adjustmentInput.trim() === '' ? 0 : Number(adjustmentInput.replace(/,/g, '')));
 
   return (
-    // ✅ 화면 꽉 채우는 배경 (z-index 9999로 최상단 보장)
     <div style={{
       position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
       backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 9999
     }}>
-      {/* 팝업 창 */}
       <div style={{
         backgroundColor: 'white', borderRadius: '12px', padding: '24px',
         width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
@@ -51,15 +51,16 @@ export default function PayrollEditModal({
         </h2>
 
         <div style={{ marginBottom: '16px' }}>
+          {/* ✅ [수정] 멘트 변경 */}
           <label style={{ display: 'block', fontSize: '13px', color: '#555', marginBottom: '4px' }}>확정 월급여 (선택)</label>
           <input
             type="number"
-            placeholder={`기존 시급 계산액: ${(originalPay || 0).toLocaleString()}원`}
+            placeholder={`기존 기본급: ${(originalPay || 0).toLocaleString()}원`}
             value={overrideInput}
             onChange={(e) => setOverrideInput(e.target.value)}
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px' }}
+            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box' }}
           />
-          <p style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>* 입력 시 시급 계산을 무시하고 이 금액을 기본 급여로 씁니다.</p>
+          <p style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>* 입력 시 자동 계산을 무시하고 이 금액을 기본 급여로 씁니다.</p>
         </div>
 
         <div style={{ marginBottom: '20px' }}>
@@ -69,7 +70,7 @@ export default function PayrollEditModal({
             placeholder="0"
             value={adjustmentInput}
             onChange={(e) => setAdjustmentInput(e.target.value)}
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px' }}
+            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box' }}
           />
           <p style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>* 양수(+)는 보너스, 음수(-)는 공제입니다.</p>
         </div>
