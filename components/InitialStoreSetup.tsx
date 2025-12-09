@@ -183,7 +183,7 @@ const containerStyle = {
   display: 'flex', 
   justifyContent: 'center', 
   alignItems: 'flex-start', // ✅ [수정] 상단 정렬로 변경
-  paddingTop: '60px',       // ✅ [수정] 위쪽 여백 60px 추가 (기존보다 위로 올라감)
+  paddingTop: '10px',       // ✅ [수정] 위쪽 여백 60px 추가 (기존보다 위로 올라감)
   minHeight: '80vh',      
   width: '100%', 
   paddingLeft: '20px',      // 좌우 패딩 추가
