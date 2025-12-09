@@ -17,7 +17,7 @@ type Props = {
 
 function getEmploymentLabel(type: string) {
   if (type === 'four_insurance' || type === 'employee' || type === 'insured') return '4대 보험';
-  if (type === 'freelancer_33' || type === 'freelancer') return '프리랜서';
+  if (type === 'freelancer_33' || type === 'freelancer') return '3.3% 프리랜서';
   return type;
 }
 
@@ -35,7 +35,7 @@ export function EmployeeSection({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   
-  // ✅ [추가] 고용 형태 드롭다운 열림 상태
+  // ✅ 고용 형태 드롭다운 열림 상태
   const [isTypeOpen, setIsTypeOpen] = useState(false);
 
   const supabase = createSupabaseBrowserClient();
@@ -52,7 +52,7 @@ export function EmployeeSection({
     }
   };
 
-  // ✅ 고용 형태 선택 핸들러 (즉시 닫힘)
+  // ✅ 고용 형태 선택 핸들러
   const handleSelectType = (value: 'freelancer_33' | 'four_insurance') => {
     setNewEmpType(value);
     setIsTypeOpen(false);
@@ -63,11 +63,15 @@ export function EmployeeSection({
     
     const wage = Number(newEmpWage.replace(/,/g, ''));
     const dailyPay = Number(newDailyWage.replace(/,/g, ''));
+    const monthlyPay = Number(newEmpMonthly.replace(/,/g, '')); // ✅ 고정 월급 숫자 변환
 
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
 
-    if (payType === 'time' && !wage) return alert('시급을 입력해주세요.');
-    if (payType === 'day' && !dailyPay) return alert('일당을 입력해주세요.');
+    // ✅ [수정된 로직] 고정 월급이 없을 때만 시급/일당 필수 체크
+    if (monthlyPay === 0) {
+        if (payType === 'time' && !wage) return alert('시급 또는 고정 월급을 입력해주세요.');
+        if (payType === 'day' && !dailyPay) return alert('일당 또는 고정 월급을 입력해주세요.');
+    }
 
     await onCreateEmployee({
       name: newEmpName,
@@ -78,6 +82,7 @@ export function EmployeeSection({
       default_daily_pay: payType === 'day' ? dailyPay : 0,
     });
 
+    // 고정 월급 저장 로직
     if (newEmpMonthly.trim()) {
         const { data: createdEmp } = await supabase
             .from('employees')
@@ -91,7 +96,7 @@ export function EmployeeSection({
         if (createdEmp) {
             await supabase.from('employee_settings').upsert({
                 employee_id: createdEmp.id,
-                monthly_override: Number(newEmpMonthly.replace(/,/g, '')),
+                monthly_override: monthlyPay,
                 store_id: currentStoreId
             }, { onConflict: 'employee_id' });
         }
@@ -227,7 +232,7 @@ export function EmployeeSection({
             <DateSelector value={newEmpHireDate} onChange={setNewEmpHireDate} />
           </div>
 
-          {/* 4. 급여 방식 & 금액 (PC에서는 2열로 배치될 수 있음) */}
+          {/* 4. 급여 방식 & 금액 */}
           <div className="form-group pay-setting-group">
             <label>급여 설정</label>
             <div style={{ display: 'flex', gap: 8 }}>
