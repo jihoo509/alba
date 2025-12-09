@@ -118,7 +118,7 @@ function DashboardContent() {
     }
   }, [supabase, currentStoreId]);
 
-  // ✅ 직원 불러오기
+  // ✅ 직원 불러오기 (여기서 컬럼을 연결해야 저장된 게 보입니다!)
   const loadEmployees = useCallback(async (storeId: string) => {
     setLoadingEmployees(true);
     const { data } = await supabase
@@ -134,12 +134,17 @@ function DashboardContent() {
         hourly_wage: row.hourly_wage, 
         employment_type: row.employment_type,
         is_active: row.is_active, 
-        hire_date: row.hire_date, 
-        phone_number: row.phone_number,
-        birth_date: row.birth_date, 
+        
+        // ✅ [중요] DB 컬럼과 프론트엔드 변수 연결
+        // 캡처해주신 사진의 컬럼명인 phone_number, bank_name, account_number를 가져옵니다.
+        phone_number: row.phone_number, 
         bank_name: row.bank_name, 
         account_number: row.account_number, 
+        
+        hire_date: row.hire_date, 
+        birth_date: row.birth_date, 
         end_date: row.end_date,
+        
         pay_type: row.pay_type || 'time',
         daily_wage: row.daily_wage || 0,
         default_daily_pay: row.daily_wage || 0,
