@@ -1,5 +1,6 @@
 'use client';
 
+// ... (기존 import와 동일)
 import React, { useEffect, useMemo, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
@@ -13,8 +14,6 @@ import { calculateMonthlyPayroll } from '@/lib/payroll';
 import TutorialModal from '@/components/TutorialModal';
 import AdditionalInfoModal from '@/components/AdditionalInfoModal';
 import AccountSettingsModal from '@/components/AccountSettingsModal';
-
-// ✅ [추가 1] 초기 세팅 컴포넌트 임포트 (경로는 실제 파일 위치에 맞춰주세요)
 import InitialStoreSetup from '@/components/InitialStoreSetup'; 
 
 type Store = { id: string; name: string; };
@@ -46,8 +45,6 @@ function DashboardContent() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const [loading, setLoading] = useState(true);
-  
-  // ✅ [추가 2] userId 상태 추가 (InitialStoreSetup에 넘겨주기 위함)
   const [userId, setUserId] = useState<string | null>(null);
 
   const [userEmail, setUserEmail] = useState('');
@@ -89,7 +86,6 @@ function DashboardContent() {
     updateUrl('home', storeId);
   };
 
-  // ✅ 매장 목록 불러오기
   const loadStores = useCallback(async (uid: string) => {
     const { data, error } = await supabase.from('stores').select('*').eq('owner_id', uid);
     if (error) { setErrorMsg('매장 로딩 실패'); return; }
@@ -107,7 +103,6 @@ function DashboardContent() {
     }
   }, [supabase, currentStoreId, searchParams]);
 
-  // ✅ 매장 삭제
   const handleDeleteStore = useCallback(async (storeId: string) => {
     if (!window.confirm('정말 삭제하시겠습니까? (직원 및 스케줄 데이터가 모두 삭제됩니다)')) return;
     const { error } = await supabase.from('stores').delete().eq('id', storeId);
@@ -118,7 +113,6 @@ function DashboardContent() {
     }
   }, [supabase, currentStoreId]);
 
-  // ✅ 직원 불러오기 (여기서 컬럼을 연결해야 저장된 게 보입니다!)
   const loadEmployees = useCallback(async (storeId: string) => {
     setLoadingEmployees(true);
     const { data } = await supabase
@@ -135,8 +129,6 @@ function DashboardContent() {
         employment_type: row.employment_type,
         is_active: row.is_active, 
         
-        // ✅ [중요] DB 컬럼과 프론트엔드 변수 연결
-        // 캡처해주신 사진의 컬럼명인 phone_number, bank_name, account_number를 가져옵니다.
         phone_number: row.phone_number, 
         bank_name: row.bank_name, 
         account_number: row.account_number, 
@@ -154,7 +146,6 @@ function DashboardContent() {
     setLoadingEmployees(false);
   }, [supabase]);
 
-  // ✅ 대시보드 통계 불러오기
   const loadHomeStats = useCallback(async (storeId: string) => {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
@@ -192,7 +183,6 @@ function DashboardContent() {
 
   }, [supabase]);
 
-  // ✅ 직원 생성
   const handleCreateEmployee = useCallback(async (payload: any) => {
     if (!currentStoreId) return;
     const { error } = await supabase.from('employees').insert({
@@ -255,8 +245,6 @@ function DashboardContent() {
       if (!session) { router.replace('/'); return; }
       
       const user = session.user;
-      
-      // ✅ [추가 3] userId 상태 저장
       setUserId(user.id);
 
       setUserEmail(user.email || '');
@@ -280,10 +268,9 @@ function DashboardContent() {
     }
   }, [currentStoreId, loadEmployees, loadHomeStats]);
 
-  // ✅ [추가 4] InitialStoreSetup 완료 시 호출될 함수
   const handleInitialSetupComplete = async () => {
     if (userId) {
-      await loadStores(userId); // 매장 목록 다시 불러오기
+      await loadStores(userId);
     }
   };
 
@@ -405,18 +392,20 @@ function DashboardContent() {
 
             {errorMsg && <div style={{ marginBottom: 10, color: 'salmon' }}>{errorMsg}</div>}
 
-            {/* 매장 선택기 */}
-            <StoreSelector
-              stores={stores}
-              currentStoreId={currentStoreId}
-              onChangeStore={handleStoreChange}
-              creatingStore={creatingStore}
-              onCreateStore={handleCreateStore}
-              onDeleteStore={handleDeleteStore}
-            />
+            {/* ✅ [수정] 매장이 하나라도 있을 때만 매장 선택기 표시 */}
+            {stores.length > 0 && (
+                <StoreSelector
+                stores={stores}
+                currentStoreId={currentStoreId}
+                onChangeStore={handleStoreChange}
+                creatingStore={creatingStore}
+                onCreateStore={handleCreateStore}
+                onDeleteStore={handleDeleteStore}
+                />
+            )}
           </div>
 
-          {/* 탭 메뉴 (매장이 있을 때만 표시) */}
+          {/* 탭 메뉴 */}
           {stores.length > 0 && currentStoreId && (
             <div className="mobile-sticky-nav">
               <div className="mobile-tab-container" style={{ 
@@ -460,7 +449,7 @@ function DashboardContent() {
       >
       <div className="mobile-only" style={{ height: '20px' }}></div>
 
-        {/* ✅ [수정] 매장이 하나도 없을 때 InitialStoreSetup 표시 */}
+        {/* 매장 없을 때 InitialStoreSetup */}
         {stores.length === 0 ? (
            userId ? (
              <InitialStoreSetup 
@@ -471,7 +460,6 @@ function DashboardContent() {
              <div style={{color:'#fff', textAlign:'center', marginTop: 40}}>로딩 중...</div>
            )
         ) : (
-          // 매장이 있을 때 탭 콘텐츠 표시
           currentStoreId && (
             <div style={{ width: '100%' }} className={currentTab === 'schedules' ? 'shrink-on-mobile' : ''}>
               {renderTabContent()}
@@ -497,7 +485,6 @@ function DashboardContent() {
         />
       )}
 
-      {/* 튜토리얼도 매장이 생성된 후에만 보여주는 것이 자연스럽습니다. stores.length > 0 조건 추가 */}
       {stores.length > 0 && (
         <TutorialModal 
           tutorialKey="seen_home_tutorial_v1"

@@ -65,10 +65,8 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         setPayType('time');
       }
 
-      // ✅ 여기서 값이 제대로 들어가는지 확인 (DB에 데이터가 있다면)
       setBankName(employee.bank_name || '');
       setAccountNumber(employee.account_number || '');
-      
       setIsActive(employee.is_active);
       setEndDate(employee.end_date || '');
     }
@@ -84,42 +82,49 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     if (val.length <= maxLen) setter(val);
   };
 
-  const handleSave = async () => {
+const handleSave = async () => {
     setIsSaving(true);
     try {
       const fullPhone = `${phone1}-${phone2}-${phone3}`;
-      
-      // 전화번호가 너무 짧으면 저장하지 않음 (선택사항처럼 동작)
+      // 전화번호가 너무 짧으면 그냥 빈값으로 저장
       const finalPhone = (phone2.length >= 3 && phone3.length >= 4) ? fullPhone : '';
 
       const finalHourly = payType === 'time' ? Number(hourlyWage.replace(/,/g, '')) : 0;
       const finalDaily = payType === 'day' ? Number(dailyWage.replace(/,/g, '')) : 0;
       const finalMonthly = payType === 'month' ? Number(monthlyWage.replace(/,/g, '')) : 0;
 
+      // 빈 문자열이면 null로 변환 (DB 저장용)
+      const safeHireDate = hireDate === '' ? null : hireDate;
+      const safeBirthDate = birthDate === '' ? null : birthDate;
+      const safeEndDate = (!isActive && endDate === '') ? null : (isActive ? null : endDate);
+
       await onUpdate(employee.id, {
         name,
-        phone_number: finalPhone, // 전화번호 저장
-        hire_date: hireDate,
-        birth_date: birthDate,
+        phone_number: finalPhone,
+        // ✅ [수정] 빨간 줄 해결: as any 추가
+        hire_date: safeHireDate as any,   
+        birth_date: safeBirthDate as any, 
         employment_type: employmentType as any,
         pay_type: payType,
         hourly_wage: finalHourly,
         daily_wage: finalDaily,
         monthly_wage: finalMonthly,
-        bank_name: bankName, // 은행 저장
-        account_number: accountNumber, // 계좌 저장
+        bank_name: bankName,
+        account_number: accountNumber,
         is_active: isActive,
-        end_date: isActive ? undefined : endDate,
+        // ✅ [수정] 빨간 줄 해결: as any 추가
+        end_date: safeEndDate as any,     
       });
       onClose();
     } catch (e: any) {
-      // ✅ 에러 원인을 알 수 있게 메시지 출력
       console.error(e);
-      alert('저장 중 오류가 발생했습니다.\n' + (e.message || '데이터베이스 컬럼(bank_name, account_number 등)이 존재하는지 확인해주세요.'));
+      // 에러 메시지 상세 출력
+      alert('저장 중 오류가 발생했습니다.\n' + e.message);
     } finally {
       setIsSaving(false);
     }
   };
+
 
   const handleRetire = () => {
     if (!confirm('해당 직원을 퇴사 처리하시겠습니까?')) return;
@@ -194,7 +199,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
           <div className="form-row">
             <div className="form-group" style={{ flex: 1 }}>
               <label>은행명</label>
-              {/* ✅ 은행명 입력 */}
               <input 
                 type="text" 
                 value={bankName} 
@@ -205,7 +209,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             </div>
             <div className="form-group" style={{ flex: 2 }}>
               <label>계좌번호</label>
-              {/* ✅ 계좌번호 입력 */}
               <input 
                 type="text" 
                 value={accountNumber} 

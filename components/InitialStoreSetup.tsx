@@ -7,21 +7,16 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
   const supabase = createSupabaseBrowserClient();
   const [loading, setLoading] = useState(false);
 
-  // 입력 값 상태
   const [name, setName] = useState('');
   const [isFivePlus, setIsFivePlus] = useState(false);
   
-  // 수당 설정 (기본값: 주휴만 켜고 나머지는 끔)
   const [payWeekly, setPayWeekly] = useState(true); 
   const [payNight, setPayNight] = useState(false);   
   const [payHoliday, setPayHoliday] = useState(false); 
   const [payOvertime, setPayOvertime] = useState(false); 
 
-  // 5인 이상 체크/해제 시 연동 로직
   const handle5PlusChange = (checked: boolean) => {
     setIsFivePlus(checked);
-    // 체크하면 -> 수당 3종 세트 자동 켜기
-    // 해제하면 -> 수당 3종 세트 자동 끄기
     setPayNight(checked);
     setPayHoliday(checked);
     setPayOvertime(checked);
@@ -36,17 +31,14 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
     try {
       setLoading(true);
 
-      // DB 컬럼명에 맞춰서 데이터 저장
       const { error } = await supabase.from('stores').insert({
         owner_id: userId,
         name: name,
-        
         is_five_plus: isFivePlus,      
         pay_weekly: payWeekly,
         pay_night: payNight,
         pay_holiday: payHoliday,
         pay_overtime: payOvertime,
-        
         auto_deduct_break: true, 
         no_tax_deduction: false
       });
@@ -66,6 +58,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
 
   return (
     <div style={containerStyle}>
+      {/* ✅ [수정] 메인 카드를 margin: 0 auto 로 확실하게 가운데 정렬 */}
       <div style={cardStyle}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{ fontSize: '36px', marginBottom: '8px' }}>🎉</div>
@@ -76,7 +69,6 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
           </p>
         </div>
 
-        {/* 매장 이름 입력 */}
         <div style={sectionStyle}>
           <label style={labelStyle}>매장 이름</label>
           <input
@@ -88,7 +80,6 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
           />
         </div>
 
-        {/* 5인 이상 체크박스 (강조 박스) */}
         <div 
           onClick={() => handle5PlusChange(!isFivePlus)}
           style={{ 
@@ -121,7 +112,6 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
 
         <label style={{ ...labelStyle, marginBottom: '10px', display: 'block' }}>수당 설정</label>
         
-        {/* 수당 설정 리스트 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <CheckboxItem 
             label="주휴수당 지급" 
@@ -157,7 +147,6 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
   );
 }
 
-// 체크박스 아이템 컴포넌트
 function CheckboxItem({ label, subLabel, checked, onChange }: any) {
   return (
     <div 
@@ -193,12 +182,14 @@ function CheckboxItem({ label, subLabel, checked, onChange }: any) {
 const containerStyle = {
   display: 'flex', 
   justifyContent: 'center', 
-  alignItems: 'center', 
+  alignItems: 'flex-start', // ✅ [수정] 상단 정렬로 변경
+  paddingTop: '60px',       // ✅ [수정] 위쪽 여백 60px 추가 (기존보다 위로 올라감)
   minHeight: '80vh',      
   width: '100%', 
-  padding: '20px', 
+  paddingLeft: '20px',      // 좌우 패딩 추가
+  paddingRight: '20px',
   boxSizing: 'border-box' as const,
-  backgroundColor: 'transparent' // 배경 투명
+  backgroundColor: 'transparent'
 };
 
 const cardStyle = {
@@ -207,7 +198,8 @@ const cardStyle = {
   borderRadius: '20px',
   boxShadow: '0 10px 40px rgba(0,0,0,0.1)', 
   width: '100%', 
-  maxWidth: '420px'
+  maxWidth: '420px',
+  margin: '0 auto' // ✅ [수정] 좌우 마진 자동 (가운데 정렬)
 };
 
 const sectionStyle = { marginBottom: '20px', display: 'flex', flexDirection: 'column' as const, gap: '8px' };
