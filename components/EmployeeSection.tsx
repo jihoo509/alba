@@ -35,7 +35,6 @@ export function EmployeeSection({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   
-  // ✅ [추가] 고용 형태 드롭다운 열림 상태
   const [isTypeOpen, setIsTypeOpen] = useState(false);
 
   const supabase = createSupabaseBrowserClient();
@@ -52,7 +51,6 @@ export function EmployeeSection({
     }
   };
 
-  // ✅ 고용 형태 선택 핸들러 (즉시 닫힘)
   const handleSelectType = (value: 'freelancer_33' | 'four_insurance') => {
     setNewEmpType(value);
     setIsTypeOpen(false);
@@ -63,10 +61,17 @@ export function EmployeeSection({
     
     const wage = Number(newEmpWage.replace(/,/g, ''));
     const dailyPay = Number(newDailyWage.replace(/,/g, ''));
+    const monthlyPay = Number(newEmpMonthly.replace(/,/g, ''));
 
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
 
-    if (payType === 'time' && !wage) return alert('시급을 입력해주세요.');
+    // ✅ [수정] 시급제인데 시급이 없을 경우 -> 월급이라도 있으면 통과
+    if (payType === 'time') {
+        if (!wage && !monthlyPay) {
+            return alert('시급 또는 고정 월급 중 하나는 반드시 입력해야 합니다.');
+        }
+    }
+    
     if (payType === 'day' && !dailyPay) return alert('일당을 입력해주세요.');
 
     await onCreateEmployee({
@@ -91,12 +96,13 @@ export function EmployeeSection({
         if (createdEmp) {
             await supabase.from('employee_settings').upsert({
                 employee_id: createdEmp.id,
-                monthly_override: Number(newEmpMonthly.replace(/,/g, '')),
+                monthly_override: monthlyPay,
                 store_id: currentStoreId
             }, { onConflict: 'employee_id' });
         }
     }
 
+    // 입력창 초기화
     setNewEmpName('');
     setNewEmpWage('');
     setNewEmpMonthly('');
@@ -104,6 +110,9 @@ export function EmployeeSection({
     setNewEmpHireDate('');
     setPayType('time');
     setNewDailyWage('');
+    
+    // 페이지 새로고침 없이 리스트 갱신을 위해 상위 컴포넌트 리로드 유도 (선택적)
+    // 현재 구조에서는 onCreateEmployee가 loadEmployees를 호출하므로 자동 갱신됨.
   };
 
   const handleEditClick = (emp: Employee) => { setSelectedEmployee(emp); setIsEditOpen(true); };
@@ -124,13 +133,18 @@ export function EmployeeSection({
             </div>
 
             <div className="emp-wage">
-              {(emp.pay_type === 'day' || emp.pay_type === '일당') ? (
+              {/* ✅ [수정] 월급이 있으면 월급 우선 표기 */}
+              {emp.monthly_pay && emp.monthly_pay > 0 ? (
+                 <span style={{ color: 'dodgerblue', fontWeight: 'bold' }}>
+                   월 {Number(emp.monthly_pay).toLocaleString()}원
+                 </span>
+              ) : (emp.pay_type === 'day') ? (
                 <span style={{ color: '#e67e22', fontWeight: 'bold' }}>
                   일 {Number(emp.daily_wage || emp.default_daily_pay || 0).toLocaleString()}원
                 </span>
               ) : (
                 <span>
-                  {Number(emp.hourly_wage || 0).toLocaleString()}원
+                  시급 {Number(emp.hourly_wage || 0).toLocaleString()}원
                 </span>
               )}
             </div>
@@ -152,21 +166,16 @@ export function EmployeeSection({
   return (
     <section>
       <style jsx>{`
-        /* ✅ PC용 반응형 그리드 설정 */
         .form-grid-layout {
           display: grid;
           gap: 16px;
-          /* 모바일: 1열 */
           grid-template-columns: 1fr; 
         }
-
-        /* PC (768px 이상): 3열로 꽉 채우기 */
         @media (min-width: 768px) {
           .form-grid-layout {
             grid-template-columns: 1fr 1fr 1fr;
-            align-items: end; /* 버튼 높이 맞춤 */
+            align-items: end; 
           }
-          /* 급여 설정 부분은 좀 더 넓게 */
           .pay-setting-group {
             grid-column: span 1; 
           }
@@ -183,7 +192,7 @@ export function EmployeeSection({
             <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} placeholder="이름 입력" style={{width:'100%', boxSizing:'border-box'}} />
           </div>
 
-          {/* 2. 고용 형태 (커스텀 드롭다운) */}
+          {/* 2. 고용 형태 */}
           <div className="form-group" style={{ position: 'relative' }}>
             <label>고용 형태</label>
             <div 
@@ -205,18 +214,8 @@ export function EmployeeSection({
                     backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '6px',
                     marginTop: '4px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                 }}>
-                    <div 
-                        onClick={() => handleSelectType('four_insurance')}
-                        style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', fontSize: '14px' }}
-                    >
-                        4대 보험
-                    </div>
-                    <div 
-                        onClick={() => handleSelectType('freelancer_33')}
-                        style={{ padding: '12px', cursor: 'pointer', fontSize: '14px' }}
-                    >
-                        3.3% 프리랜서
-                    </div>
+                    <div onClick={() => handleSelectType('four_insurance')} style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', fontSize: '14px' }}>4대 보험</div>
+                    <div onClick={() => handleSelectType('freelancer_33')} style={{ padding: '12px', cursor: 'pointer', fontSize: '14px' }}>3.3% 프리랜서</div>
                 </div>
             )}
           </div>
@@ -227,17 +226,15 @@ export function EmployeeSection({
             <DateSelector value={newEmpHireDate} onChange={setNewEmpHireDate} />
           </div>
 
-          {/* 4. 급여 방식 & 금액 (PC에서는 2열로 배치될 수 있음) */}
+          {/* 4. 급여 방식 & 금액 */}
           <div className="form-group pay-setting-group">
             <label>급여 설정</label>
             <div style={{ display: 'flex', gap: 8 }}>
-                {/* 토글 버튼 */}
                 <div style={{ display: 'flex', backgroundColor: '#f0f2f5', padding: '2px', borderRadius: '6px', flexShrink: 0 }}>
                     <button type="button" onClick={() => setPayType('time')} style={{ padding: '8px 12px', borderRadius: '4px', border: 'none', backgroundColor: payType === 'time' ? '#fff' : 'transparent', color: payType === 'time' ? 'dodgerblue' : '#888', fontWeight: payType === 'time' ? 'bold' : 'normal', boxShadow: payType === 'time' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontSize: 13 }}>시급</button>
                     <button type="button" onClick={() => setPayType('day')} style={{ padding: '8px 12px', borderRadius: '4px', border: 'none', backgroundColor: payType === 'day' ? '#fff' : 'transparent', color: payType === 'day' ? '#e67e22' : '#888', fontWeight: payType === 'day' ? 'bold' : 'normal', boxShadow: payType === 'day' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontSize: 13 }}>일당</button>
                 </div>
 
-                {/* 금액 입력란 */}
                 <div style={{ position: 'relative', flex: 1 }}>
                     {payType === 'time' ? (
                         <input 

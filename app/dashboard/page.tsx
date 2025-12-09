@@ -34,6 +34,7 @@ export type Employee = {
   pay_type?: string;          
   daily_wage?: number;       
   default_daily_pay?: number; 
+  monthly_pay?: number;
 };
 
 function DashboardContent() {
@@ -122,6 +123,7 @@ function DashboardContent() {
         pay_type: row.pay_type || 'time',
         daily_wage: row.daily_wage || 0,
         default_daily_pay: row.daily_wage || 0,
+        monthly_pay: row.employee_settings?.[0]?.monthly_override || 0,
       })));
     }
     setLoadingEmployees(false);
