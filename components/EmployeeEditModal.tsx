@@ -14,16 +14,24 @@ type Props = {
 export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate }: Props) {
   // 기본 정보
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  
+  // 전화번호 3분할
+  const [phone1, setPhone1] = useState('010');
+  const [phone2, setPhone2] = useState('');
+  const [phone3, setPhone3] = useState('');
+
   const [hireDate, setHireDate] = useState('');
   const [birthDate, setBirthDate] = useState('');
   
   // 고용 및 급여
   const [employmentType, setEmploymentType] = useState('');
-  const [payType, setPayType] = useState<'time' | 'day'>('time');
+  
+  // ✅ 급여 방식 (3가지로 확장)
+  const [payType, setPayType] = useState<'time' | 'day' | 'month'>('time');
+  
   const [hourlyWage, setHourlyWage] = useState('');
   const [dailyWage, setDailyWage] = useState('');
-  const [monthlyWage, setMonthlyWage] = useState(''); // ✅ 월급 상태
+  const [monthlyWage, setMonthlyWage] = useState('');
 
   // 은행 정보
   const [bankName, setBankName] = useState('');
@@ -36,23 +44,42 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   // 로딩 상태
   const [isSaving, setIsSaving] = useState(false);
 
-  // ✅ [핵심 1] 모달 열릴 때 기존 데이터 채워넣기 (월급 포함)
+  // ✅ 데이터 채워넣기
   useEffect(() => {
     if (isOpen && employee) {
       setName(employee.name);
-      setPhone(employee.phone_number || '');
+      
+      // 전화번호 분리 (예: 010-1234-5678)
+      if (employee.phone_number) {
+        const parts = employee.phone_number.split('-');
+        if (parts.length === 3) {
+          setPhone1(parts[0]);
+          setPhone2(parts[1]);
+          setPhone3(parts[2]);
+        }
+      } else {
+        setPhone1('010'); setPhone2(''); setPhone3('');
+      }
+
       setHireDate(employee.hire_date || '');
       setBirthDate(employee.birth_date || '');
-      
       setEmploymentType(employee.employment_type);
-      setPayType((employee.pay_type as 'time' | 'day') || 'time');
       
-      // 숫자 -> 문자열 변환 (콤마 추가)
+      // 숫자 콤마 포맷팅
       setHourlyWage(employee.hourly_wage ? employee.hourly_wage.toLocaleString() : '');
       setDailyWage(employee.daily_wage ? employee.daily_wage.toLocaleString() : '');
-      
-      // ✅ DB에서 가져온 월급 정보(monthly_wage)를 바로 꽂아줍니다!
       setMonthlyWage(employee.monthly_wage ? employee.monthly_wage.toLocaleString() : '');
+
+      // ✅ 급여 타입 결정 로직 (기존 데이터 호환)
+      // 1. DB에 'month'로 저장되어 있거나
+      // 2. 월급(monthly_wage) 값이 있으면 'month' 모드로 보여줌
+      if (employee.pay_type === 'month' || (employee.monthly_wage && employee.monthly_wage > 0)) {
+        setPayType('month');
+      } else if (employee.pay_type === 'day') {
+        setPayType('day');
+      } else {
+        setPayType('time');
+      }
 
       setBankName(employee.bank_name || '');
       setAccountNumber(employee.account_number || '');
@@ -68,19 +95,34 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     }
   };
 
+  const handlePhoneInput = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void, maxLen: number) => {
+    const val = e.target.value.replace(/[^0-9]/g, '');
+    if (val.length <= maxLen) setter(val);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // 전화번호 합치기
+      const fullPhone = `${phone1}-${phone2}-${phone3}`;
+
+      // ✅ [중요] 선택된 급여 방식 외에는 모두 0으로 초기화 (데이터 꼬임 방지)
+      const finalHourly = payType === 'time' ? Number(hourlyWage.replace(/,/g, '')) : 0;
+      const finalDaily = payType === 'day' ? Number(dailyWage.replace(/,/g, '')) : 0;
+      const finalMonthly = payType === 'month' ? Number(monthlyWage.replace(/,/g, '')) : 0;
+
       await onUpdate(employee.id, {
         name,
-        phone_number: phone,
+        phone_number: fullPhone.length > 8 ? fullPhone : '', // 번호가 너무 짧으면 저장 안함
         hire_date: hireDate,
         birth_date: birthDate,
         employment_type: employmentType as any,
-        pay_type: payType,
-        hourly_wage: Number(hourlyWage.replace(/,/g, '')),
-        daily_wage: Number(dailyWage.replace(/,/g, '')),
-        monthly_wage: Number(monthlyWage.replace(/,/g, '')), // ✅ 월급 저장
+        
+        pay_type: payType, // 'time' | 'day' | 'month' 저장
+        hourly_wage: finalHourly,
+        daily_wage: finalDaily,
+        monthly_wage: finalMonthly,
+        
         bank_name: bankName,
         account_number: accountNumber,
         is_active: isActive,
@@ -97,7 +139,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   const handleRetire = () => {
     if (!confirm('해당 직원을 퇴사 처리하시겠습니까?')) return;
     setIsActive(false);
-    setEndDate(new Date().toISOString().split('T')[0]); // 오늘 날짜로 퇴사
+    setEndDate(new Date().toISOString().split('T')[0]); 
   };
 
   if (!isOpen) return null;
@@ -112,15 +154,21 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
 
         <div className="form-container">
           
-          {/* ✅ [디자인 개선] 이름 & 전화번호를 한 줄에 배치 */}
+          {/* 이름 & 전화번호 (3분할) */}
           <div className="form-row">
-            <div className="form-group">
+            <div className="form-group" style={{ flex: 0.8 }}>
               <label>이름</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input-field" />
             </div>
-            <div className="form-group">
+            <div className="form-group" style={{ flex: 1.2 }}>
               <label>전화번호</label>
-              <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" className="input-field" />
+              <div className="phone-row">
+                <input className="phone-input" value={phone1} onChange={(e)=>handlePhoneInput(e, setPhone1, 3)} />
+                <span className="dash">-</span>
+                <input className="phone-input" value={phone2} onChange={(e)=>handlePhoneInput(e, setPhone2, 4)} />
+                <span className="dash">-</span>
+                <input className="phone-input" value={phone3} onChange={(e)=>handlePhoneInput(e, setPhone3, 4)} />
+              </div>
             </div>
           </div>
 
@@ -141,45 +189,32 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
 
           <div className="divider" />
 
-          {/* 급여 설정 (토글 + 금액) */}
+          {/* ✅ 급여 설정 (3단 토글 + 단일 입력창) */}
           <div className="form-group">
             <label>급여 방식</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              
+              {/* 3단 토글 */}
               <div className="toggle-group">
-                <button 
-                  className={`toggle-btn ${payType === 'time' ? 'active' : ''}`} 
-                  onClick={() => setPayType('time')}
-                >시급</button>
-                <button 
-                  className={`toggle-btn ${payType === 'day' ? 'active' : ''}`} 
-                  onClick={() => setPayType('day')}
-                >일당</button>
+                <button className={`toggle-btn ${payType === 'time' ? 'active' : ''}`} onClick={() => setPayType('time')}>시급</button>
+                <button className={`toggle-btn ${payType === 'day' ? 'active-orange' : ''}`} onClick={() => setPayType('day')}>일당</button>
+                <button className={`toggle-btn ${payType === 'month' ? 'active-blue' : ''}`} onClick={() => setPayType('month')}>월급</button>
               </div>
+
+              {/* 입력창 (선택된 타입에 따라 값이 바뀜) */}
               <div style={{ position: 'relative', flex: 1 }}>
-                <input 
-                  type="text" 
-                  value={payType === 'time' ? hourlyWage : dailyWage} 
-                  onChange={(e) => payType === 'time' ? handleNumberInput(e, setHourlyWage) : handleNumberInput(e, setDailyWage)}
-                  className="input-field"
-                  style={{ textAlign: 'right', paddingRight: '30px' }}
-                />
+                {payType === 'time' && (
+                    <input type="text" value={hourlyWage} onChange={(e) => handleNumberInput(e, setHourlyWage)} className="input-field" style={{ textAlign: 'right', paddingRight: '30px' }} placeholder="0" />
+                )}
+                {payType === 'day' && (
+                    <input type="text" value={dailyWage} onChange={(e) => handleNumberInput(e, setDailyWage)} className="input-field" style={{ textAlign: 'right', paddingRight: '30px', borderColor:'#f39c12', background:'#fffbf0' }} placeholder="0" />
+                )}
+                {payType === 'month' && (
+                    <input type="text" value={monthlyWage} onChange={(e) => handleNumberInput(e, setMonthlyWage)} className="input-field" style={{ textAlign: 'right', paddingRight: '30px', borderColor:'#3498db', background:'#f0f9ff' }} placeholder="0" />
+                )}
                 <span className="unit">원</span>
               </div>
-            </div>
-          </div>
 
-          {/* 고정 월급 */}
-          <div className="form-group">
-            <label style={{ color: 'dodgerblue' }}>고정 월급 (선택)</label>
-            <div style={{ position: 'relative' }}>
-              <input 
-                type="text" 
-                value={monthlyWage} 
-                onChange={(e) => handleNumberInput(e, setMonthlyWage)}
-                className="input-field monthly-input"
-                placeholder="입력 시 시급/일당 무시하고 적용됨"
-              />
-              <span className="unit">원</span>
             </div>
           </div>
 
@@ -244,8 +279,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         }
         
         .form-container { display: flex; flex-direction: column; gap: 16px; }
-        
-        /* ✅ 2열 그리드 레이아웃 (PC/모바일 공통) */
         .form-row { display: flex; gap: 12px; }
         .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; }
         .form-group label { font-size: 13px; font-weight: bold; color: #555; }
@@ -255,17 +288,27 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
           font-size: 14px; box-sizing: border-box; outline: none; background: #f9f9f9;
         }
         .input-field:focus { border-color: #0052cc; background: #fff; }
-        .monthly-input { background-color: #f0f9ff; border-color: #bae7ff; }
+
+        /* 전화번호 3분할 스타일 */
+        .phone-row { display: flex; align-items: center; gap: 4px; width: 100%; }
+        .phone-input {
+            flex: 1; min-width: 0; padding: 12px 0; border: 1px solid #ddd; border-radius: 8px;
+            font-size: 14px; text-align: center; outline: none; background: #f9f9f9;
+        }
+        .phone-input:focus { border-color: #0052cc; background: #fff; }
+        .dash { color: #888; font-weight: bold; flex-shrink: 0; }
 
         .divider { height: 1px; background-color: #eee; margin: 4px 0; }
 
-        /* 토글 버튼 그룹 */
+        /* 3단 토글 스타일 */
         .toggle-group { display: flex; background: #eee; padding: 2px; border-radius: 6px; }
         .toggle-btn {
           padding: 10px 14px; border: none; border-radius: 4px; font-size: 13px; cursor: pointer;
           background: transparent; color: #666;
         }
         .toggle-btn.active { background: #fff; color: #0052cc; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .toggle-btn.active-orange { background: #fff; color: #e67e22; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .toggle-btn.active-blue { background: #fff; color: #3498db; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
         .unit { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #888; font-size: 13px; }
 
