@@ -63,7 +63,10 @@ export default function DateSelector({ value, onChange }: Props) {
     }, 50);
   };
 
-  const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i);
+  // ✅ [수정 핵심] 1950년 ~ 현재 년도까지 내림차순(최신순)으로 배열 생성
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i);
+  
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
