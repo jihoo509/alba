@@ -65,7 +65,6 @@ export function EmployeeSection({
 
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
 
-    // ✅ [수정] 시급제인데 시급이 없을 경우 -> 월급이라도 있으면 통과
     if (payType === 'time') {
         if (!wage && !monthlyPay) {
             return alert('시급 또는 고정 월급 중 하나는 반드시 입력해야 합니다.');
@@ -102,7 +101,6 @@ export function EmployeeSection({
         }
     }
 
-    // 입력창 초기화
     setNewEmpName('');
     setNewEmpWage('');
     setNewEmpMonthly('');
@@ -110,9 +108,6 @@ export function EmployeeSection({
     setNewEmpHireDate('');
     setPayType('time');
     setNewDailyWage('');
-    
-    // 페이지 새로고침 없이 리스트 갱신을 위해 상위 컴포넌트 리로드 유도 (선택적)
-    // 현재 구조에서는 onCreateEmployee가 loadEmployees를 호출하므로 자동 갱신됨.
   };
 
   const handleEditClick = (emp: Employee) => { setSelectedEmployee(emp); setIsEditOpen(true); };
@@ -133,12 +128,12 @@ export function EmployeeSection({
             </div>
 
             <div className="emp-wage">
-              {/* ✅ [수정] 월급이 있으면 월급 우선 표기 */}
+              {/* ✅ [수정 핵심] 월급이 있으면 "월 OOO원" 표시 */}
               {emp.monthly_pay && emp.monthly_pay > 0 ? (
                  <span style={{ color: 'dodgerblue', fontWeight: 'bold' }}>
                    월 {Number(emp.monthly_pay).toLocaleString()}원
                  </span>
-              ) : (emp.pay_type === 'day') ? (
+              ) : (emp.pay_type === 'day' || emp.pay_type === '일당') ? (
                 <span style={{ color: '#e67e22', fontWeight: 'bold' }}>
                   일 {Number(emp.daily_wage || emp.default_daily_pay || 0).toLocaleString()}원
                 </span>
