@@ -28,7 +28,7 @@ export function EmployeeSection({
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [newEmpName, setNewEmpName] = useState('');
-  const [newEmpHireDate, setNewEmpHireDate] = useState(todayStr); // ✅ 기본값: 오늘
+  const [newEmpHireDate, setNewEmpHireDate] = useState(todayStr); 
   
   // 급여 관련
   const [payType, setPayType] = useState<'time' | 'day' | 'month'>('time');
@@ -41,7 +41,6 @@ export function EmployeeSection({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   
-  // 고용 형태 드롭다운 상태
   const [isTypeOpen, setIsTypeOpen] = useState(false);
 
   const activeEmployees = employees.filter(emp => !emp.end_date || emp.end_date >= todayStr);
@@ -84,11 +83,10 @@ export function EmployeeSection({
       monthlyWage: monthlyPay, 
     });
 
-    // 초기화
     setNewEmpName('');
     setNewEmpWage(''); setNewDailyWage(''); setNewEmpMonthly('');
     setNewEmpType('four_insurance');
-    setNewEmpHireDate(todayStr); // 다시 오늘 날짜로
+    setNewEmpHireDate(todayStr); 
     setPayType('time');
   };
 
@@ -127,8 +125,16 @@ export function EmployeeSection({
           </div>
           
           <div className="emp-info-row">
-            {/* 전화번호 칸 제거됨 */}
-            {emp.hire_date && <span className="emp-date">입사: {emp.hire_date.replace(/\-/g, '.')}</span>}
+            {/* ✅ [추가됨] 입사일 옆에 전화번호 표시 */}
+            <div style={{ display: 'flex', gap: '10px', fontSize: '13px', color: '#666', alignItems: 'center' }}>
+                {emp.hire_date && <span>📅 입사: {emp.hire_date.replace(/\-/g, '.')}</span>}
+                {emp.phone_number && (
+                    <>
+                        <span style={{ width: '1px', height: '12px', background: '#ddd' }}></span>
+                        <span>📞 {emp.phone_number}</span>
+                    </>
+                )}
+            </div>
           </div>
           
           <div className="emp-actions">
@@ -144,11 +150,8 @@ export function EmployeeSection({
     <section>
       <style jsx>{`
         .form-grid-layout { display: grid; gap: 16px; grid-template-columns: 1fr; }
-        
-        /* PC에서는 2열로 배치 */
         @media (min-width: 768px) {
           .form-grid-layout { grid-template-columns: 1fr 1fr; align-items: end; }
-          /* 급여 설정은 한 줄 전체 차지 */
           .full-width { grid-column: span 2; }
         }
 
@@ -161,7 +164,6 @@ export function EmployeeSection({
         }
         .input-field:focus { border-color: #0052cc; }
 
-        /* 토글 버튼 그룹 */
         .toggle-group { display: flex; background: #eee; padding: 2px; border-radius: 6px; flex-shrink: 0; }
         .toggle-btn {
           padding: 10px 12px; border: none; border-radius: 4px; font-size: 13px; cursor: pointer;
@@ -181,13 +183,11 @@ export function EmployeeSection({
         <h3 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16, color: '#333' }}>새 직원 등록</h3>
         <form onSubmit={handleSubmit} className="form-grid-layout">
           
-          {/* 이름 */}
           <div className="form-group">
             <label>이름</label>
             <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} placeholder="이름 입력" className="input-field" />
           </div>
 
-          {/* 고용 형태 */}
           <div className="form-group" style={{ position: 'relative' }}>
             <label>고용 형태</label>
             <div onClick={() => setIsTypeOpen(!isTypeOpen)} className="input-field" style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -206,7 +206,6 @@ export function EmployeeSection({
             )}
           </div>
 
-          {/* 급여 설정 (3단 토글) - PC에서는 한 줄 차지 */}
           <div className="form-group full-width">
             <label>급여 설정</label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -225,13 +224,11 @@ export function EmployeeSection({
             </div>
           </div>
 
-          {/* 입사일 */}
           <div className="form-group">
             <label>입사일</label>
             <div style={{ width: '100%' }}><DateSelector value={newEmpHireDate} onChange={setNewEmpHireDate} /></div>
           </div>
 
-          {/* 추가 버튼 */}
           <div className="form-group">
             <button type="submit" className="btn-add">+ 직원 추가</button>
           </div>

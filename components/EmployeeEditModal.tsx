@@ -43,7 +43,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
           setPhone2(parts[1]);
           setPhone3(parts[2]);
         } else {
-            // 형식이 다르면 그냥 첫 칸에 다 넣거나 초기화 (여기선 초기화)
             setPhone1('010'); setPhone2(''); setPhone3('');
         }
       } else {
@@ -139,7 +138,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             </div>
             <div className="form-group" style={{ flex: 1.2 }}>
               <label>전화번호</label>
-              {/* ✅ [수정] 3분할 전화번호 입력 (화면 튀어나감 해결) */}
+              {/* ✅ [수정] 스타일 개선된 전화번호 입력창 */}
               <div className="phone-row">
                 <input className="phone-input" value={phone1} onChange={(e)=>handlePhoneInput(e, setPhone1, 3)} />
                 <span className="dash">-</span>
@@ -242,7 +241,7 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         
         .form-container { display: flex; flex-direction: column; gap: 16px; }
         .form-row { display: flex; gap: 12px; }
-        .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
         .form-group label { font-size: 13px; font-weight: bold; color: #555; }
         
         .input-field {
@@ -251,10 +250,19 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         }
         .input-field:focus { border-color: #0052cc; background: #fff; }
 
-        /* ✅ 전화번호 3분할 스타일 (화면 안 나가게) */
-        .phone-row { display: flex; align-items: center; gap: 4px; width: 100%; }
+        /* ✅ 전화번호 스타일 수정: 100% 꽉 차게, 안 튀어나가게 */
+        .phone-row { 
+            display: flex; 
+            align-items: center; 
+            gap: 4px; 
+            width: 100%; 
+        }
         .phone-input {
-            flex: 1; min-width: 0; padding: 12px 0; border: 1px solid #ddd; border-radius: 8px;
+            flex: 1; /* 비율대로 늘어남 */
+            width: 100%; /* 부모 크기 맞춤 */
+            min-width: 0; /* flex 자식 줄어들기 허용 */
+            padding: 10px 0; /* 패딩 조금 줄임 */
+            border: 1px solid #ddd; border-radius: 8px;
             font-size: 14px; text-align: center; outline: none; background: #f9f9f9;
         }
         .phone-input:focus { border-color: #0052cc; background: #fff; }
@@ -262,7 +270,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
 
         .divider { height: 1px; background-color: #eee; margin: 4px 0; }
 
-        /* 토글 버튼 그룹 */
         .toggle-group { display: flex; background: #eee; padding: 2px; border-radius: 6px; flex-shrink: 0; }
         .toggle-btn {
           padding: 10px 14px; border: none; border-radius: 4px; font-size: 13px; cursor: pointer;

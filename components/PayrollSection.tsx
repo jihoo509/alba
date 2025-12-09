@@ -5,7 +5,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import StoreSettings from './StoreSettings';
 import { calculateMonthlyPayroll } from '@/lib/payroll';
 import * as XLSX from 'xlsx';
-import PayStubModal from './PayStubModal';
+import PayStubModal, { PayStubPaper } from './PayStubModal'; // ✅ [수정] PayStubPaper 가져옴
 import PayrollEditModal from './PayrollEditModal';
 import SeveranceCalculator from './SeveranceCalculator';
 import { format } from 'date-fns';
@@ -13,7 +13,7 @@ import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
-// ✅ 간이 세금/4대보험 재계산 함수
+// 간이 세금/4대보험 재계산 함수
 const recalculateTax = (pay: number) => {
   if (pay <= 0) return { incomeTax: 0, localTax: 0, pension: 0, health: 0, care: 0, employment: 0, totalTax: 0, totalInsurance: 0 };
   const pension = Math.floor(pay * 0.045 / 10) * 10;
@@ -247,7 +247,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
                   <th className="desktop-cell" style={{ ...thStyle, width: 60 }}>휴일</th>
                   <th className="desktop-cell" style={{ ...thStyle, width: 70 }}>소득세</th>
                   <th className="desktop-cell" style={{ ...thStyle, width: 70 }}>4대보험</th>
-                  <th className="desktop-cell" style={{ ...thStyle, width: 50 }}>수정</th> {/* ✅ 추가됨 */}
+                  <th className="desktop-cell" style={{ ...thStyle, width: 50 }}>수정</th>
                   <th className="desktop-cell" style={{ ...thStyle, width: 50 }}>보기</th>
                 </tr>
               </thead>
@@ -259,17 +259,17 @@ export default function PayrollSection({ currentStoreId }: Props) {
                     {/* 총 지급 (모바일 클릭 수정 유지) */}
                     <td className="col-total" style={{ ...tdStyle }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                         <span className="mobile-text" onClick={() => openEditModal(p)} style={{ fontWeight: 'bold', borderBottom: '1px dashed #aaa', cursor: 'pointer' }}>
-                           {(p.totalPay || 0).toLocaleString()}
-                         </span>
-                         <span className="desktop-text" style={{ fontWeight: 'bold' }}>
-                           {(p.totalPay || 0).toLocaleString()}
-                         </span>
-                         {(p.adjustment || 0) !== 0 && (
+                          <span className="mobile-text" onClick={() => openEditModal(p)} style={{ fontWeight: 'bold', borderBottom: '1px dashed #aaa', cursor: 'pointer' }}>
+                            {(p.totalPay || 0).toLocaleString()}
+                          </span>
+                          <span className="desktop-text" style={{ fontWeight: 'bold' }}>
+                            {(p.totalPay || 0).toLocaleString()}
+                          </span>
+                          {(p.adjustment || 0) !== 0 && (
                             <div style={{ fontSize: 10, color: (p.adjustment || 0) > 0 ? 'blue' : 'red' }}>
                               {(p.adjustment || 0) > 0 ? '+' : ''}{(p.adjustment || 0).toLocaleString()}
                             </div>
-                         )}
+                          )}
                       </div>
                     </td>
                     
@@ -293,7 +293,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
                       {((p.taxDetails?.pension || 0) + (p.taxDetails?.health || 0) + (p.taxDetails?.employment || 0) + (p.taxDetails?.care || 0)).toLocaleString()}
                     </td>
                     
-                    {/* ✅ PC용 수정 버튼 (별도 컬럼) */}
                     <td className="desktop-cell" style={tdStyle}>
                       <button onClick={() => openEditModal(p)} style={{ ...detailBtnStyle, background: '#fff3cd', borderColor: '#ffc107', color: '#856404' }}>수정</button>
                     </td>
@@ -310,29 +309,11 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
       <SeveranceCalculator currentStoreId={currentStoreId} employees={employees} />
 
-      {/* 숨겨진 명세서 다운로드용 테이블 (이건 잘 나오고 있음) */}
+      {/* ✅ 숨겨진 명세서 다운로드용 (PayStubPaper 사용해서 예쁘게 만듦) */}
       <div style={{ position: 'fixed', top: '-10000px', left: '-10000px' }}>
         {payrollData.map(p => (
-           /* ... 숨겨진 명세서 내용 (기존 유지) ... */
-          <div key={p.empId} id={`hidden-stub-${p.empId}`} style={{ width: '800px', backgroundColor: '#fff', padding: '40px', boxSizing: 'border-box', fontFamily: 'sans-serif' }}>
-            <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24 }}>{year}년 {month}월 급여 명세서</h2>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 16 }}>
-              <span>성명: <strong>{p.name}</strong></span><span>지급일: {year}.{month}.{new Date().getDate()}</span>
-            </div>
-            <div style={{ border: '2px solid #000', padding: 20, borderRadius: 4, marginTop: 20 }}>
-              <div style={rowStyle}><span>기본급</span> <span>{p.basePay.toLocaleString()}원</span></div>
-              {p.adjustment !== 0 && (
-                <div style={rowStyle}>
-                  <span>{p.adjustment > 0 ? '상여금(보너스)' : '공제(조정)'}</span> 
-                  <span style={{ color: p.adjustment > 0 ? 'blue' : 'red' }}>{p.adjustment > 0 ? '+' : ''}{p.adjustment.toLocaleString()}원</span>
-                </div>
-              )}
-              {p.weeklyHolidayPay > 0 && <div style={rowStyle}><span>+ 주휴수당</span> <span>{p.weeklyHolidayPay.toLocaleString()}원</span></div>}
-              {/* ... 기타 수당 ... */}
-              <div style={{ ...rowStyle, fontSize: 20, fontWeight: 'bold', color: 'blue', marginTop: 10 }}>
-                <span>실수령액</span> <span>{p.finalPay.toLocaleString()}원</span>
-              </div>
-            </div>
+          <div key={p.empId} id={`hidden-stub-${p.empId}`}>
+             <PayStubPaper data={p} year={year} month={month} />
           </div>
         ))}
       </div>
@@ -365,4 +346,3 @@ const navIconBtnStyle = { background: '#fff', border: '1px solid #ddd', borderRa
 const thStyle = { padding: '10px 4px', textAlign: 'center' as const, fontWeight: 'bold', borderRight: '1px solid #ddd', fontSize: '13px' };
 const tdStyle = { padding: '10px 4px', textAlign: 'center' as const, borderRight: '1px solid #ddd', whiteSpace: 'nowrap' as const, fontSize: '13px' };
 const detailBtnStyle = { padding: '4px 8px', fontSize: 12, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', background: '#fff', color: '#333' };
-const rowStyle = { display: 'flex', justifyContent: 'space-between', marginBottom: 6 };
