@@ -25,10 +25,18 @@ export function EmployeeSection({
   currentStoreId, employees, loadingEmployees, onCreateEmployee, onDeleteEmployee, onUpdateEmployee,
 }: Props) {
   const [newEmpName, setNewEmpName] = useState('');
+  
+  // 전화번호 3분할
+  const [phone1, setPhone1] = useState('010');
+  const [phone2, setPhone2] = useState('');
+  const [phone3, setPhone3] = useState('');
+
+  // 3단 토글용 상태
+  const [payType, setPayType] = useState<'time' | 'day' | 'month'>('time');
   const [newEmpWage, setNewEmpWage] = useState(''); 
-  const [newEmpMonthly, setNewEmpMonthly] = useState(''); 
-  const [payType, setPayType] = useState<'time' | 'day'>('time'); 
   const [newDailyWage, setNewDailyWage] = useState(''); 
+  const [newEmpMonthly, setNewEmpMonthly] = useState(''); 
+
   const [newEmpType, setNewEmpType] = useState<'freelancer_33' | 'four_insurance'>('four_insurance');
   const [newEmpHireDate, setNewEmpHireDate] = useState('');
 
@@ -50,6 +58,11 @@ export function EmployeeSection({
     }
   };
 
+  const handlePhoneInput = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void, maxLen: number) => {
+    const val = e.target.value.replace(/[^0-9]/g, '');
+    if (val.length <= maxLen) setter(val);
+  };
+
   const handleSelectType = (value: 'freelancer_33' | 'four_insurance') => {
     setNewEmpType(value);
     setIsTypeOpen(false);
@@ -58,40 +71,37 @@ export function EmployeeSection({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const wage = Number(newEmpWage.replace(/,/g, ''));
-    const dailyPay = Number(newDailyWage.replace(/,/g, ''));
-    const monthlyPay = Number(newEmpMonthly.replace(/,/g, ''));
-
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
 
-    // 시급 또는 월급 중 하나는 필수
-    if (payType === 'time') {
-        if (!wage && !monthlyPay) {
-            return alert('시급 또는 고정 월급 중 하나는 반드시 입력해야 합니다.');
-        }
-    }
-    
-    if (payType === 'day' && !dailyPay) return alert('일당을 입력해주세요.');
+    const wage = payType === 'time' ? Number(newEmpWage.replace(/,/g, '')) : 0;
+    const dailyPay = payType === 'day' ? Number(newDailyWage.replace(/,/g, '')) : 0;
+    const monthlyPay = payType === 'month' ? Number(newEmpMonthly.replace(/,/g, '')) : 0;
 
-    // ✅ [수정] monthlyWage도 payload에 담아 보냄
+    // 필수 입력 체크
+    if (payType === 'time' && !wage) return alert('시급을 입력해주세요.');
+    if (payType === 'day' && !dailyPay) return alert('일당을 입력해주세요.');
+    if (payType === 'month' && !monthlyPay) return alert('월급을 입력해주세요.');
+
+    const fullPhone = `${phone1}-${phone2}-${phone3}`;
+
     await onCreateEmployee({
       name: newEmpName,
-      hourlyWage: payType === 'time' ? wage : 0, 
+      phone_number: fullPhone.length > 8 ? fullPhone : '',
+      hourlyWage: wage, 
       employmentType: newEmpType,
       hireDate: newEmpHireDate || undefined,
-      pay_type: payType,
-      default_daily_pay: payType === 'day' ? dailyPay : 0,
+      pay_type: payType, // 'time' | 'day' | 'month'
+      default_daily_pay: dailyPay,
       monthlyWage: monthlyPay, 
     });
 
-    // 입력창 초기화
+    // 초기화
     setNewEmpName('');
-    setNewEmpWage('');
-    setNewEmpMonthly('');
+    setPhone1('010'); setPhone2(''); setPhone3('');
+    setNewEmpWage(''); setNewDailyWage(''); setNewEmpMonthly('');
     setNewEmpType('four_insurance');
     setNewEmpHireDate('');
     setPayType('time');
-    setNewDailyWage('');
   };
 
   const handleEditClick = (emp: Employee) => { setSelectedEmployee(emp); setIsEditOpen(true); };
@@ -112,8 +122,8 @@ export function EmployeeSection({
             </div>
 
             <div className="emp-wage">
-              {/* ✅ [표시 로직 수정] 월급 있으면 월급 보여주기 */}
-              {emp.monthly_wage && emp.monthly_wage > 0 ? (
+              {/* ✅ 저장된 pay_type에 따라 정확하게 표시 */}
+              {(emp.pay_type === 'month' || (emp.monthly_wage && emp.monthly_wage > 0)) ? (
                  <span style={{ color: 'dodgerblue', fontWeight: 'bold' }}>
                    월 {Number(emp.monthly_wage).toLocaleString()}원
                  </span>
@@ -145,20 +155,30 @@ export function EmployeeSection({
   return (
     <section>
       <style jsx>{`
-        .form-grid-layout {
-          display: grid;
-          gap: 16px;
-          grid-template-columns: 1fr; 
-        }
+        .form-grid-layout { display: grid; gap: 16px; grid-template-columns: 1fr; }
         @media (min-width: 768px) {
-          .form-grid-layout {
-            grid-template-columns: 1fr 1fr 1fr;
-            align-items: end; 
-          }
-          .pay-setting-group {
-            grid-column: span 1; 
-          }
+          .form-grid-layout { grid-template-columns: 1fr 1fr 1fr; align-items: end; }
+          .pay-setting-group { grid-column: span 2; } /* 급여 설정 칸 넓게 */
         }
+        
+        /* 전화번호 스타일 */
+        .phone-row { display: flex; align-items: center; gap: 4px; width: 100%; }
+        .phone-input {
+            flex: 1; min-width: 0; padding: 10px 0; border: 1px solid #ddd; border-radius: 6px;
+            font-size: 14px; text-align: center; outline: none; background: #fff; box-sizing: border-box;
+        }
+        .phone-input:focus { border-color: #0052cc; }
+        .dash { color: #888; font-weight: bold; flex-shrink: 0; }
+
+        /* 토글 버튼 그룹 */
+        .toggle-group { display: flex; background: #eee; padding: 2px; border-radius: 6px; flex-shrink: 0; }
+        .toggle-btn {
+          padding: 10px 12px; border: none; border-radius: 4px; font-size: 13px; cursor: pointer;
+          background: transparent; color: #666;
+        }
+        .toggle-btn.active { background: #fff; color: #0052cc; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .toggle-btn.active-orange { background: #fff; color: #e67e22; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .toggle-btn.active-blue { background: #fff; color: #3498db; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
       `}</style>
 
       <div className="new-employee-form-card">
@@ -167,7 +187,18 @@ export function EmployeeSection({
           
           <div className="form-group">
             <label>이름</label>
-            <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} placeholder="이름 입력" style={{width:'100%', boxSizing:'border-box'}} />
+            <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} placeholder="이름 입력" style={{width:'100%', padding:'10px', border:'1px solid #ddd', borderRadius:'6px', boxSizing:'border-box'}} />
+          </div>
+
+          <div className="form-group">
+            <label>전화번호</label>
+            <div className="phone-row">
+              <input className="phone-input" value={phone1} onChange={(e)=>handlePhoneInput(e, setPhone1, 3)} />
+              <span className="dash">-</span>
+              <input className="phone-input" value={phone2} onChange={(e)=>handlePhoneInput(e, setPhone2, 4)} />
+              <span className="dash">-</span>
+              <input className="phone-input" value={phone3} onChange={(e)=>handlePhoneInput(e, setPhone3, 4)} />
+            </div>
           </div>
 
           <div className="form-group" style={{ position: 'relative' }}>
@@ -201,37 +232,29 @@ export function EmployeeSection({
             <DateSelector value={newEmpHireDate} onChange={setNewEmpHireDate} />
           </div>
 
+          {/* ✅ 3단 토글 급여 설정 */}
           <div className="form-group pay-setting-group">
-            <label>급여 설정</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ display: 'flex', backgroundColor: '#f0f2f5', padding: '2px', borderRadius: '6px', flexShrink: 0 }}>
-                    <button type="button" onClick={() => setPayType('time')} style={{ padding: '8px 12px', borderRadius: '4px', border: 'none', backgroundColor: payType === 'time' ? '#fff' : 'transparent', color: payType === 'time' ? 'dodgerblue' : '#888', fontWeight: payType === 'time' ? 'bold' : 'normal', boxShadow: payType === 'time' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontSize: 13 }}>시급</button>
-                    <button type="button" onClick={() => setPayType('day')} style={{ padding: '8px 12px', borderRadius: '4px', border: 'none', backgroundColor: payType === 'day' ? '#fff' : 'transparent', color: payType === 'day' ? '#e67e22' : '#888', fontWeight: payType === 'day' ? 'bold' : 'normal', boxShadow: payType === 'day' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', fontSize: 13 }}>일당</button>
+            <label>급여 방식</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div className="toggle-group">
+                    <button type="button" className={`toggle-btn ${payType === 'time' ? 'active' : ''}`} onClick={() => setPayType('time')}>시급</button>
+                    <button type="button" className={`toggle-btn ${payType === 'day' ? 'active-orange' : ''}`} onClick={() => setPayType('day')}>일당</button>
+                    <button type="button" className={`toggle-btn ${payType === 'month' ? 'active-blue' : ''}`} onClick={() => setPayType('month')}>월급</button>
                 </div>
 
                 <div style={{ position: 'relative', flex: 1 }}>
-                    {payType === 'time' ? (
-                        <input 
-                            type="text" inputMode="numeric" value={newEmpWage} onChange={(e) => handleNumberInput(e, setNewEmpWage)} 
-                            placeholder="0" style={{ width: '100%', boxSizing: 'border-box', paddingRight: '30px' }} 
-                        />
-                    ) : (
-                        <input 
-                            type="text" inputMode="numeric" value={newDailyWage} onChange={(e) => handleNumberInput(e, setNewDailyWage)} 
-                            placeholder="0" style={{ width: '100%', boxSizing: 'border-box', borderColor: '#ffadd2', backgroundColor: '#fff0f6', paddingRight: '30px' }} 
-                        />
+                    {payType === 'time' && (
+                        <input type="text" value={newEmpWage} onChange={(e) => handleNumberInput(e, setNewEmpWage)} placeholder="0" style={{ width: '100%', padding:'10px', border:'1px solid #ddd', borderRadius:'6px', boxSizing: 'border-box', textAlign:'right', paddingRight: '30px' }} />
+                    )}
+                    {payType === 'day' && (
+                        <input type="text" value={newDailyWage} onChange={(e) => handleNumberInput(e, setNewDailyWage)} placeholder="0" style={{ width: '100%', padding:'10px', border:'1px solid #ffadd2', borderRadius:'6px', background:'#fff0f6', boxSizing: 'border-box', textAlign:'right', paddingRight: '30px' }} />
+                    )}
+                    {payType === 'month' && (
+                        <input type="text" value={newEmpMonthly} onChange={(e) => handleNumberInput(e, setNewEmpMonthly)} placeholder="0" style={{ width: '100%', padding:'10px', border:'1px solid #bae7ff', borderRadius:'6px', background:'#f0f9ff', boxSizing: 'border-box', textAlign:'right', paddingRight: '30px' }} />
                     )}
                     <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888', fontSize: '13px', pointerEvents: 'none' }}>원</span>
                 </div>
             </div>
-          </div>
-
-          <div className="form-group">
-            <label style={{color: 'dodgerblue'}}>고정 월급 (선택)</label>
-            <input 
-                type="text" inputMode="numeric" value={newEmpMonthly} onChange={(e) => handleNumberInput(e, setNewEmpMonthly)} 
-                placeholder="입력 시 자동계산 무시" style={{borderColor: '#bae7ff', background:'#f0f9ff', width:'100%', boxSizing:'border-box'}} 
-            />
           </div>
 
           <div className="form-group btn-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
