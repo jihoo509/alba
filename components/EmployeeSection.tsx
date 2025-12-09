@@ -34,7 +34,6 @@ export function EmployeeSection({
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  
   const [isTypeOpen, setIsTypeOpen] = useState(false);
 
   const supabase = createSupabaseBrowserClient();
@@ -65,6 +64,7 @@ export function EmployeeSection({
 
     if (!newEmpName.trim()) return alert('이름을 입력해주세요.');
 
+    // 시급 또는 월급 중 하나는 필수
     if (payType === 'time') {
         if (!wage && !monthlyPay) {
             return alert('시급 또는 고정 월급 중 하나는 반드시 입력해야 합니다.');
@@ -73,6 +73,7 @@ export function EmployeeSection({
     
     if (payType === 'day' && !dailyPay) return alert('일당을 입력해주세요.');
 
+    // ✅ [수정] monthlyWage도 payload에 담아 보냄
     await onCreateEmployee({
       name: newEmpName,
       hourlyWage: payType === 'time' ? wage : 0, 
@@ -80,27 +81,10 @@ export function EmployeeSection({
       hireDate: newEmpHireDate || undefined,
       pay_type: payType,
       default_daily_pay: payType === 'day' ? dailyPay : 0,
+      monthlyWage: monthlyPay, 
     });
 
-    if (newEmpMonthly.trim()) {
-        const { data: createdEmp } = await supabase
-            .from('employees')
-            .select('id')
-            .eq('name', newEmpName)
-            .eq('store_id', currentStoreId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-        if (createdEmp) {
-            await supabase.from('employee_settings').upsert({
-                employee_id: createdEmp.id,
-                monthly_override: monthlyPay,
-                store_id: currentStoreId
-            }, { onConflict: 'employee_id' });
-        }
-    }
-
+    // 입력창 초기화
     setNewEmpName('');
     setNewEmpWage('');
     setNewEmpMonthly('');
@@ -128,10 +112,10 @@ export function EmployeeSection({
             </div>
 
             <div className="emp-wage">
-              {/* ✅ [수정 핵심] 월급이 있으면 "월 OOO원" 표시 */}
-              {emp.monthly_pay && emp.monthly_pay > 0 ? (
+              {/* ✅ [표시 로직 수정] 월급 있으면 월급 보여주기 */}
+              {emp.monthly_wage && emp.monthly_wage > 0 ? (
                  <span style={{ color: 'dodgerblue', fontWeight: 'bold' }}>
-                   월 {Number(emp.monthly_pay).toLocaleString()}원
+                   월 {Number(emp.monthly_wage).toLocaleString()}원
                  </span>
               ) : (emp.pay_type === 'day' || emp.pay_type === '일당') ? (
                 <span style={{ color: '#e67e22', fontWeight: 'bold' }}>
@@ -181,13 +165,11 @@ export function EmployeeSection({
         <h3 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16, color: '#333' }}>새 직원 등록</h3>
         <form onSubmit={handleSubmit} className="form-grid-layout">
           
-          {/* 1. 이름 */}
           <div className="form-group">
             <label>이름</label>
             <input type="text" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} placeholder="이름 입력" style={{width:'100%', boxSizing:'border-box'}} />
           </div>
 
-          {/* 2. 고용 형태 */}
           <div className="form-group" style={{ position: 'relative' }}>
             <label>고용 형태</label>
             <div 
@@ -202,7 +184,6 @@ export function EmployeeSection({
                 <span>{getEmploymentLabel(newEmpType)}</span>
                 <span style={{ fontSize: '10px', color: '#888' }}>▼</span>
             </div>
-            
             {isTypeOpen && (
                 <div style={{
                     position: 'absolute', top: '100%', left: 0, width: '100%',
@@ -215,13 +196,11 @@ export function EmployeeSection({
             )}
           </div>
 
-          {/* 3. 입사일 */}
           <div className="form-group date-group">
             <label>입사일</label>
             <DateSelector value={newEmpHireDate} onChange={setNewEmpHireDate} />
           </div>
 
-          {/* 4. 급여 방식 & 금액 */}
           <div className="form-group pay-setting-group">
             <label>급여 설정</label>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -247,7 +226,6 @@ export function EmployeeSection({
             </div>
           </div>
 
-          {/* 5. 고정 월급 */}
           <div className="form-group">
             <label style={{color: 'dodgerblue'}}>고정 월급 (선택)</label>
             <input 
@@ -256,7 +234,6 @@ export function EmployeeSection({
             />
           </div>
 
-          {/* 6. 추가 버튼 */}
           <div className="form-group btn-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
             <button type="submit" className="btn-add" style={{width:'100%', height: '42px'}}>+ 직원 추가</button>
           </div>

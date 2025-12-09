@@ -13,7 +13,6 @@ import { calculateMonthlyPayroll } from '@/lib/payroll';
 import TutorialModal from '@/components/TutorialModal';
 import AdditionalInfoModal from '@/components/AdditionalInfoModal';
 import AccountSettingsModal from '@/components/AccountSettingsModal';
-import InitialStoreSetup from '@/components/InitialStoreSetup'; // ✅ [추가] 초기 설정 컴포넌트
 
 type Store = { id: string; name: string; };
 
@@ -34,7 +33,7 @@ export type Employee = {
   pay_type?: string;          
   daily_wage?: number;       
   default_daily_pay?: number; 
-  monthly_pay?: number;
+  monthly_wage?: number; // ✅ [확인] 월급 정보 컬럼
 };
 
 function DashboardContent() {
@@ -44,7 +43,6 @@ function DashboardContent() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null); // ✅ [추가] userId 상태
   const [userEmail, setUserEmail] = useState('');
   const [userPhone, setUserPhone] = useState(''); 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -84,11 +82,11 @@ function DashboardContent() {
     updateUrl('home', storeId);
   };
 
-  const loadStores = useCallback(async (uid: string) => {
-    const { data, error } = await supabase.from('stores').select('*').eq('owner_id', uid); // ✅ user_id -> owner_id 확인 필요 (DB 컬럼명에 따름)
+  // ✅ 매장 목록 불러오기
+  const loadStores = useCallback(async (userId: string) => {
+    const { data, error } = await supabase.from('stores').select('*').eq('owner_id', userId);
     if (error) { setErrorMsg('매장 로딩 실패'); return; }
     
-    // id를 문자열로 변환
     const list = (data ?? []).map((row: any) => ({ id: String(row.id), name: row.name }));
     setStores(list);
 
@@ -102,8 +100,9 @@ function DashboardContent() {
     }
   }, [supabase, currentStoreId, searchParams]);
 
+  // ✅ 매장 삭제
   const handleDeleteStore = useCallback(async (storeId: string) => {
-    if (!window.confirm('정말 삭제하시겠습니까?')) return;
+    if (!window.confirm('정말 삭제하시겠습니까? (직원 및 스케줄 데이터가 모두 삭제됩니다)')) return;
     const { error } = await supabase.from('stores').delete().eq('id', storeId);
     if (error) alert('삭제 실패');
     else {
@@ -112,23 +111,38 @@ function DashboardContent() {
     }
   }, [supabase, currentStoreId]);
 
+  // ✅ 직원 불러오기 (월급 정보 포함)
   const loadEmployees = useCallback(async (storeId: string) => {
     setLoadingEmployees(true);
-    const { data } = await supabase.from('employees').select('*').eq('store_id', storeId).order('created_at', { ascending: true });
+    const { data } = await supabase
+        .from('employees')
+        .select('*') // 모든 컬럼(monthly_wage 포함) 가져옴
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: true });
+
     if (data) {
       setEmployees(data.map((row: any) => ({
-        id: String(row.id), name: row.name, hourly_wage: row.hourly_wage, employment_type: row.employment_type,
-        is_active: row.is_active, hire_date: row.hire_date, phone_number: row.phone_number,
-        birth_date: row.birth_date, bank_name: row.bank_name, account_number: row.account_number, end_date: row.end_date,
+        id: String(row.id), 
+        name: row.name, 
+        hourly_wage: row.hourly_wage, 
+        employment_type: row.employment_type,
+        is_active: row.is_active, 
+        hire_date: row.hire_date, 
+        phone_number: row.phone_number,
+        birth_date: row.birth_date, 
+        bank_name: row.bank_name, 
+        account_number: row.account_number, 
+        end_date: row.end_date,
         pay_type: row.pay_type || 'time',
         daily_wage: row.daily_wage || 0,
         default_daily_pay: row.daily_wage || 0,
-        monthly_pay: row.employee_settings?.[0]?.monthly_override || 0,
+        monthly_wage: row.monthly_wage || 0, // ✅ 월급 매핑
       })));
     }
     setLoadingEmployees(false);
   }, [supabase]);
 
+  // ✅ 대시보드 통계 불러오기
   const loadHomeStats = useCallback(async (storeId: string) => {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
@@ -166,6 +180,7 @@ function DashboardContent() {
 
   }, [supabase]);
 
+  // ✅ 직원 생성 (월급 저장 포함)
   const handleCreateEmployee = useCallback(async (payload: any) => {
     if (!currentStoreId) return;
     const { error } = await supabase.from('employees').insert({
@@ -177,6 +192,7 @@ function DashboardContent() {
       is_active: true,
       pay_type: payload.pay_type || 'time',
       daily_wage: payload.default_daily_pay || 0,
+      monthly_wage: payload.monthlyWage || 0, // ✅ 월급 저장
     });
     if (error) alert('추가 실패'); else await loadEmployees(currentStoreId);
   }, [currentStoreId, supabase, loadEmployees]);
@@ -227,7 +243,6 @@ function DashboardContent() {
       if (!session) { router.replace('/'); return; }
       
       const user = session.user;
-      setUserId(user.id); // ✅ [추가] userId 저장
       setUserEmail(user.email || '');
       setUserPhone(user.user_metadata?.phone || ''); 
 
@@ -250,9 +265,8 @@ function DashboardContent() {
   }, [currentStoreId, loadEmployees, loadHomeStats]);
 
   const renderTabContent = () => {
-    // ✅ [수정] 매장이 없는 경우의 UI는 메인 로직에서 InitialStoreSetup으로 대체됨
-    // 여기서는 매장이 있지만 선택되지 않은 에러 상황만 처리
-    if (!currentStoreId) return null;
+    // 매장은 있는데 선택이 안 된 경우 (드물지만 처리)
+    if (!currentStoreId) return <div style={{textAlign:'center', marginTop: 40, color: '#fff'}}>관리할 매장을 선택해주세요.</div>;
 
     if (currentTab === 'home') {
       return (
@@ -343,6 +357,7 @@ function DashboardContent() {
         <div style={{ width: '100%', maxWidth: '750px', margin: '0 auto', boxSizing: 'border-box' }}>
           
           <div style={{ padding: '12px 20px 0 20px' }}>
+            {/* ✅ 헤더 수정: 중앙 정렬 & flexWrap 적용 */}
             <header style={{ 
               display: 'flex', 
               justifyContent: 'center', 
@@ -369,20 +384,18 @@ function DashboardContent() {
 
             {errorMsg && <div style={{ marginBottom: 10, color: 'salmon' }}>{errorMsg}</div>}
 
-            {/* ✅ [수정] 매장이 하나라도 있을 때만 Selector 보여줌 */}
-            {stores.length > 0 && (
-              <StoreSelector
-                stores={stores}
-                currentStoreId={currentStoreId}
-                onChangeStore={handleStoreChange}
-                creatingStore={creatingStore}
-                onCreateStore={handleCreateStore}
-                onDeleteStore={handleDeleteStore}
-              />
-            )}
+            {/* ✅ 매장 선택기 */}
+            <StoreSelector
+              stores={stores}
+              currentStoreId={currentStoreId}
+              onChangeStore={handleStoreChange}
+              creatingStore={creatingStore}
+              onCreateStore={handleCreateStore}
+              onDeleteStore={handleDeleteStore}
+            />
           </div>
 
-          {/* 탭 버튼들도 매장이 있을 때만 표시 */}
+          {/* ✅ 탭 메뉴 (매장이 있을 때만 표시) */}
           {stores.length > 0 && currentStoreId && (
             <div className="mobile-sticky-nav">
               <div className="mobile-tab-container" style={{ 
@@ -426,19 +439,22 @@ function DashboardContent() {
       >
       <div className="mobile-only" style={{ height: '20px' }}></div>
 
-        {/* ✅ [핵심 로직] 매장이 없을 경우 -> InitialStoreSetup 표시 */}
-        {stores.length === 0 && userId ? (
-           <InitialStoreSetup 
-             userId={userId} 
-             onComplete={() => loadStores(userId)} 
-           />
+        {/* ✅ 매장이 하나도 없을 때의 안내 문구 */}
+        {stores.length === 0 ? (
+          <div style={{ textAlign: 'center', marginTop: '60px', color: '#fff' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>환영합니다, 사장님! 👋</h2>
+            <p style={{ marginTop: '10px', fontSize: '16px', opacity: 0.9 }}>
+              상단의 <strong>[+ 매장 추가]</strong> 버튼을 눌러<br/>
+              첫 번째 매장을 등록하고 관리를 시작해보세요.
+            </p>
+          </div>
         ) : (
-           // 매장이 있을 경우 -> 대시보드 표시
-           currentStoreId && (
+          // 매장이 있을 때 탭 콘텐츠 표시
+          currentStoreId && (
             <div style={{ width: '100%' }} className={currentTab === 'schedules' ? 'shrink-on-mobile' : ''}>
               {renderTabContent()}
             </div>
-           )
+          )
         )}
       </div>
 
@@ -450,25 +466,25 @@ function DashboardContent() {
         />
       )}
 
-      <AccountSettingsModal 
-        isOpen={showAccountSettings}
-        onClose={() => setShowAccountSettings(false)}
-        userEmail={userEmail}
-        userPhone={userPhone}
-      />
+      {showAccountSettings && (
+        <AccountSettingsModal 
+          isOpen={showAccountSettings}
+          onClose={() => setShowAccountSettings(false)}
+          userEmail={userEmail}
+          userPhone={userPhone}
+        />
+      )}
 
       <TutorialModal 
         tutorialKey="seen_home_tutorial_v1"
         steps={[
-          {
-            title: "환영합니다, 사장님! 👋",
-            description: "Easy Alba에 오신 것을 환영합니다. 매장 관리의 모든 것을 쉽고 편하게 도와드릴게요.",
-          },
-          // ... (튜토리얼 내용 생략) ...
-          {
-            title: "준비 되셨나요?",
-            description: "이제 복잡한 급여 계산과 스케줄 관리는 저희에게 맡기고, 사업에만 집중하세요!",
-          }
+          { title: "환영합니다, 사장님! 👋", description: "Easy Alba에 오신 것을 환영합니다." },
+          { title: "1. 매장 등록하기", description: "가장 먼저 '매장 추가' 버튼을 눌러 사장님의 매장을 등록해주세요." },
+          { title: "2. 직원 등록하기", description: "'직원' 탭에서 함께 일하는 직원들을 등록하고 시급을 설정해보세요." },
+          { title: "3. 근무 패턴 등록하기", description: "월~수 오픈 등 반복적인 스케줄 생성 후 스케줄 자동 생성이 가능합니다!" },
+          { title: "4. 스케줄 수정하기", description: "배정되어 있는 직원 클릭 시 근무 시간 수정 및 삭제 가능, 스케줄의 빈 칸 클릭 시 새 근무 생성이 가능합니다." },
+          { title: "5. 급여 확인하기", description: "배정된 스케줄에 따라 정확한 급여가 표기됩니다. 이미지, 엑셀로 다운 받아 근무자 또는 세무서에 전달하세요!" },
+          { title: "준비 되셨나요?", description: "이제 복잡한 급여 계산과 스케줄 관리는 저희에게 맡기고, 사업에만 집중하세요!" }
         ]}
       />
 
