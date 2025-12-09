@@ -3,13 +3,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 
-// ✅ [중요] PayStubPaper 컴포넌트를 분리해서 외부(PayrollSection)에서 쓸 수 있게 합니다.
+// ✅ PayStubPaper: 화면과 이미지 저장용으로 공통 사용되는 명세서 부품
 export function PayStubPaper({ data, year, month, settingsOverride = null }: { data: any, year: number, month: number, settingsOverride?: any }) {
-    // 설정값: override가 없으면 data 스냅샷 사용
     const s = data.storeSettingsSnapshot || {};
     const u = data.userSettings || {};
 
-    // 외부에서 강제로 설정을 주입했다면(settingsOverride) 그것을 쓰고, 아니면 저장된 값 사용
     const useWeekly = settingsOverride?.pay_weekly ?? (s.pay_weekly ?? true);
     const useNight = settingsOverride?.pay_night ?? (s.pay_night ?? false);
     const useOvertime = settingsOverride?.pay_overtime ?? (s.pay_overtime ?? false);
@@ -19,7 +17,7 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
 
     const isModified = data.isModified === true;
 
-    // 계산 로직 (기존과 동일)
+    // 계산 로직
     let calcBasePay = 0;
     let calcNightPay = 0;
     let calcOvertimePay = 0;
@@ -99,7 +97,7 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
             </h2>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 16, color: '#555' }}>
                 <span>성명: <strong style={{color:'#000'}}>{data.name}</strong></span>
-                <span>지급일: {year}.{month}.{new Date().getDate()}</span>
+                {/* ✅ [수정] 지급일 항목 삭제됨 */}
             </div>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25, minWidth: '100%' }}>
@@ -308,7 +306,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   if (!isOpen || !data) return null;
   const isModified = data.isModified === true;
 
-  // 현재 모달에서 선택된 설정값들을 객체로 묶음
   const currentSettings = {
       pay_weekly: useWeekly,
       pay_night: useNight,
@@ -320,7 +317,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
 
   return (
     <>
-        {/* ✅ [Hidden] 캡처용 렌더링 (PayStubPaper 사용) */}
+        {/* ✅ 캡처용 (화면 밖) */}
         <div style={{ position: 'fixed', top: '-10000px', left: '-10000px', width: '800px', zIndex: -1 }}>
             <div ref={captureRef}>
                 <PayStubPaper data={data} year={year} month={month} settingsOverride={currentSettings} />
@@ -329,8 +326,13 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
 
         {/* 1. 설정 모드 (모바일) */}
         {mode === 'settings' && (
-            <div style={overlayStyle}>
-                <div style={{ ...modalStyle, maxWidth: '400px', height: 'auto', padding: '24px', borderRadius: '16px' }}>
+            // ✅ [수정] 배경 클릭 시 닫힘 (overlayStyle에 onClick 추가)
+            <div style={overlayStyle} onClick={onClose}>
+                {/* ✅ [수정] 내용 클릭 시 닫힘 방지 (e.stopPropagation) */}
+                <div 
+                    onClick={(e) => e.stopPropagation()} 
+                    style={{ ...modalStyle, maxWidth: '400px', height: 'auto', padding: '24px', borderRadius: '16px' }}
+                >
                     <h3 style={{ margin: '0 0 24px 0', textAlign: 'center', color: '#333', fontSize: '18px', borderBottom: '2px solid #f0f0f0', paddingBottom: '12px' }}>
                     ⚙️ <strong>{data.name} 님</strong> 급여 설정
                     </h3>
@@ -367,8 +369,10 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
 
         {/* 3. 풀 모드 (화면 표시) */}
         {mode === 'full' && (
-            <div style={overlayStyle}>
-                <div style={modalStyle}>
+            // ✅ [수정] 배경 클릭 시 닫힘
+            <div style={overlayStyle} onClick={onClose}>
+                {/* ✅ [수정] 내용 클릭 시 닫힘 방지 */}
+                <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
                     <div style={{ padding: 16, borderBottom: '1px solid #444', backgroundColor: '#333', color: '#fff' }}>
                         <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 개별 지급 옵션 설정</h3>
                         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
@@ -388,7 +392,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                     </div>
 
                     <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff', paddingBottom: '20px' }}>
-                        {/* ✅ 화면에 보이는 것도 PayStubPaper 사용 (단, 모달 크기에 맞게 CSS 조정 필요하면 래퍼 사용) */}
                         <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                             <div style={{ transform: 'scale(0.9)', transformOrigin: 'top center' }}>
                                 <PayStubPaper data={data} year={year} month={month} settingsOverride={currentSettings} />

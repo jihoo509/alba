@@ -65,8 +65,10 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         setPayType('time');
       }
 
+      // ✅ 여기서 값이 제대로 들어가는지 확인 (DB에 데이터가 있다면)
       setBankName(employee.bank_name || '');
       setAccountNumber(employee.account_number || '');
+      
       setIsActive(employee.is_active);
       setEndDate(employee.end_date || '');
     }
@@ -86,13 +88,17 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     setIsSaving(true);
     try {
       const fullPhone = `${phone1}-${phone2}-${phone3}`;
+      
+      // 전화번호가 너무 짧으면 저장하지 않음 (선택사항처럼 동작)
+      const finalPhone = (phone2.length >= 3 && phone3.length >= 4) ? fullPhone : '';
+
       const finalHourly = payType === 'time' ? Number(hourlyWage.replace(/,/g, '')) : 0;
       const finalDaily = payType === 'day' ? Number(dailyWage.replace(/,/g, '')) : 0;
       const finalMonthly = payType === 'month' ? Number(monthlyWage.replace(/,/g, '')) : 0;
 
       await onUpdate(employee.id, {
         name,
-        phone_number: fullPhone.length > 8 ? fullPhone : '',
+        phone_number: finalPhone, // 전화번호 저장
         hire_date: hireDate,
         birth_date: birthDate,
         employment_type: employmentType as any,
@@ -100,14 +106,16 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         hourly_wage: finalHourly,
         daily_wage: finalDaily,
         monthly_wage: finalMonthly,
-        bank_name: bankName,
-        account_number: accountNumber,
+        bank_name: bankName, // 은행 저장
+        account_number: accountNumber, // 계좌 저장
         is_active: isActive,
         end_date: isActive ? undefined : endDate,
       });
       onClose();
-    } catch (e) {
-      alert('저장 중 오류가 발생했습니다.');
+    } catch (e: any) {
+      // ✅ 에러 원인을 알 수 있게 메시지 출력
+      console.error(e);
+      alert('저장 중 오류가 발생했습니다.\n' + (e.message || '데이터베이스 컬럼(bank_name, account_number 등)이 존재하는지 확인해주세요.'));
     } finally {
       setIsSaving(false);
     }
@@ -138,7 +146,6 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             </div>
             <div className="form-group" style={{ flex: 1.2 }}>
               <label>전화번호</label>
-              {/* ✅ [수정] 스타일 개선된 전화번호 입력창 */}
               <div className="phone-row">
                 <input className="phone-input" value={phone1} onChange={(e)=>handlePhoneInput(e, setPhone1, 3)} />
                 <span className="dash">-</span>
@@ -187,11 +194,25 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
           <div className="form-row">
             <div className="form-group" style={{ flex: 1 }}>
               <label>은행명</label>
-              <input type="text" value={bankName} onChange={(e) => setBankName(e.target.value)} className="input-field" />
+              {/* ✅ 은행명 입력 */}
+              <input 
+                type="text" 
+                value={bankName} 
+                onChange={(e) => setBankName(e.target.value)} 
+                className="input-field" 
+                placeholder="예: 국민"
+              />
             </div>
             <div className="form-group" style={{ flex: 2 }}>
               <label>계좌번호</label>
-              <input type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className="input-field" />
+              {/* ✅ 계좌번호 입력 */}
+              <input 
+                type="text" 
+                value={accountNumber} 
+                onChange={(e) => setAccountNumber(e.target.value)} 
+                className="input-field" 
+                placeholder="숫자만 입력"
+              />
             </div>
           </div>
 
@@ -250,19 +271,9 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         }
         .input-field:focus { border-color: #0052cc; background: #fff; }
 
-        /* ✅ 전화번호 스타일 수정: 100% 꽉 차게, 안 튀어나가게 */
-        .phone-row { 
-            display: flex; 
-            align-items: center; 
-            gap: 4px; 
-            width: 100%; 
-        }
+        .phone-row { display: flex; align-items: center; gap: 4px; width: 100%; }
         .phone-input {
-            flex: 1; /* 비율대로 늘어남 */
-            width: 100%; /* 부모 크기 맞춤 */
-            min-width: 0; /* flex 자식 줄어들기 허용 */
-            padding: 10px 0; /* 패딩 조금 줄임 */
-            border: 1px solid #ddd; border-radius: 8px;
+            flex: 1; width: 100%; min-width: 0; padding: 10px 0; border: 1px solid #ddd; border-radius: 8px;
             font-size: 14px; text-align: center; outline: none; background: #f9f9f9;
         }
         .phone-input:focus { border-color: #0052cc; background: #fff; }
