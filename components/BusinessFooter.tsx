@@ -36,7 +36,7 @@ const footerStyle: React.CSSProperties = {
   width: '100%',
   backgroundColor: '#f8f9fa', // 연한 회색 배경
   borderTop: '1px solid #eee',
-  padding: '30px 20px 30px 20px', // ✅ [중요] 하단 80px 여백 (모바일 광고 가림 방지)
+  padding: '25px 20px 25px 20px', // ✅ [중요] 하단 80px 여백 (모바일 광고 가림 방지)
   marginTop: '10px',
   boxSizing: 'border-box',
   display: 'flex',
