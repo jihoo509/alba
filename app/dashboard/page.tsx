@@ -1,6 +1,5 @@
 'use client';
 
-// ... (기존 import와 동일)
 import React, { useEffect, useMemo, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
@@ -15,6 +14,7 @@ import TutorialModal from '@/components/TutorialModal';
 import AdditionalInfoModal from '@/components/AdditionalInfoModal';
 import AccountSettingsModal from '@/components/AccountSettingsModal';
 import InitialStoreSetup from '@/components/InitialStoreSetup'; 
+import BusinessFooter from '@/components/BusinessFooter'; // 이미 추가하셨다고 했지만 확인차 포함
 
 type Store = { id: string; name: string; };
 
@@ -360,7 +360,7 @@ function DashboardContent() {
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
 
   return (
-    <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
+    <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 0 }}> {/* paddingBottom 0으로 수정 */}
       
       <div className="header-wrapper">
         <div style={{ width: '100%', maxWidth: '750px', margin: '0 auto', boxSizing: 'border-box' }}>
@@ -392,7 +392,6 @@ function DashboardContent() {
 
             {errorMsg && <div style={{ marginBottom: 10, color: 'salmon' }}>{errorMsg}</div>}
 
-            {/* ✅ [수정] 매장이 하나라도 있을 때만 매장 선택기 표시 */}
             {stores.length > 0 && (
                 <StoreSelector
                 stores={stores}
@@ -405,7 +404,6 @@ function DashboardContent() {
             )}
           </div>
 
-          {/* 탭 메뉴 */}
           {stores.length > 0 && currentStoreId && (
             <div className="mobile-sticky-nav">
               <div className="mobile-tab-container" style={{ 
@@ -449,7 +447,6 @@ function DashboardContent() {
       >
       <div className="mobile-only" style={{ height: '20px' }}></div>
 
-        {/* 매장 없을 때 InitialStoreSetup */}
         {stores.length === 0 ? (
            userId ? (
              <InitialStoreSetup 
@@ -499,6 +496,9 @@ function DashboardContent() {
           ]}
         />
       )}
+
+      {/* ✅ [추가됨] 맨 마지막에 푸터 추가 */}
+      <BusinessFooter />
 
     </main>
   );
