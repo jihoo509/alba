@@ -259,8 +259,6 @@ export default function AuthPage() {
         }}
       >
         © 2025 Easy Alba. All rights reserved.<br />
-        © 사업자 바르게 담다<br />
-        문의: inserr509@daum.net | 010-4554-5587
       </div>
 
       <SignupModal 
