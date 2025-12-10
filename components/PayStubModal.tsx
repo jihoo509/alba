@@ -97,7 +97,7 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
             </h2>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 16, color: '#555' }}>
                 <span>성명: <strong style={{color:'#000'}}>{data.name}</strong></span>
-                {/* ✅ 지급일 항목 삭제됨 */}
+                {/* 지급일 항목 삭제됨 */}
             </div>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25, minWidth: '100%' }}>
@@ -229,8 +229,10 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   const [useHolidayWork, setUseHolidayWork] = useState(true);
   const [useBreakDeduct, setUseBreakDeduct] = useState(true);
   const [noTax, setNoTax] = useState(false);
-  
   const [isSaving, setIsSaving] = useState(false);
+
+  // ✅ 모바일 선택 팝업 상태
+  const [showMobileChoice, setShowMobileChoice] = useState(false);
 
   useEffect(() => {
     if (isOpen && data && data.storeSettingsSnapshot) {
@@ -249,10 +251,17 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   }, [isOpen, data]);
 
+  // ✅ [수정] 모드 'download'일 때 (리스트에서 다운로드 눌렀을 때)
   useEffect(() => {
     if (isOpen && mode === 'download') {
         const timer = setTimeout(() => {
-            handleSaveImage(true); 
+            // 모바일이면 팝업 띄우고, PC면 바로 저장
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
+            if (isMobile) {
+                setShowMobileChoice(true);
+            } else {
+                handleSaveImage(true); 
+            }
         }, 500);
         return () => clearTimeout(timer);
     }
@@ -281,7 +290,9 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   };
 
+  // 1. 단순 이미지 저장
   const handleSaveImage = async (autoClose = false) => {
+    setShowMobileChoice(false);
     if (captureRef.current) {
       try {
         const canvas = await html2canvas(captureRef.current, { 
@@ -303,25 +314,21 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   };
 
-  // ✅ [추가됨] 모바일에서 공유하기 버튼 기능 (카카오톡, 문자 등)
+  // 2. 카카오톡/공유하기 (모바일 전용)
   const handleShareImage = async () => {
+    setShowMobileChoice(false);
     if (captureRef.current) {
       try {
-        // 1. 캡처
         const canvas = await html2canvas(captureRef.current, { 
             scale: 2, 
             backgroundColor: '#ffffff', 
             useCORS: true, 
         });
 
-        // 2. Blob 변환
         canvas.toBlob(async (blob) => {
           if (!blob) return alert('이미지 생성 실패');
-
-          // 3. 파일 객체 만들기
           const file = new File([blob], `${data.name}_급여명세서.png`, { type: 'image/png' });
 
-          // 4. 모바일 공유하기 창 띄우기
           if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
             try {
               await navigator.share({
@@ -333,19 +340,23 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
               console.log('공유 취소됨');
             }
           } else {
-            // PC 등 공유 불가능한 환경이면 다운로드로 대체
-            alert('이 기기에서는 공유 기능을 바로 쓸 수 없어 다운로드합니다.');
-            const link = document.createElement('a');
-            link.download = `${data.name}_${month}월_급여명세서.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
+            alert('이 기기에서는 공유 기능을 사용할 수 없습니다.');
           }
         }, 'image/png');
-
       } catch (e) {
           console.error(e);
           alert('공유 실패');
       }
+    }
+  };
+
+  // 3. 버튼 클릭 시 분기 처리
+  const handleMainActionClick = () => {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
+    if (isMobile) {
+      setShowMobileChoice(true);
+    } else {
+      handleSaveImage(false);
     }
   };
 
@@ -363,16 +374,15 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
 
   return (
     <>
-        {/* ✅ 캡처용 (화면 밖) */}
+        {/* ✅ [PC와 동일한 이미지 생성을 위한 고정 영역] */}
         <div style={{ position: 'fixed', top: '-10000px', left: '-10000px', width: '800px', zIndex: -1 }}>
-            <div ref={captureRef}>
+            <div ref={captureRef} style={{ width: '800px' }}> {/* 800px 강제 고정 */}
                 <PayStubPaper data={data} year={year} month={month} settingsOverride={currentSettings} />
             </div>
         </div>
 
         {/* 1. 설정 모드 (모바일) */}
         {mode === 'settings' && (
-            // ✅ 배경 클릭 시 닫힘
             <div style={overlayStyle} onClick={onClose}>
                 <div 
                     onClick={(e) => e.stopPropagation()} 
@@ -405,18 +415,17 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
             </div>
         )}
 
-        {/* 2. 다운로드 모드 */}
+        {/* 2. 다운로드 모드 (배경) */}
         {mode === 'download' && (
              <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', fontSize: '18px' }}>
-                ⏳ 다운로드 생성 중...
+                {/* 팝업이 안 떴을 때만 로딩 표시 */}
+                {!showMobileChoice && <span>⏳ 다운로드 준비 중...</span>}
              </div>
         )}
 
         {/* 3. 풀 모드 (화면 표시) */}
         {mode === 'full' && (
-            // ✅ 배경 클릭 시 닫힘
             <div style={overlayStyle} onClick={onClose}>
-                {/* ✅ 내용 클릭 시 닫힘 방지 */}
                 <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
                     <div style={{ padding: 16, borderBottom: '1px solid #444', backgroundColor: '#333', color: '#fff' }}>
                         <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 개별 지급 옵션 설정</h3>
@@ -447,15 +456,62 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                     <div style={{ padding: 16, backgroundColor: '#333', borderTop: '1px solid #444', display: 'flex', justifyContent: 'flex-end', gap: 10, paddingBottom: 20 }}>
                         <button onClick={onClose} style={btnCancel}>닫기</button>
                         
-                        {/* ✅ [추가됨] 카카오/공유 버튼 */}
-                        <button onClick={handleShareImage} style={{...btnSave, background: '#FEE500', color: '#000', border: 'none'}}>
-                           카톡/공유
-                        </button>
-
                         {onSave && <button onClick={handleSaveSettings} disabled={isSaving} style={{...btnSave, background:'dodgerblue'}}>설정 저장</button>}
-                        <button onClick={() => handleSaveImage(false)} style={btnSave}>이미지 저장</button>
+                        
+                        {/* ✅ 통합 버튼: PC에선 바로저장, 모바일에선 선택창 */}
+                        <button onClick={handleMainActionClick} style={btnSave}>
+                           이미지 저장
+                        </button>
                     </div>
                 </div>
+            </div>
+        )}
+
+        {/* ✅ [모바일 전용] 선택 팝업 (하단 슬라이드) */}
+        {showMobileChoice && (
+            <div style={{ 
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+                background: 'rgba(0,0,0,0.5)', zIndex: 9999, // z-index 최상위
+                display: 'flex', alignItems: 'flex-end', justifyContent: 'center' 
+            }} onClick={() => { setShowMobileChoice(false); if(mode === 'download') onClose(); }}>
+                
+                <div style={{ 
+                    width: '100%', background: '#fff', 
+                    borderTopLeftRadius: '16px', borderTopRightRadius: '16px', 
+                    padding: '24px 20px 40px 20px', 
+                    animation: 'slideUp 0.3s ease-out'
+                }} onClick={e => e.stopPropagation()}>
+                    
+                    <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', textAlign: 'center', color: '#333', fontWeight: 'bold' }}>
+                        명세서를 어떻게 할까요?
+                    </h3>
+                    
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <button onClick={() => handleSaveImage(mode === 'download')} style={{ 
+                            flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #ddd', 
+                            background: '#fff', fontSize: '15px', fontWeight: 'bold', color: '#333',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8
+                        }}>
+                            <span style={{fontSize: '24px'}}>📥</span>
+                            갤러리에 저장
+                        </button>
+                        
+                        <button onClick={handleShareImage} style={{ 
+                            flex: 1, padding: '16px', borderRadius: '12px', border: 'none', 
+                            background: '#FEE500', fontSize: '15px', fontWeight: 'bold', color: '#000',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8
+                        }}>
+                            <span style={{fontSize: '24px'}}>💬</span>
+                            카톡/공유하기
+                        </button>
+                    </div>
+                </div>
+                <style jsx>{`
+                    @keyframes slideUp {
+                        from { transform: translateY(100%); }
+                        to { transform: translateY(0); }
+                    }
+                `}</style>
             </div>
         )}
     </>
