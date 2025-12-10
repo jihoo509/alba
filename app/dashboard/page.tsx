@@ -1,6 +1,5 @@
 'use client';
 
-// ... (기존 import와 동일)
 import React, { useEffect, useMemo, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
