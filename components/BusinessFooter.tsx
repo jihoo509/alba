@@ -20,12 +20,13 @@ export default function BusinessFooter() {
         </div>
 
         <div style={rowStyle}>
-          <span style={labelStyle}>문의</span>
+          <span style={labelStyle}>email 문의</span>
           <span style={valueStyle}>inserr509@daum.net</span>
         </div>
 
-        <div style={copyrightStyle}>
-          © Easy Alba. All rights reserved.
+        <div style={rowStyle}>
+          <span style={labelStyle}>phone 문의</span>
+          <span style={valueStyle}>010-4554-5587</span>
         </div>
       </div>
     </footer>
