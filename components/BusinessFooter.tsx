@@ -78,6 +78,6 @@ const dividerStyle: React.CSSProperties = {
 
 const copyrightStyle: React.CSSProperties = {
   marginTop: '12px',
-  fontSize: '11px',
+  fontSize: '12px',
   color: '#aaa',
 };
