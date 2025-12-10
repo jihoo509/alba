@@ -97,7 +97,6 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
             </h2>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 16, color: '#555' }}>
                 <span>성명: <strong style={{color:'#000'}}>{data.name}</strong></span>
-                {/* 지급일 항목 삭제됨 */}
             </div>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25, minWidth: '100%' }}>
@@ -231,7 +230,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
   const [noTax, setNoTax] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // ✅ 모바일 선택 팝업 상태
+  // 모바일 선택 팝업 상태
   const [showMobileChoice, setShowMobileChoice] = useState(false);
 
   useEffect(() => {
@@ -251,7 +250,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   }, [isOpen, data]);
 
-  // ✅ [수정] 모드 'download'일 때 (리스트에서 다운로드 눌렀을 때)
+  // 모드 'download'일 때 (리스트에서 다운로드 눌렀을 때)
   useEffect(() => {
     if (isOpen && mode === 'download') {
         const timer = setTimeout(() => {
@@ -290,7 +289,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   };
 
-  // 1. 단순 이미지 저장
+  // 1. 단순 이미지 저장 (PC/모바일 공용)
   const handleSaveImage = async (autoClose = false) => {
     setShowMobileChoice(false);
     if (captureRef.current) {
@@ -306,17 +305,21 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
         link.href = canvas.toDataURL('image/png');
         link.click();
         
+        // 다운로드 후 닫기
         if (autoClose) onClose(); 
+        
       } catch (e) {
           console.error(e);
           alert('이미지 저장 실패');
+          onClose(); // 실패해도 닫기
       }
     }
   };
 
   // 2. 카카오톡/공유하기 (모바일 전용)
   const handleShareImage = async () => {
-    setShowMobileChoice(false);
+    setShowMobileChoice(false); // 팝업 숨기기 (로딩 텍스트 보임)
+
     if (captureRef.current) {
       try {
         const canvas = await html2canvas(captureRef.current, { 
@@ -326,11 +329,16 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
         });
 
         canvas.toBlob(async (blob) => {
-          if (!blob) return alert('이미지 생성 실패');
+          if (!blob) {
+              alert('이미지 생성 실패');
+              onClose(); // 실패 시 닫기
+              return;
+          }
           const file = new File([blob], `${data.name}_급여명세서.png`, { type: 'image/png' });
 
           if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
             try {
+              // 공유 실행 (여기서 사용자가 카톡 선택하고 돌아올 때까지 대기)
               await navigator.share({
                 files: [file],
                 title: `${data.name}님 급여명세서`,
@@ -338,25 +346,34 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
               });
             } catch (err) {
               console.log('공유 취소됨');
+            } finally {
+              // ✅ [핵심] 공유가 성공하든, 취소하든 무조건 모달 닫기
+              onClose();
             }
           } else {
-            alert('이 기기에서는 공유 기능을 사용할 수 없습니다.');
+            alert('이 기기에서는 공유 기능을 사용할 수 없어 다운로드합니다.');
+            const link = document.createElement('a');
+            link.download = `${data.name}_${month}월_급여명세서.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            onClose(); // 다운로드 후 닫기
           }
         }, 'image/png');
       } catch (e) {
           console.error(e);
           alert('공유 실패');
+          onClose(); // 에러 시 닫기
       }
     }
   };
 
-  // 3. 버튼 클릭 시 분기 처리
+  // 3. 버튼 클릭 시 분기 처리 (PC vs 모바일)
   const handleMainActionClick = () => {
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
     if (isMobile) {
       setShowMobileChoice(true);
     } else {
-      handleSaveImage(false);
+      handleSaveImage(false); // PC는 공유 없이 바로 저장
     }
   };
 
@@ -374,9 +391,9 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
 
   return (
     <>
-        {/* ✅ [PC와 동일한 이미지 생성을 위한 고정 영역] */}
+        {/* ✅ PC와 동일한 800px 고정 이미지를 위한 영역 */}
         <div style={{ position: 'fixed', top: '-10000px', left: '-10000px', width: '800px', zIndex: -1 }}>
-            <div ref={captureRef} style={{ width: '800px' }}> {/* 800px 강제 고정 */}
+            <div ref={captureRef} style={{ width: '800px' }}>
                 <PayStubPaper data={data} year={year} month={month} settingsOverride={currentSettings} />
             </div>
         </div>
@@ -418,7 +435,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
         {/* 2. 다운로드 모드 (배경) */}
         {mode === 'download' && (
              <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', fontSize: '18px' }}>
-                {/* 팝업이 안 떴을 때만 로딩 표시 */}
+                {/* 팝업 안 떴을 때만 로딩 표시 */}
                 {!showMobileChoice && <span>⏳ 다운로드 준비 중...</span>}
              </div>
         )}
@@ -460,7 +477,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                         
                         {/* ✅ 통합 버튼: PC에선 바로저장, 모바일에선 선택창 */}
                         <button onClick={handleMainActionClick} style={btnSave}>
-                           이미지 저장
+                           이미지 저장/공유
                         </button>
                     </div>
                 </div>
@@ -473,7 +490,10 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                 position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
                 background: 'rgba(0,0,0,0.5)', zIndex: 9999, // z-index 최상위
                 display: 'flex', alignItems: 'flex-end', justifyContent: 'center' 
-            }} onClick={() => { setShowMobileChoice(false); if(mode === 'download') onClose(); }}>
+            }} onClick={() => { 
+                setShowMobileChoice(false); 
+                if(mode === 'download') onClose(); // 선택 안하고 배경 누르면 닫기
+            }}>
                 
                 <div style={{ 
                     width: '100%', background: '#fff', 
@@ -487,7 +507,8 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                     </h3>
                     
                     <div style={{ display: 'flex', gap: 12 }}>
-                        <button onClick={() => handleSaveImage(mode === 'download')} style={{ 
+                        {/* 단순 저장 (autoClose=true로 넘겨서 저장 후 모달 닫히게 함) */}
+                        <button onClick={() => handleSaveImage(true)} style={{ 
                             flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #ddd', 
                             background: '#fff', fontSize: '15px', fontWeight: 'bold', color: '#333',
                             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8
@@ -496,6 +517,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                             갤러리에 저장
                         </button>
                         
+                        {/* 카톡/공유 */}
                         <button onClick={handleShareImage} style={{ 
                             flex: 1, padding: '16px', borderRadius: '12px', border: 'none', 
                             background: '#FEE500', fontSize: '15px', fontWeight: 'bold', color: '#000',

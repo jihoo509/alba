@@ -64,11 +64,13 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   const [editDailyPay, setEditDailyPay] = useState('');
   const [minuteInterval, setMinuteInterval] = useState(30);
 
-  // ✅ [추가] 직원 선택 목록 열림/닫힘 상태
   const [isEmpListOpen, setIsEmpListOpen] = useState(false);
 
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedDeleteIds, setSelectedDeleteIds] = useState<string[]>([]);
+
+  // ✅ [추가] 모바일 선택 팝업 상태
+  const [showMobileChoice, setShowMobileChoice] = useState(false);
 
   const fetchSchedules = useCallback(async () => {
     if (!currentStoreId) return;
@@ -105,9 +107,59 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     }
   }, [editEmpId, employees, isNew]); 
 
-  const handleDownloadImage = async () => {
+  // ✅ 1. 메인 버튼 동작 (PC vs 모바일 분기)
+  const handleMainDownloadClick = () => {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
+    if (isMobile) {
+      setShowMobileChoice(true); // 모바일이면 선택창 띄우기
+    } else {
+      handleDownloadImage(false); // PC면 바로 저장
+    }
+  };
+
+  // ✅ 2. 이미지 생성 및 다운로드 (공용)
+  const handleDownloadImage = async (autoClose = false) => {
+    setShowMobileChoice(false); // 팝업 닫기
     if (!calendarRef.current) return;
     try {
+      const originalElement = calendarRef.current;
+      const clone = originalElement.cloneNode(true) as HTMLElement;
+      clone.classList.add('force-pc-view');
+      document.body.appendChild(clone);
+      clone.style.position = 'fixed';
+      clone.style.top = '-10000px';
+      clone.style.left = '-10000px';
+      clone.style.width = '1200px'; // 1200px 고정 (PC 크기)
+      clone.style.height = 'auto';
+      clone.style.zIndex = '-1';
+      clone.style.backgroundColor = '#ffffff';
+      
+      const tables = clone.getElementsByTagName('table');
+      if (tables.length > 0) {
+        tables[0].style.width = '100%';
+        tables[0].style.minWidth = '1200px';
+        tables[0].style.fontSize = '14px';
+      }
+
+      const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', useCORS: true, windowWidth: 1600, width: 1200 });
+      document.body.removeChild(clone);
+      
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = `${format(currentDate, 'yyyy-MM')}_스케줄표.png`;
+      link.click();
+    } catch (err) {
+      console.error('이미지 저장 실패:', err);
+      alert('이미지 저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  // ✅ 3. 카카오톡/공유하기 (모바일 전용)
+  const handleShareImage = async () => {
+    setShowMobileChoice(false);
+    if (!calendarRef.current) return;
+    try {
+      // 1. 고정 크기 클론 생성
       const originalElement = calendarRef.current;
       const clone = originalElement.cloneNode(true) as HTMLElement;
       clone.classList.add('force-pc-view');
@@ -127,15 +179,37 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         tables[0].style.fontSize = '14px';
       }
 
+      // 2. 캡처
       const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', useCORS: true, windowWidth: 1600, width: 1200 });
       document.body.removeChild(clone);
-      const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
-      link.download = `${format(currentDate, 'yyyy-MM')}_스케줄표.png`;
-      link.click();
+
+      // 3. 공유 실행
+      canvas.toBlob(async (blob) => {
+        if (!blob) return alert('이미지 생성 실패');
+        const file = new File([blob], `${format(currentDate, 'yyyy-MM')}_스케줄표.png`, { type: 'image/png' });
+
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: `${format(currentDate, 'yyyy-MM')} 스케줄`,
+              text: `${format(currentDate, 'yyyy년 MM월')} 근무 스케줄표입니다.`,
+            });
+          } catch (err) {
+            console.log('공유 취소됨');
+          }
+        } else {
+          alert('이 기기에서는 공유 기능을 사용할 수 없어 다운로드합니다.');
+          const link = document.createElement('a');
+          link.href = canvas.toDataURL('image/png');
+          link.download = `${format(currentDate, 'yyyy-MM')}_스케줄표.png`;
+          link.click();
+        }
+      }, 'image/png');
+
     } catch (err) {
-      console.error('이미지 저장 실패:', err);
-      alert('이미지 저장 중 오류가 발생했습니다.');
+      console.error('공유 실패:', err);
+      alert('공유 실패');
     }
   };
 
@@ -173,7 +247,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
       setMinuteInterval(30); 
       setIsNew(false);
       setPopupOpen(true);
-      setIsEmpListOpen(false); // 팝업 열 때 리스트는 닫힌 상태로
+      setIsEmpListOpen(false); 
     }
   };
 
@@ -200,7 +274,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     }
   };
 
-  // ✅ [추가] 직원 선택 핸들러 (선택 즉시 닫힘)
   const handleSelectEmployee = (id: string | null) => {
     setEditEmpId(id);
     setIsEmpListOpen(false);
@@ -263,7 +336,12 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} style={btnStyle}>&gt;</button>
         </div>
         <div className="mobile-btn-group" style={{ display: 'flex', gap: 8 }}>
-           {!isDeleteMode && <button onClick={handleDownloadImage} className="mobile-sm-btn" style={{ ...btnStyle, background: 'dodgerblue', color: '#fff', border: 'none', fontWeight: 'bold' }}>📷 이미지 저장</button>}
+           {/* ✅ [수정] 통합 버튼: PC에선 다운로드, 모바일에선 선택창 */}
+           {!isDeleteMode && (
+             <button onClick={handleMainDownloadClick} className="mobile-sm-btn" style={{ ...btnStyle, background: 'dodgerblue', color: '#fff', border: 'none', fontWeight: 'bold' }}>
+               📷 이미지 저장
+             </button>
+           )}
           {isDeleteMode ? (
             <>
               <button onClick={handleBulkDelete} className="mobile-sm-btn" style={{ ...btnStyle, background: 'darkred', color: '#fff', border: 'none' }}>선택 삭제</button>
@@ -352,7 +430,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
               </div>
             </div>
 
-            {/* ✅ [수정] 모바일 친화적 직원 선택기 (누르면 바로 닫힘) */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8 }}>근무자 (대타)</label>
               
@@ -425,6 +502,54 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ✅ [추가] 모바일 선택 팝업 (하단 슬라이드) */}
+      {showMobileChoice && (
+        <div style={{ 
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+            background: 'rgba(0,0,0,0.5)', zIndex: 9999,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center' 
+        }} onClick={() => setShowMobileChoice(false)}>
+            
+            <div style={{ 
+                width: '100%', background: '#fff', 
+                borderTopLeftRadius: '16px', borderTopRightRadius: '16px', 
+                padding: '24px 20px 40px 20px', 
+                animation: 'slideUp 0.3s ease-out'
+            }} onClick={e => e.stopPropagation()}>
+                
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', textAlign: 'center', color: '#333', fontWeight: 'bold' }}>
+                    스케줄표를 어떻게 할까요?
+                </h3>
+                
+                <div style={{ display: 'flex', gap: 12 }}>
+                    <button onClick={() => handleDownloadImage(false)} style={{ 
+                        flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #ddd', 
+                        background: '#fff', fontSize: '15px', fontWeight: 'bold', color: '#333',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8
+                    }}>
+                        <span style={{fontSize: '24px'}}>📥</span>
+                        갤러리에 저장
+                    </button>
+                    
+                    <button onClick={handleShareImage} style={{ 
+                        flex: 1, padding: '16px', borderRadius: '12px', border: 'none', 
+                        background: '#FEE500', fontSize: '15px', fontWeight: 'bold', color: '#000',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8
+                    }}>
+                        <span style={{fontSize: '24px'}}>💬</span>
+                        카톡/공유하기
+                    </button>
+                </div>
+            </div>
+            <style jsx>{`
+                @keyframes slideUp {
+                    from { transform: translateY(100%); }
+                    to { transform: translateY(0); }
+                }
+            `}</style>
         </div>
       )}
     </div>
