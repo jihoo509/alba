@@ -97,7 +97,7 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
             </h2>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 16, color: '#555' }}>
                 <span>성명: <strong style={{color:'#000'}}>{data.name}</strong></span>
-                {/* ✅ [수정] 지급일 항목 삭제됨 */}
+                {/* ✅ 지급일 항목 삭제됨 */}
             </div>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 25, minWidth: '100%' }}>
@@ -303,6 +303,52 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
     }
   };
 
+  // ✅ [추가됨] 모바일에서 공유하기 버튼 기능 (카카오톡, 문자 등)
+  const handleShareImage = async () => {
+    if (captureRef.current) {
+      try {
+        // 1. 캡처
+        const canvas = await html2canvas(captureRef.current, { 
+            scale: 2, 
+            backgroundColor: '#ffffff', 
+            useCORS: true, 
+        });
+
+        // 2. Blob 변환
+        canvas.toBlob(async (blob) => {
+          if (!blob) return alert('이미지 생성 실패');
+
+          // 3. 파일 객체 만들기
+          const file = new File([blob], `${data.name}_급여명세서.png`, { type: 'image/png' });
+
+          // 4. 모바일 공유하기 창 띄우기
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                files: [file],
+                title: `${data.name}님 급여명세서`,
+                text: `${year}년 ${month}월 급여명세서입니다.`,
+              });
+            } catch (err) {
+              console.log('공유 취소됨');
+            }
+          } else {
+            // PC 등 공유 불가능한 환경이면 다운로드로 대체
+            alert('이 기기에서는 공유 기능을 바로 쓸 수 없어 다운로드합니다.');
+            const link = document.createElement('a');
+            link.download = `${data.name}_${month}월_급여명세서.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+          }
+        }, 'image/png');
+
+      } catch (e) {
+          console.error(e);
+          alert('공유 실패');
+      }
+    }
+  };
+
   if (!isOpen || !data) return null;
   const isModified = data.isModified === true;
 
@@ -326,9 +372,8 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
 
         {/* 1. 설정 모드 (모바일) */}
         {mode === 'settings' && (
-            // ✅ [수정] 배경 클릭 시 닫힘 (overlayStyle에 onClick 추가)
+            // ✅ 배경 클릭 시 닫힘
             <div style={overlayStyle} onClick={onClose}>
-                {/* ✅ [수정] 내용 클릭 시 닫힘 방지 (e.stopPropagation) */}
                 <div 
                     onClick={(e) => e.stopPropagation()} 
                     style={{ ...modalStyle, maxWidth: '400px', height: 'auto', padding: '24px', borderRadius: '16px' }}
@@ -369,9 +414,9 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
 
         {/* 3. 풀 모드 (화면 표시) */}
         {mode === 'full' && (
-            // ✅ [수정] 배경 클릭 시 닫힘
+            // ✅ 배경 클릭 시 닫힘
             <div style={overlayStyle} onClick={onClose}>
-                {/* ✅ [수정] 내용 클릭 시 닫힘 방지 */}
+                {/* ✅ 내용 클릭 시 닫힘 방지 */}
                 <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
                     <div style={{ padding: 16, borderBottom: '1px solid #444', backgroundColor: '#333', color: '#fff' }}>
                         <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 개별 지급 옵션 설정</h3>
@@ -401,6 +446,12 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
 
                     <div style={{ padding: 16, backgroundColor: '#333', borderTop: '1px solid #444', display: 'flex', justifyContent: 'flex-end', gap: 10, paddingBottom: 20 }}>
                         <button onClick={onClose} style={btnCancel}>닫기</button>
+                        
+                        {/* ✅ [추가됨] 카카오/공유 버튼 */}
+                        <button onClick={handleShareImage} style={{...btnSave, background: '#FEE500', color: '#000', border: 'none'}}>
+                           카톡/공유
+                        </button>
+
                         {onSave && <button onClick={handleSaveSettings} disabled={isSaving} style={{...btnSave, background:'dodgerblue'}}>설정 저장</button>}
                         <button onClick={() => handleSaveImage(false)} style={btnSave}>이미지 저장</button>
                     </div>
