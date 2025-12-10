@@ -2,7 +2,7 @@ import './globals.css';
 import React from 'react';
 import Script from 'next/script'; 
 import InstallPrompt from './InstallPrompt'; 
-import VisitTracker from '@/components/VisitTracker'; // ✅ [추가] 방문자 감지기
+import VisitTracker from '@/components/VisitTracker'; 
 
 export const metadata = {
   title: "Alba Manager",
@@ -16,18 +16,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <head>
+      <body>
+        {/* ✅ 구글 애드센스 스크립트 */}
+        {/* head 태그를 지우고 body 안쪽에 둡니다 (Next.js 권장 방식) */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7536814024124909"
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
-      </head>
-      <body>
-        {/* ✅ [추가] 사이트 방문 시 자동으로 카운팅 */}
+
+        {/* ✅ 방문자 감지기 */}
         <VisitTracker />
 
+        {/* 메인 콘텐츠 */}
         {children}
         
         {/* 설치 버튼 컴포넌트 */}
