@@ -3,6 +3,8 @@ import React from 'react';
 import Script from 'next/script'; 
 import InstallPrompt from './InstallPrompt'; 
 import VisitTracker from '@/components/VisitTracker'; 
+// ✅ [추가] 푸터 컴포넌트 불러오기
+import BusinessFooter from '@/components/BusinessFooter'; 
 
 // ✅ [수정] 메타데이터에 구글 애드센스 소유권 확인 코드 추가
 export const metadata = {
@@ -32,9 +34,16 @@ export default function RootLayout({
         {/* 방문자 감지기 */}
         <VisitTracker />
 
-        {/* 메인 콘텐츠 */}
-        {children}
+        {/* ✅ [수정] 메인 콘텐츠 영역 
+            내용이 적어도 푸터가 화면 중간에 뜨지 않도록 최소 높이를 줬습니다.
+        */}
+        <div style={{ minHeight: 'calc(100vh - 150px)' }}>
+          {children}
+        </div>
         
+        {/* ✅ [추가] 사이트 하단 정보 (푸터) */}
+        <BusinessFooter />
+
         {/* 설치 버튼 컴포넌트 */}
         <InstallPrompt />
       </body>
