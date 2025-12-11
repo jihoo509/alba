@@ -19,8 +19,9 @@ export default function PayrollEditModal({ isOpen, onClose, employeeName, origin
 
   useEffect(() => {
     if (isOpen) {
-      setOverride(currentOverride !== null ? String(currentOverride) : '');
-      setAdjustment(currentAdjustment !== 0 ? String(currentAdjustment) : '');
+      // 값이 있으면 문자열로 변환, 없으면 빈 문자열
+      setOverride(currentOverride !== null ? String(currentOverride).toLocaleString() : '');
+      setAdjustment(currentAdjustment !== 0 ? String(currentAdjustment).toLocaleString() : '');
     }
   }, [isOpen, currentOverride, currentAdjustment]);
 
@@ -44,18 +45,24 @@ export default function PayrollEditModal({ isOpen, onClose, employeeName, origin
   };
 
   const handleCurrencyInput = (e: React.ChangeEvent<HTMLInputElement>, setter: any) => {
-    const val = e.target.value.replace(/,/g, '');
-    if (!isNaN(Number(val))) {
-      setter(val === '' ? '' : Number(val).toLocaleString());
+    const raw = e.target.value.replace(/,/g, '');
+    if (raw === '') {
+        setter('');
+        return;
+    }
+    const val = Number(raw);
+    if (!isNaN(val)) {
+      setter(val.toLocaleString());
+    } else if (raw === '-') {
+        // 음수 입력 시작 허용 (조정액용)
+        setter('-'); 
     }
   };
 
   return (
-    // ✅ [수정] 배경 클릭 시 닫힘
     <div style={overlayStyle} onClick={onClose}>
-      {/* ✅ [수정] 내용 클릭 시 닫힘 방지 */}
       <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ margin: '0 0 20px 0', textAlign: 'center' }}>
+        <h3 style={{ margin: '0 0 20px 0', textAlign: 'center', color: '#333' }}>
           ✏️ <strong>{employeeName}</strong> 급여 수정
         </h3>
         
@@ -83,18 +90,16 @@ export default function PayrollEditModal({ isOpen, onClose, employeeName, origin
             type="text" 
             value={adjustment} 
             onChange={(e) => {
-                const raw = e.target.value.replace(/,/g, '');
-                if (raw === '-' || !isNaN(Number(raw))) { // 마이너스 입력 허용
-                   // 단순 숫자 포맷팅은 복잡하므로 여기선 간단히 처리
-                   if(raw === '-') setAdjustment('-');
-                   else setAdjustment(raw === '' ? '' : Number(raw).toLocaleString());
-                }
+                 // 조정액은 마이너스 입력이 가능해야 하므로 별도 처리
+                 const raw = e.target.value.replace(/,/g, '');
+                 if (raw === '-') setAdjustment('-');
+                 else handleCurrencyInput(e, setAdjustment);
             }}
             placeholder="0"
             style={inputStyle} 
           />
           <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0 0' }}>
-            * 보너스는 양수(+), 공제는 음수(-)로 입력하세요. (예: -50000)
+            * 보너스는 양수(+), 공제는 음수(-)로 입력하세요. (예: -50,000)
           </p>
         </div>
 
