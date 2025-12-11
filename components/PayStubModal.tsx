@@ -217,13 +217,15 @@ type Props = {
   data: any;
   isOpen: boolean;
   onClose: () => void;
-  onSave?: (settings: any) => void; 
+  onSave?: (settings: any) => void;
+  // ✅ [신규] 초기화 함수 prop 추가
+  onReset?: (employeeId: number) => void;
   year: number;
   month: number;
   mode?: 'full' | 'settings' | 'download'; 
 };
 
-export default function PayStubModal({ data, isOpen, onClose, onSave, year, month, mode = 'full' }: Props) {
+export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, year, month, mode = 'full' }: Props) {
   const captureRef = useRef<HTMLDivElement>(null);
 
   const [useWeekly, setUseWeekly] = useState(true);
@@ -245,6 +247,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
       setUseHolidayWork(s.pay_holiday ?? false);
       setUseBreakDeduct(s.auto_deduct_break !== false);
       
+      // 사용자 설정이 없으면 매장 설정(s)을 사용
       if (data.userSettings) {
           setNoTax(data.userSettings.no_tax_deduction || false);
       } else {
@@ -281,13 +284,21 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
         auto_deduct_break: useBreakDeduct,
         no_tax_deduction: noTax
       });
-      alert('설정이 저장되었습니다. (급여 재계산됨)');
+      alert('설정이 저장되었습니다.');
       onClose(); 
     } catch (e) {
       alert('오류 발생');
       console.error(e);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // ✅ [신규] 초기화 버튼 클릭 핸들러
+  const handleResetClick = async () => {
+    if (onReset && data.empId) {
+        await onReset(data.empId);
+        onClose();
     }
   };
 
@@ -420,6 +431,11 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                             <input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} style={checkInput} /> 
                             <span>세금 공제 안 함 <span style={{fontSize:11}}>(100%)</span></span>
                         </label>
+                        
+                        {/* ✅ [신규] 모바일용 초기화 버튼 (개별 설정이 있는 경우에만 표시) */}
+                        {data.isOverrideApplied && onReset && (
+                            <button onClick={handleResetClick} style={btnResetMobile}>🔄 매장 공통 설정 적용</button>
+                        )}
                     </div>
                     <div style={{ marginTop: 28, display: 'flex', gap: 10, justifyContent: 'center' }}>
                         <button onClick={onClose} style={btnCancelSmall}>취소</button>
@@ -442,7 +458,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                 <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
                     <div style={{ padding: 16, borderBottom: '1px solid #444', backgroundColor: '#333', color: '#fff' }}>
                         <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>⚙️ 개별 지급 옵션 설정</h3>
-                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                             {isModified ? (
                                 <span style={{fontSize: 13, color: '#FFD700', fontWeight: 'bold'}}>※ 확정 급여(수정됨) 상태입니다. (수당 자동계산 미적용)</span>
                             ) : (
@@ -454,7 +470,15 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, year, mont
                                     <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게차감</label>
                                 </>
                             )}
-                            <label style={{display:'flex',gap:6,cursor:'pointer', marginLeft:'auto', color:'#ff6b6b'}}><input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함</label>
+                            {/* 우측 정렬된 그룹 */}
+                            <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
+                                <label style={{display:'flex',gap:6,cursor:'pointer', color:'#ff6b6b'}}><input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함</label>
+                                
+                                {/* ✅ [신규] PC용 초기화 버튼 (개별 설정이 있는 경우에만 표시) */}
+                                {data.isOverrideApplied && onReset && (
+                                    <button onClick={handleResetClick} style={btnResetPC}>🔄 매장 공통 설정 적용</button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -530,3 +554,7 @@ const btnSave = { flex: 1, padding: '12px', background: 'dodgerblue', color: '#f
 const checkboxLabelMobile = { display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '15px', color: '#444' };
 const btnCancelSmall = { padding: '10px 20px', background: '#f5f5f5', border: '1px solid #ddd', color: '#666', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
 const btnSaveSmall = { padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
+
+// ✅ [신규] 초기화 버튼 스타일 추가
+const btnResetPC = { padding: '6px 12px', fontSize: '12px', background: '#444', color: '#ccc', border: '1px solid #666', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' };
+const btnResetMobile = { width: '100%', padding: '12px', margin: '10px 0 0 0', background: '#f0f0f0', color: '#555', border: '1px solid #ddd', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' };

@@ -66,6 +66,13 @@ export function calculateMonthlyPayroll(
     const empSchedules = schedules.filter(s => s.employee_id === emp.id);
     const override = overrides.find(o => o.employee_id === emp.id);
 
+    // ✅ [신규] 개별 설정이 적용된 상태인지 확인 (하나라도 null이 아니면 적용된 것)
+    const isOverrideApplied = override && (
+        override.pay_weekly !== null || override.pay_night !== null || 
+        override.pay_overtime !== null || override.pay_holiday !== null || 
+        override.auto_deduct_break !== null || override.no_tax_deduction !== null
+    );
+
     const isEmpDaily = emp.pay_type === 'day' || emp.pay_type === '일당';
     const isEmpMonthly = emp.pay_type === 'month' || (emp.monthly_wage && emp.monthly_wage > 0);
 
@@ -314,7 +321,9 @@ export function calculateMonthlyPayroll(
       phoneNumber: emp.phone_number,
       ledger: ledger,
       // storeSettingsSnapshot에 계산된 최종 cfg 값을 병합해서 보냄
-      storeSettingsSnapshot: { ...storeSettings, ...cfg } 
+      storeSettingsSnapshot: { ...storeSettings, ...cfg },
+      // ✅ [신규] 개별 설정 사용 여부 전달
+      isOverrideApplied: isOverrideApplied 
     };
   });
 }

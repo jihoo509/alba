@@ -141,6 +141,28 @@ export default function PayrollSection({ currentStoreId }: Props) {
     }
   };
 
+  // ✅ [신규] 명세서 설정 초기화 (매장 설정 따라가기)
+  const handleResetStubSettings = async (employeeId: number) => {
+    if (!confirm('개별 설정을 초기화하고 매장 기본 설정을 따르시겠습니까?')) return;
+    
+    // 설정 컬럼들을 null로 업데이트하여 초기화
+    const { error } = await supabase.from('employee_settings').upsert({
+        employee_id: employeeId,
+        pay_weekly: null,
+        pay_night: null,
+        pay_overtime: null,
+        pay_holiday: null,
+        auto_deduct_break: null,
+        no_tax_deduction: null
+    }, { onConflict: 'employee_id' });
+
+    if (error) {
+        alert('초기화 실패: ' + error.message);
+    } else {
+        await loadAndCalculate(); 
+    }
+  };
+
   const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => (acc + (curr.totalPay || 0)), 0), [payrollData]);
 
   // 엑셀 다운로드
@@ -345,6 +367,8 @@ export default function PayrollSection({ currentStoreId }: Props) {
         data={stubModalState.data}
         year={year} month={month}
         onSave={handleSaveStubSettings}
+        // ✅ [신규] 초기화 함수 전달
+        onReset={handleResetStubSettings} 
         mode={stubModalState.mode}
       />
 
