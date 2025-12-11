@@ -227,7 +227,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
   const [useBreakDeduct, setUseBreakDeduct] = useState(true);
   const [noTax, setNoTax] = useState(false);
   
-  // ✅ [신규] 모바일 급여 수정을 위한 상태 추가
+  // 모바일 급여 수정용 상태
   const [overrideAmount, setOverrideAmount] = useState<string>('');
   const [adjustmentAmount, setAdjustmentAmount] = useState<string>('');
 
@@ -249,14 +249,12 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
           setNoTax(s.no_tax_deduction || false);
       }
 
-      // ✅ [신규] 데이터에서 금액 값 불러오기
-      // 수정된 상태(isModified)라면 basePay가 곧 override 금액임
+      // 수정된 금액 불러오기
       if (data.isModified && data.basePay !== data.originalCalcPay) {
           setOverrideAmount(String(data.basePay).toLocaleString());
       } else {
           setOverrideAmount('');
       }
-      // 조정액 불러오기
       setAdjustmentAmount(data.adjustment !== 0 ? String(data.adjustment).toLocaleString() : '');
     }
   }, [isOpen, data]);
@@ -276,7 +274,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
     }
   }, [isOpen, mode]);
 
-  // ✅ [신규] 금액 입력 핸들러 (콤마 자동 추가)
   const handleCurrencyInput = (e: React.ChangeEvent<HTMLInputElement>, setter: any) => {
     const raw = e.target.value.replace(/,/g, '');
     if (raw === '') {
@@ -287,7 +284,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
     if (!isNaN(val)) {
       setter(val.toLocaleString());
     } else if (raw === '-') {
-        // 음수 입력 허용 (조정액용)
         setter('-'); 
     }
   };
@@ -296,7 +292,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
     if (!onSave) return;
     setIsSaving(true);
     try {
-      // ✅ [수정] 금액 데이터도 함께 저장
       const numOverride = overrideAmount.trim() === '' ? null : Number(overrideAmount.replace(/,/g, ''));
       const numAdjustment = adjustmentAmount.trim() === '' ? 0 : Number(adjustmentAmount.replace(/,/g, ''));
 
@@ -308,7 +303,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
         pay_holiday: useHolidayWork,
         auto_deduct_break: useBreakDeduct,
         no_tax_deduction: noTax,
-        // 👇 추가된 부분
         monthly_override: numOverride,
         monthly_adjustment: numAdjustment
       });
@@ -457,7 +451,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
                             <span>세금 공제 안 함 <span style={{fontSize:11}}>(100%)</span></span>
                         </label>
 
-                        {/* ✅ [신규] 모바일용 금액 수정 영역 */}
+                        {/* 모바일용 금액 수정 영역 */}
                         <div style={{ backgroundColor: '#fafafa', padding: '12px', borderRadius: '8px', border: '1px solid #eee', marginTop: '4px' }}>
                             <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#555', marginBottom: '8px' }}>✏️ 급여 직접 수정</div>
                             
