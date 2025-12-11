@@ -17,11 +17,26 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   
   const [isSignupOpen, setIsSignupOpen] = useState(false);
-  
   const [rememberId, setRememberId] = useState(false);
 
-  // 초기 로딩 시 자동 로그인 & 아이디 불러오기
+  // ✅ [수정] 초기 로딩 시 자동 로그인 로직 (로그아웃 직후엔 실행 안 함)
   useEffect(() => {
+    // 1. URL에 logout=true가 있는지 확인
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('logout') === 'true') {
+        // 로그아웃 직후라면 자동 로그인 로직 건너뜀 (대신 URL만 깨끗하게 정리)
+        window.history.replaceState(null, '', '/');
+        
+        // 아이디 기억하기 체크 여부만 확인해서 채워둠
+        const savedEmail = localStorage.getItem('savedEmail');
+        if (savedEmail) {
+            setEmail(savedEmail);
+            setRememberId(true);
+        }
+        return; 
+    }
+
+    // 2. 일반 접속일 때만 세션 체크
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
@@ -37,7 +52,6 @@ export default function AuthPage() {
     checkSession();
   }, [supabase, router]);
 
-  // ✅ [수정됨] 로그인 처리 함수
   async function handleLogin() {
     try {
       setMsg(null);
@@ -49,16 +63,13 @@ export default function AuthPage() {
         localStorage.removeItem('savedEmail');
       }
 
-      // 오직 로그인만 수행
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      // 👇 여기가 수정된 부분입니다 (에러 메시지 한글화)
       if (error) {
-        console.log('로그인 에러:', error.message); // 디버깅용 로그
-
+        console.log('로그인 에러:', error.message);
         switch (error.message) {
           case 'Invalid login credentials':
             setMsg('아이디(이메일) 또는 비밀번호가 일치하지 않습니다.');
@@ -72,21 +83,16 @@ export default function AuthPage() {
           default:
             setMsg('로그인 중 오류가 발생했습니다. (' + error.message + ')');
         }
-        return; // 에러가 났으니 여기서 함수 종료
+        return;
       }
-
-      // 에러가 없으면 이동
       router.push('/dashboard');
-      
     } catch (e: any) {
-      // 예상치 못한 에러
       setMsg(e?.message || String(e));
     } finally {
       setLoading(false);
     }
   }
 
-  // ✅ 회원가입 처리 함수 (모달에서 호출)
   async function handleSignup(signupEmail: string, signupPw: string, signupPhone: string) {
     try {
       setLoading(true);
@@ -104,7 +110,7 @@ export default function AuthPage() {
 
       if (!data.session) {
         alert('가입 확인 메일을 보냈습니다. 이메일을 확인해주세요.');
-        setIsSignupOpen(false); // 모달 닫기
+        setIsSignupOpen(false);
       } else {
         router.push('/dashboard');
       }
@@ -198,7 +204,6 @@ export default function AuthPage() {
           <label htmlFor="rememberId" style={{ fontSize: '13px', color: '#555', cursor: 'pointer' }}>아이디 기억하기</label>
         </div>
 
-        {/* 에러 메시지 표시 영역 */}
         {msg && <div style={{ color: 'salmon', fontSize: '12px', textAlign: 'center' }}>{msg}</div>}
 
         <button

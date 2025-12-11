@@ -59,14 +59,12 @@ export default function AccountSettingsModal({ isOpen, onClose, userEmail, userP
   const handleDeleteAccount = async () => {
     if (!confirm('정말 탈퇴하시겠습니까?\n모든 데이터(매장, 직원, 급여 등)가 영구 삭제됩니다.')) return;
     
-    // 한 번 더 확인 (안전장치)
     const check = prompt(`탈퇴하려면 아래 문구를 똑같이 입력해주세요.\n"탈퇴합니다"`);
     if (check !== '탈퇴합니다') return;
 
     try {
       setLoading(true);
 
-      // 1. API 호출해서 서버 데이터 삭제
       const res = await fetch('/api/auth/delete-account', {
         method: 'DELETE',
       });
@@ -76,23 +74,23 @@ export default function AccountSettingsModal({ isOpen, onClose, userEmail, userP
         throw new Error(errData.error || '탈퇴 처리 실패');
       }
 
-      // 2. 클라이언트 로그아웃 처리
       await supabase.auth.signOut();
 
       alert('탈퇴가 완료되었습니다.\n그동안 이용해주셔서 감사합니다.');
 
-      // 3. [핵심] 로그인 페이지로 강제 이동 (새로고침)
       window.location.href = '/';
 
     } catch (e: any) {
       alert('오류 발생: ' + e.message);
-      setLoading(false); // 실패 시에만 로딩 끔 (성공하면 페이지 이동하니까)
+      setLoading(false);
     }
   };
 
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
+    // ✅ [수정] 배경 클릭 시 onClose 실행
+    <div style={overlayStyle} onClick={onClose}>
+      {/* ✅ [수정] 내부 클릭 시 이벤트 전파 중단 (안 닫히게) */}
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
         <h2 style={{ textAlign: 'center', margin: '0 0 24px 0', color: '#333' }}>계정 설정</h2>
 
         <div style={formGroupStyle}>
@@ -168,7 +166,8 @@ const overlayStyle: React.CSSProperties = {
 const modalStyle: React.CSSProperties = {
   backgroundColor: '#fff', width: '90%', maxWidth: '400px',
   borderRadius: '16px', padding: '32px',
-  boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+  boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+  animation: 'fadeIn 0.2s ease-out'
 };
 
 const formGroupStyle = { marginBottom: '20px' };
