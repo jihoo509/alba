@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import AdBanner from '@/components/AdBanner';
 import AdPopup from '@/components/AdPopup';
 import GoogleAd from '@/components/GoogleAd';
@@ -10,7 +12,28 @@ export default function DashboardLayout({
 }) {
   // 🔴 [중요] 실제 운영 시엔 사장님 애드센스 ID로 변경 필수
   const MOBILE_BOTTOM_BOX_SLOT_ID = "4218312145"; 
-  // const MOBILE_STICKY_SLOT_ID = "1423137158"; // 🗑️ 스티키 슬롯 ID 미사용
+  
+  // ✅ [로직 추가] 랜덤 광고 상태 관리
+  // 초기값을 null로 두어 서버/클라이언트 불일치(Hydration) 에러 방지
+  const [randomAd, setRandomAd] = useState<{ img: string; link: string } | null>(null);
+
+  useEffect(() => {
+    // 광고 데이터 목록
+    const adList = [
+      {
+        img: '/art-m-1.png', // public 폴더 기준 경로
+        link: 'https://policy-funding.ba-damda.com/'
+      },
+      {
+        img: '/art-m-2.png',
+        link: 'https://tremendous-sunset-519.notion.site/51ec9464cecd425d91c96f5a8167471d'
+      }
+    ];
+
+    // 페이지 접속 시 0 또는 1 중 랜덤 선택
+    const randomIndex = Math.floor(Math.random() * adList.length);
+    setRandomAd(adList[randomIndex]);
+  }, []);
 
   return (
     // ✅ 전체 컨테이너
@@ -45,7 +68,7 @@ export default function DashboardLayout({
           {children}
         </div>
 
-        {/* 4. [정적] 모바일 하단 광고 박스 (320x50 강제 고정 적용) */}
+        {/* 4. [모바일 하단] 광고 박스 2개 */}
         <div className="mobile-only" style={{
           width: '100%',
           padding: '20px',
@@ -57,29 +80,8 @@ export default function DashboardLayout({
           borderTop: '1px solid #eee',
           marginTop: '40px'
         }}>
-          {/* 광고 박스 1 */}
-          <div style={{ 
-              width: '100%', 
-              height: '100px', // 여백 포함 넉넉하게
-              overflow: 'hidden', 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
-              background:'#f8f8f8', 
-              borderRadius:8 
-          }}>
-             {/* 🔥 [핵심 수정] 반응형을 끄고, 320x50 사이즈를 직접 지정 */}
-             <GoogleAd 
-                slot={MOBILE_BOTTOM_BOX_SLOT_ID} 
-                // format과 responsive를 제거하거나 비워서 고정 모드로 전환
-                format="" 
-                responsive="false"
-                // style에 정확한 크기 명시
-                style={{ display:'inline-block', width: '320px', height: '50px' }}
-             />
-          </div>
-
-          {/* 광고 박스 2 */}
+          
+          {/* ✅ [광고 박스 1] 직접 광고 (랜덤 로테이션) */}
           <div style={{ 
               width: '100%', 
               height: '100px', 
@@ -90,20 +92,52 @@ export default function DashboardLayout({
               background:'#f8f8f8', 
               borderRadius:8 
           }}>
-             {/* 🔥 [핵심 수정] 위와 동일하게 고정 */}
+             {randomAd ? (
+              <a 
+                href={randomAd.link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ display: 'block', width: '100%', height: '100%', textAlign: 'center' }}
+              >
+                <img 
+                  src={randomAd.img} 
+                  alt="Advertisement" 
+                  style={{ 
+                    maxWidth: '100%', 
+                    maxHeight: '100%', 
+                    objectFit: 'contain', 
+                    width: 'auto',
+                    height: 'auto'
+                  }} 
+                />
+              </a>
+            ) : (
+              // 로딩 전 잠깐 보일 빈 화면
+              <div style={{ width: '100%', height: '100%' }} />
+            )}
+          </div>
+
+          {/* ✅ [광고 박스 2] 구글 애드센스 (고정 사이즈) */}
+          <div style={{ 
+              width: '100%', 
+              height: '100px', 
+              overflow: 'hidden', 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              background:'#f8f8f8', 
+              borderRadius:8 
+          }}>
              <GoogleAd 
-                slot={MOBILE_BOTTOM_BOX_SLOT_ID} 
-                format="" 
-                responsive="false"
-                style={{ display:'inline-block', width: '320px', height: '50px' }}
+               slot={MOBILE_BOTTOM_BOX_SLOT_ID} 
+               format="" 
+               responsive="false"
+               style={{ display:'inline-block', width: '320px', height: '50px' }}
              />
           </div>
         </div>
 
       </div>
-
-      {/* 5. 모바일 스티키 배너 삭제됨 */}
-
     </div>
   );
 }
