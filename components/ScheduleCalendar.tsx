@@ -379,13 +379,14 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
       </div>
 
       {/* 캘린더 영역 */}
-      <div ref={calendarRef} style={{ backgroundColor: '#fff', paddingBottom: 10, overflowX: 'auto' }}>
+      <div ref={calendarRef} style={{ backgroundColor: '#fff', paddingBottom: 10 }}>
         <div style={{ minWidth: '100%', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 10, textAlign: 'center' }}>
           {weeks.map((day, idx) => (
             <div key={day} style={{ color: idx === 5 ? 'dodgerblue' : idx === 6 ? 'salmon' : '#666', fontWeight: 'bold', fontSize: 16 }}>{day}</div>
           ))}
         </div>
         
+        {/* ✅ [수정] 스크롤바 제거 (overflowX 제거 및 width 100%) */}
         <div className="table-wrapper" style={{ backgroundColor: '#fff', width: '100%' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderTop: '1px solid #ddd', borderLeft: '1px solid #ddd' }}>
             {calendarDays.map((day, idx) => {
@@ -399,14 +400,15 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
               return (
                 <div key={day.toString()} onClick={() => handleDateClick(day)} 
                      style={{ 
-                         minHeight: 100, 
-                         padding: '4px 2px 20px 2px', 
+                         // ✅ [수정] minHeight 제거 -> 내용만큼 늘어남
+                         minHeight: 80, 
+                         padding: '4px 2px 10px 2px', 
                          borderRight: '1px solid #ddd', 
                          borderBottom: '1px solid #ddd', 
                          backgroundColor: isCurrentMonth ? (isTodayDate ? '#f0f9ff' : 'transparent') : '#f9f9f9', 
                          cursor: isDeleteMode ? 'default' : 'pointer', 
                          display: 'flex', flexDirection: 'column',
-                         overflow: 'hidden' 
+                         overflow: 'hidden' // 내용 넘침 숨김
                      }}>
                   <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14, color: isTodayDate ? 'dodgerblue' : dayColor, fontWeight: isTodayDate ? 'bold' : 'normal', paddingTop: 4 }}>{format(day, 'd')}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
@@ -419,7 +421,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                       const patternName = sch.memo; 
 
                       return (
-                        <div key={sch.id} onClick={(e) => handleScheduleClick(e, sch)} className="schedule-box" style={{ backgroundColor: isDeleteMode ? (isSelectedForDelete ? 'darkred' : '#eee') : bgColor, color: isDeleteMode && !isSelectedForDelete ? '#aaa' : '#fff', fontSize: 12, padding: '4px', borderRadius: 4, cursor: 'pointer', border: isDeleteMode ? (isSelectedForDelete ? '2px solid red' : '1px solid #ccc') : (sch.employee_id ? 'none' : '2px dashed #999'), textAlign: 'center', opacity: isDeleteMode && !isSelectedForDelete ? 0.5 : 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                        <div key={sch.id} onClick={(e) => handleScheduleClick(e, sch)} className="schedule-box" style={{ backgroundColor: isDeleteMode ? (isSelectedForDelete ? 'darkred' : '#eee') : bgColor, color: isDeleteMode && !isSelectedForDelete ? '#aaa' : '#fff', fontSize: 11, padding: '3px', borderRadius: 4, cursor: 'pointer', border: isDeleteMode ? (isSelectedForDelete ? '2px solid red' : '1px solid #ccc') : (sch.employee_id ? 'none' : '2px dashed #999'), textAlign: 'center', opacity: isDeleteMode && !isSelectedForDelete ? 0.5 : 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
                           <div className="schedule-emp-name" style={{ fontWeight: 'bold', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {empName || '미배정'}
                             {sch.is_holiday_work && <span style={{fontSize: 10, marginLeft: 2}}>🔴</span>}
@@ -440,27 +442,37 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
 
       {popupOpen && (
         <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000}}>
-          <div style={{backgroundColor: '#ffffff', padding: 24, borderRadius: 12, border: '1px solid #ccc', width: 360, boxShadow: '0 10px 25px rgba(0,0,0,0.2)', color: '#333', maxHeight: '90vh', overflowY: 'auto'}} onClick={e => e.stopPropagation()}>
+          <div style={{backgroundColor: '#ffffff', padding: 24, borderRadius: 12, border: '1px solid #ccc', width: '90%', maxWidth: '380px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', color: '#333', maxHeight: '90vh', overflowY: 'auto'}} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginTop: 0, marginBottom: 20, color: '#333', textAlign: 'center' }}>{isNew ? '새 스케줄 추가' : '스케줄 수정'} ({editDate})</h3>
             
             <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <label style={{ fontSize: 13, color: '#666' }}>근무 시간</label>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {[30, 10, 5].map((min) => (
-                    <button key={min} onClick={() => setMinuteInterval(min)} style={{ padding: '2px 8px', fontSize: 11, borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer', backgroundColor: minuteInterval === min ? 'dodgerblue' : '#f0f0f0', color: minuteInterval === min ? '#fff' : '#666' }}>{min}분</button>
-                  ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                {/* ✅ [수정] 분 선택 버튼을 라벨 바로 옆으로 이동 */}
+                <div style={{display:'flex', alignItems:'center', gap: 10}}>
+                    <label style={{ fontSize: 13, color: '#666', fontWeight:'bold' }}>근무 시간</label>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                    {[30, 10, 5].map((min) => (
+                        <button key={min} onClick={() => setMinuteInterval(min)} style={{ padding: '2px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer', backgroundColor: minuteInterval === min ? 'dodgerblue' : '#f0f0f0', color: minuteInterval === min ? '#fff' : '#666' }}>{min}분</button>
+                    ))}
+                    </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <TimeSelector value={editStartTime} onChange={setEditStartTime} interval={minuteInterval} />
-                <span>~</span>
-                <TimeSelector value={editEndTime} onChange={setEditEndTime} interval={minuteInterval} isLast={true} />
+
+              {/* ✅ [수정] 모바일 화면 최적화를 위해 시간 선택을 세로로 배치 (Stack) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                    <span style={{fontSize:13, color:'#555', minWidth: 30}}>시작</span>
+                    <TimeSelector value={editStartTime} onChange={setEditStartTime} interval={minuteInterval} />
+                </div>
+                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                    <span style={{fontSize:13, color:'#555', minWidth: 30}}>종료</span>
+                    <TimeSelector value={editEndTime} onChange={setEditEndTime} interval={minuteInterval} isLast={true} />
+                </div>
               </div>
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8 }}>근무자 (대타)</label>
+              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight:'bold' }}>근무자 (대타)</label>
               
               <div 
                 onClick={() => setIsEmpListOpen(!isEmpListOpen)}
@@ -523,13 +535,18 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                 이 근무는 주휴수당 계산 제외
               </label>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              {!isNew ? <button onClick={handleDelete} style={{ padding: '10px 16px', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold' }}>삭제</button> : <div></div>}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setPopupOpen(false)} style={{ padding: '10px 16px', background: '#f0f0f0', color: '#333', border: '1px solid #ccc', borderRadius: 6, cursor: 'pointer' }}>취소</button>
-                <button onClick={handleSave} style={{ padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>저장</button>
-              </div>
+
+            {/* ✅ [수정] 하단 버튼 그룹: 취소/저장 가운데 정렬 + 삭제 버튼 좌측 배치 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
+               <div>
+                  {!isNew && <button onClick={handleDelete} style={{ width: '100%', padding: '12px', background: '#ffebeb', color: 'red', border: '1px solid #ffcccc', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', fontSize: 13 }}>삭제</button>}
+               </div>
+               <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => setPopupOpen(false)} style={{ flex: 1, padding: '12px', background: '#f5f5f5', color: '#333', border: '1px solid #ccc', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight:'bold' }}>취소</button>
+                  <button onClick={handleSave} style={{ flex: 1, padding: '12px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer', fontSize: 13 }}>저장</button>
+               </div>
             </div>
+
           </div>
         </div>
       )}
