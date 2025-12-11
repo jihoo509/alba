@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import StoreSettings from './StoreSettings';
-// ✅ [수정] calculateTaxAmounts 추가 import
 import { calculateMonthlyPayroll, calculateTaxAmounts } from '@/lib/payroll';
 import * as XLSX from 'xlsx';
 import PayStubModal, { PayStubPaper } from './PayStubModal';
@@ -25,12 +24,10 @@ export default function PayrollSection({ currentStoreId }: Props) {
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
 
-  // 명세서 팝업 상태
   const [stubModalState, setStubModalState] = useState<{ isOpen: boolean; data: any; mode: 'full' | 'settings' | 'download' }>({
     isOpen: false, data: null, mode: 'full'
   });
 
-  // 수정(Override) 팝업 상태
   const [editModalState, setEditModalState] = useState<{ 
     isOpen: boolean; empId: number | null; name: string; originalPay: number; currentOverride: number | null; currentAdjustment: number; 
   }>({
@@ -42,7 +39,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
   const handlePrevMonth = () => { if (month === 1) { setYear(y => y - 1); setMonth(12); } else { setMonth(m => m - 1); } };
   const handleNextMonth = () => { if (month === 12) { setYear(y => y + 1); setMonth(1); } else { setMonth(m => m + 1); } };
 
-  // 1. 데이터 로드 및 계산
   const loadAndCalculate = useCallback(async () => {
     if (!currentStoreId) return;
     setLoading(true);
@@ -51,7 +47,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
     const { data: empData } = await supabase.from('employees').select('*').eq('store_id', currentStoreId);
     if (empData) setEmployees(empData);
     
-    // 개별 설정(Overrides) 로드
     const { data: overData } = await supabase.from('employee_settings').select('*');
 
     const safeStart = `${year}-${String(month).padStart(2, '0')}-01`;
@@ -64,7 +59,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
       const targetMonthStartStr = format(targetMonthStart, 'yyyy-MM-dd');
       const targetMonthEndStr = format(targetMonthEnd, 'yyyy-MM-dd');
 
-      // 퇴사자 필터링
       const activeEmps = empData.filter((emp: any) => {
         const joined = !emp.hire_date || emp.hire_date <= targetMonthEndStr;
         const notLeft = !emp.end_date || emp.end_date >= targetMonthStartStr;
@@ -73,24 +67,20 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
       let result = calculateMonthlyPayroll(year, month, activeEmps, schedules, storeData, overData || []);
 
-      // 결과 매핑: Override(확정급여)가 있으면 덮어쓰기
       result = result.map((item: any) => {
         const setting = overData ? overData.find((s: any) => s.employee_id === item.empId) : null;
         
         const override = setting?.monthly_override ? Number(setting.monthly_override) : null;
         const adjustment = setting?.monthly_adjustment ? Number(setting.monthly_adjustment) : 0;
 
-        // 수정사항 없으면 계산된 값 그대로 사용
         if (override === null && adjustment === 0) {
           return { ...item, basePay: item.totalPay, adjustment: 0, originalCalcPay: item.totalPay, isModified: false };
         }
 
-        // 수정사항 적용
         const originalPay = item.totalPay;
         const basePay = override !== null ? override : item.totalPay; 
         const newTotalPay = basePay + adjustment;
         
-        // ✅ [수정] payroll.ts와 동일한 세금 계산 함수 호출
         const isFourIns = item.type && item.type.includes('four');
         const noTax = item.storeSettingsSnapshot?.no_tax_deduction || false;
         
@@ -115,7 +105,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   useEffect(() => { loadAndCalculate(); }, [loadAndCalculate]);
 
-  // 2. 수정 모달 저장 핸들러
   const handleSaveEdit = async (override: number | null, adjustment: number) => {
     if (!editModalState.empId) return;
     const updates = {
@@ -131,7 +120,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
     }
   };
 
-  // 3. 명세서 설정 저장 핸들러
   const handleSaveStubSettings = async (settings: any) => {
     const { error } = await supabase.from('employee_settings').upsert(settings, { onConflict: 'employee_id' });
     if (error) {
@@ -141,11 +129,10 @@ export default function PayrollSection({ currentStoreId }: Props) {
     }
   };
 
-  // ✅ [신규] 명세서 설정 초기화 (매장 설정 따라가기)
+  // ✅ [수정] 초기화 시 확정 급여(monthly_override)도 함께 삭제하도록 수정
   const handleResetStubSettings = async (employeeId: number) => {
-    if (!confirm('개별 설정을 초기화하고 매장 기본 설정을 따르시겠습니까?')) return;
+    if (!confirm('개별 설정 및 확정 급여를 모두 초기화하고 매장 기본 설정을 따르시겠습니까?')) return;
     
-    // 설정 컬럼들을 null로 업데이트하여 초기화
     const { error } = await supabase.from('employee_settings').upsert({
         employee_id: employeeId,
         pay_weekly: null,
@@ -153,7 +140,10 @@ export default function PayrollSection({ currentStoreId }: Props) {
         pay_overtime: null,
         pay_holiday: null,
         auto_deduct_break: null,
-        no_tax_deduction: null
+        no_tax_deduction: null,
+        // 👇 이 부분 추가: 확정 급여와 조정액도 null/0으로 리셋
+        monthly_override: null,
+        monthly_adjustment: 0
     }, { onConflict: 'employee_id' });
 
     if (error) {
@@ -165,7 +155,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => (acc + (curr.totalPay || 0)), 0), [payrollData]);
 
-  // 엑셀 다운로드
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
@@ -184,7 +173,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
     XLSX.writeFile(wb, `${year}년_${month}월_급여대장.xlsx`);
   };
 
-  // 전체 명세서 압축 다운로드
   const handleDownloadAllStubs = async () => { 
     if (payrollData.length === 0) return;
     if (!confirm(`${payrollData.length}명의 명세서를 압축(ZIP)하여 다운로드합니다.`)) return;
@@ -219,7 +207,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%' }}>
       <style jsx>{`
-        /* 헤더 스타일 & 반응형 */
         .header-container { display: flex; justify-content: space-between; align-items: center; background-color: #f8f9fa; padding: 16px; border-radius: 12px; border: 1px solid #eee; }
         @media (max-width: 768px) {
           .header-container { flex-direction: column; gap: 12px; text-align: center; padding: 20px 16px; }
@@ -232,11 +219,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
           .col-download { width: 20% !important; }
           .compact-btn { padding: 6px 4px !important; font-size: 11px !important; width: 100%; }
         }
-        @media (min-width: 769px) {
-           .mobile-cell { display: none !important; }
-           .desktop-cell { display: table-cell !important; }
-           .header-total-area { text-align: right; }
-        }
+        @media (min-width: 769px) { .mobile-cell { display: none !important; } .desktop-cell { display: table-cell !important; } .header-total-area { text-align: right; } }
       `}</style>
 
       <div style={cardStyle}>
@@ -276,12 +259,8 @@ export default function PayrollSection({ currentStoreId }: Props) {
                 <tr style={{ background: '#f5f5f5', color: '#555', fontSize: '13px', borderBottom: '1px solid #ddd', height: 42 }}>
                   <th className="col-name" style={{ ...thStyle, width: 80, position: 'sticky', left: 0, zIndex: 10, background: '#f5f5f5' }}>이름</th>
                   <th className="col-total" style={{ ...thStyle, width: 100 }}>총 지급</th>
-                  
-                  {/* 모바일 헤더 */}
                   <th className="mobile-cell col-settings" style={{ ...thStyle, width: 60, color: '#e67e22' }}>설정</th>
                   <th className="mobile-cell col-download" style={{ ...thStyle, width: 60 }}>명세서</th>
-                  
-                  {/* PC 헤더 */}
                   <th className="desktop-cell" style={{ ...thStyle, color: 'dodgerblue', width: 90 }}>세후 지급</th>
                   <th className="desktop-cell" style={{ ...thStyle, width: 80 }}>기본급</th>
                   <th className="desktop-cell" style={{ ...thStyle, width: 60 }}>주휴</th>
@@ -298,8 +277,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
                 {payrollData.map(p => (
                   <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '13px', backgroundColor: '#fff', height: 48 }}>
                     <td className="col-name" style={{ ...tdStyle, fontWeight: 'bold', position: 'sticky', left: 0, background: '#fff', zIndex: 5 }}>{p.name}</td>
-                    
-                    {/* 총 지급 */}
                     <td className="col-total" style={{ ...tdStyle }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                           <span className="mobile-text" onClick={() => openEditModal(p)} style={{ fontWeight: 'bold', borderBottom: '1px dashed #aaa', cursor: 'pointer' }}>
@@ -315,16 +292,12 @@ export default function PayrollSection({ currentStoreId }: Props) {
                           )}
                       </div>
                     </td>
-                    
-                    {/* 모바일 버튼 */}
                     <td className="mobile-cell col-settings" style={tdStyle}>
                       <button onClick={() => setStubModalState({ isOpen: true, data: p, mode: 'settings' })} className="compact-btn" style={{ ...detailBtnStyle, borderColor: '#e67e22', color: '#e67e22' }}>설정</button>
                     </td>
                     <td className="mobile-cell col-download" style={tdStyle}>
                       <button onClick={() => setStubModalState({ isOpen: true, data: p, mode: 'download' })} className="compact-btn" style={detailBtnStyle}>다운</button>
                     </td>
-
-                    {/* PC 데이터 */}
                     <td className="desktop-cell" style={{ ...tdStyle, color: 'dodgerblue', fontWeight: 'bold' }}>{(p.finalPay || 0).toLocaleString()}</td>
                     <td className="desktop-cell" style={tdStyle}>{(p.basePay || 0).toLocaleString()}</td>
                     <td className="desktop-cell" style={tdStyle}>{(p.weeklyHolidayPay || 0).toLocaleString()}</td>
@@ -335,7 +308,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
                     <td className="desktop-cell" style={tdStyle}>
                       {((p.taxDetails?.pension || 0) + (p.taxDetails?.health || 0) + (p.taxDetails?.employment || 0) + (p.taxDetails?.care || 0)).toLocaleString()}
                     </td>
-                    
                     <td className="desktop-cell" style={tdStyle}>
                       <button onClick={() => openEditModal(p)} style={{ ...detailBtnStyle, background: '#fff3cd', borderColor: '#ffc107', color: '#856404' }}>수정</button>
                     </td>
@@ -352,7 +324,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
       <SeveranceCalculator currentStoreId={currentStoreId} employees={employees} />
 
-      {/* 숨겨진 명세서 (다운로드용) */}
       <div style={{ position: 'fixed', top: '-10000px', left: '-10000px' }}>
         {payrollData.map(p => (
           <div key={p.empId} id={`hidden-stub-${p.empId}`}>
@@ -367,7 +338,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
         data={stubModalState.data}
         year={year} month={month}
         onSave={handleSaveStubSettings}
-        // ✅ [신규] 초기화 함수 전달
         onReset={handleResetStubSettings} 
         mode={stubModalState.mode}
       />
