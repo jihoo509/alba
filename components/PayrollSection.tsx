@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import StoreSettings from './StoreSettings';
-import { calculateMonthlyPayroll } from '@/lib/payroll';
+// ✅ [수정] calculateTaxAmounts 추가 import
+import { calculateMonthlyPayroll, calculateTaxAmounts } from '@/lib/payroll';
 import * as XLSX from 'xlsx';
 import PayStubModal, { PayStubPaper } from './PayStubModal';
 import PayrollEditModal from './PayrollEditModal';
@@ -12,24 +13,6 @@ import { format } from 'date-fns';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-
-// 간이 세금/4대보험 재계산 (표시용)
-const recalculateTax = (pay: number) => {
-  if (pay <= 0) return { incomeTax: 0, localTax: 0, pension: 0, health: 0, care: 0, employment: 0, totalTax: 0, totalInsurance: 0 };
-  const pension = Math.floor(pay * 0.045 / 10) * 10;
-  const health = Math.floor(pay * 0.03545 / 10) * 10;
-  const care = Math.floor(health * 0.1295 / 10) * 10;
-  const employment = Math.floor(pay * 0.009 / 10) * 10;
-  let incomeTax = 0;
-  // *단순 예시: 106만원 이상일 때만 간이세액 적용 로직 등 실제 상황에 맞게 조정 필요
-  if (pay > 1060000) incomeTax = Math.floor((pay * 0.025) / 10) * 10;
-  const localTax = Math.floor(incomeTax * 0.1 / 10) * 10;
-  return {
-    incomeTax, localTax, pension, health, care, employment,
-    totalTax: incomeTax + localTax,
-    totalInsurance: pension + health + care + employment
-  };
-};
 
 type Props = { currentStoreId: string; };
 
@@ -81,41 +64,41 @@ export default function PayrollSection({ currentStoreId }: Props) {
       const targetMonthStartStr = format(targetMonthStart, 'yyyy-MM-dd');
       const targetMonthEndStr = format(targetMonthEnd, 'yyyy-MM-dd');
 
-      // 퇴사자 필터링 등
+      // 퇴사자 필터링
       const activeEmps = empData.filter((emp: any) => {
         const joined = !emp.hire_date || emp.hire_date <= targetMonthEndStr;
         const notLeft = !emp.end_date || emp.end_date >= targetMonthStartStr;
         return joined && notLeft;
       });
 
-      // ✅ (중요) payroll.ts의 함수 호출 -> 여기서 potentialPay 등이 계산됨
       let result = calculateMonthlyPayroll(year, month, activeEmps, schedules, storeData, overData || []);
 
       // 결과 매핑: Override(확정급여)가 있으면 덮어쓰기
       result = result.map((item: any) => {
         const setting = overData ? overData.find((s: any) => s.employee_id === item.empId) : null;
         
-        // monthly_override: 관리자가 직접 입력한 '확정 기본급'
         const override = setting?.monthly_override ? Number(setting.monthly_override) : null;
         const adjustment = setting?.monthly_adjustment ? Number(setting.monthly_adjustment) : 0;
 
         // 수정사항 없으면 계산된 값 그대로 사용
         if (override === null && adjustment === 0) {
-          // item 안에는 이미 potentialPay, storeSettingsSnapshot 등이 들어있음 (calculateMonthlyPayroll 덕분)
           return { ...item, basePay: item.totalPay, adjustment: 0, originalCalcPay: item.totalPay, isModified: false };
         }
 
-        // 수정사항 적용 로직
-        const originalPay = item.totalPay; // 원래 계산된 급여
-        const basePay = override !== null ? override : item.totalPay; // 덮어쓸 급여가 있으면 그것을, 아니면 원래 급여를
+        // 수정사항 적용
+        const originalPay = item.totalPay;
+        const basePay = override !== null ? override : item.totalPay; 
         const newTotalPay = basePay + adjustment;
         
-        // 세금 재계산 (Override된 금액 기준)
-        const newTax = recalculateTax(newTotalPay);
-        const newFinalPay = newTotalPay - newTax.totalTax - newTax.totalInsurance;
+        // ✅ [수정] payroll.ts와 동일한 세금 계산 함수 호출
+        const isFourIns = item.type && item.type.includes('four');
+        const noTax = item.storeSettingsSnapshot?.no_tax_deduction || false;
+        
+        const newTax = calculateTaxAmounts(newTotalPay, isFourIns, noTax);
+        const newFinalPay = newTotalPay - newTax.total;
 
         return { 
-            ...item, // 기존 계산 데이터(potential 등) 보존
+            ...item, 
             totalPay: newTotalPay, 
             finalPay: newFinalPay, 
             basePay: basePay, 
@@ -132,7 +115,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   useEffect(() => { loadAndCalculate(); }, [loadAndCalculate]);
 
-  // 2. 수정 모달 저장 핸들러 (금액 직접 수정)
+  // 2. 수정 모달 저장 핸들러
   const handleSaveEdit = async (override: number | null, adjustment: number) => {
     if (!editModalState.empId) return;
     const updates = {
@@ -140,23 +123,21 @@ export default function PayrollSection({ currentStoreId }: Props) {
       monthly_override: override,
       monthly_adjustment: adjustment,
     };
-    // Supabase upsert: 기존 데이터 있으면 update, 없으면 insert
     const { error } = await supabase.from('employee_settings').upsert(updates, { onConflict: 'employee_id' });
     if (error) { alert('저장 오류: ' + error.message); } 
     else { 
         setEditModalState(prev => ({ ...prev, isOpen: false })); 
-        await loadAndCalculate(); // 재계산
+        await loadAndCalculate(); 
     }
   };
 
-  // ✅ 3. [추가됨] 명세서 설정 저장 핸들러 (주휴, 야간 등 체크박스)
+  // 3. 명세서 설정 저장 핸들러
   const handleSaveStubSettings = async (settings: any) => {
-    // settings: { employee_id, pay_weekly, pay_night, ... }
     const { error } = await supabase.from('employee_settings').upsert(settings, { onConflict: 'employee_id' });
     if (error) {
         alert('설정 저장 실패: ' + error.message);
     } else {
-        await loadAndCalculate(); // 설정 변경 후 재계산 반영
+        await loadAndCalculate(); 
     }
   };
 
@@ -197,7 +178,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
           const base64Data = canvas.toDataURL('image/png').replace(/^data:image\/(png|jpg);base64,/, "");
           zip.file(`${p.name}_${month}월_명세서.png`, base64Data, { base64: true });
         }
-        await new Promise(r => setTimeout(r, 50)); // 브라우저 부하 방지용 딜레이
+        await new Promise(r => setTimeout(r, 50)); 
       }
       const content = await zip.generateAsync({ type: 'blob' });
       saveAs(content, `${year}년_${month}월_급여명세서_모음.zip`);
@@ -358,7 +339,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
         ))}
       </div>
 
-      {/* ✅ 중요: onSave 핸들러 연결됨 */}
       <PayStubModal
         isOpen={stubModalState.isOpen}
         onClose={() => setStubModalState({ ...stubModalState, isOpen: false })}

@@ -8,6 +8,7 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
     const s = data.storeSettingsSnapshot || {};
     const u = data.userSettings || {};
 
+    // Override가 있으면 쓰고, 없으면 스냅샷을 따름
     const useWeekly = settingsOverride?.pay_weekly ?? (s.pay_weekly ?? true);
     const useNight = settingsOverride?.pay_night ?? (s.pay_night ?? false);
     const useOvertime = settingsOverride?.pay_overtime ?? (s.pay_overtime ?? false);
@@ -17,7 +18,7 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
 
     const isModified = data.isModified === true;
 
-    // 계산 로직
+    // 합계 변수 (NaN 방지 위해 0 초기화)
     let calcBasePay = 0;
     let calcNightPay = 0;
     let calcOvertimePay = 0;
@@ -26,8 +27,9 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
 
     const filteredLedger = (data.ledger || []).map((row: any) => {
         if (row.type === 'WORK') {
-            const valDeducted = row.basePayDeducted ?? row.basePay;
-            const valNoDeduct = row.basePayNoDeduct ?? row.basePay;
+            // ✅ [수정] null 체크 강화 (?? 0)
+            const valDeducted = row.basePayDeducted ?? row.basePay ?? 0;
+            const valNoDeduct = row.basePayNoDeduct ?? row.basePay ?? 0;
             const rowBase = useBreakDeduct ? valDeducted : valNoDeduct;
             
             let displayHoursStr = '';
@@ -40,10 +42,10 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
                displayHoursStr = `${h}h`;
             }
       
-            // ✅ [수정된 부분] 이제 potentialNightPay가 들어오므로 useNight가 켜지면 금액이 보임
-            const nightAmount = useNight ? (row.potentialNightPay ?? row.nightPay) : 0;
-            const overtimeAmount = useOvertime ? (row.potentialOvertimePay ?? row.overtimePay) : 0;
-            const holidayAmount = useHolidayWork ? (row.potentialHolidayWorkPay ?? row.holidayWorkPay) : 0;
+            // 체크박스 켜지면 잠재 금액(potential)을, 꺼지면 0원
+            const nightAmount = useNight ? (row.potentialNightPay ?? row.nightPay ?? 0) : 0;
+            const overtimeAmount = useOvertime ? (row.potentialOvertimePay ?? row.overtimePay ?? 0) : 0;
+            const holidayAmount = useHolidayWork ? (row.potentialHolidayWorkPay ?? row.holidayWorkPay ?? 0) : 0;
       
             calcBasePay += rowBase;
             calcNightPay += nightAmount;
@@ -53,7 +55,7 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
             return { ...row, displayBase: rowBase, displayHours: displayHoursStr, displayNight: nightAmount, displayOvertime: overtimeAmount, displayHoliday: holidayAmount };
         } 
         if (row.type === 'WEEKLY') {
-            const weeklyAmount = useWeekly ? (row.potentialWeeklyPay ?? row.weeklyPay) : 0;
+            const weeklyAmount = useWeekly ? (row.potentialWeeklyPay ?? row.weeklyPay ?? 0) : 0;
             calcWeeklyPay += weeklyAmount;
             return { ...row, displayWeekly: weeklyAmount };
         }
@@ -71,19 +73,20 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
     } else {
           finalTotal = calcBasePay + calcWeeklyPay + calcNightPay + calcOvertimePay + calcHolidayWorkPay;
     }
-    const safeTotal = finalTotal || 0;
+    const safeTotal = finalTotal > 0 ? finalTotal : 0;
 
+    // ✅ [수정] 세금 계산 단순화 (화면 표시용)
     let currentTax = 0;
-    if (noTax) {
-          currentTax = 0;
-    } else {
+    if (!noTax && safeTotal > 0) {
           if (data.type && data.type.includes('four')) {
+              // 4대보험
               const p = Math.floor(safeTotal * 0.045 / 10) * 10;
               const h = Math.floor(safeTotal * 0.03545 / 10) * 10;
               const c = Math.floor(h * 0.1295 / 10) * 10;
               const e = Math.floor(safeTotal * 0.009 / 10) * 10;
               currentTax = p + h + c + e;
           } else {
+              // 3.3%
               const i = Math.floor(safeTotal * 0.03 / 10) * 10;
               const l = Math.floor(i * 0.1 / 10) * 10;
               currentTax = i + l;
@@ -126,7 +129,7 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
                         }
                         return (
                             <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
-                                <td style={tdStyle}>{row.date.slice(5)} ({row.dayLabel})</td>
+                                <td style={tdStyle}>{row.date ? row.date.slice(5) : ''} ({row.dayLabel})</td>
                                 <td style={tdStyle}>{row.timeRange}</td>
                                 <td style={tdStyle}>{row.displayHours}</td>
                                 <td style={{ ...tdStyle, textAlign: 'right' }}>{(row.displayBase || 0).toLocaleString()}</td>

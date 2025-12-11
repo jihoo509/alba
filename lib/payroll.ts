@@ -1,22 +1,62 @@
 import { startOfWeek, endOfWeek, addDays, format, isSameMonth } from 'date-fns';
 
-const RATES = {
-  pension: 0.045, health: 0.03545, care: 0.1295, employment: 0.009, incomeTax: 0.03, localTax: 0.1
+// ✅ [중요] 세금 요율 상수를 외부에서 쓸 수 있게 export 합니다.
+export const TAX_RATES = {
+  pension: 0.045, 
+  health: 0.03545, 
+  care: 0.1295, 
+  employment: 0.009, 
+  incomeTax: 0.03, // 3.3% 프리랜서용 (소득세 3%)
+  localTax: 0.1    // 지방세 (소득세의 10%)
 };
+
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+// 야간 시간(분) 계산 함수
 function calculateNightMinutes(start: string, end: string) {
   const [sH, sM] = start.split(':').map(Number);
   const [eH, eM] = end.split(':').map(Number);
   let startMin = sH * 60 + sM;
   let endMin = eH * 60 + eM;
-  if (endMin < startMin) endMin += 24 * 60; 
+  
+  if (endMin < startMin) endMin += 24 * 60; // 다음날로 넘어가는 경우
+  
   let nightMin = 0;
   for (let t = startMin; t < endMin; t++) {
     const timeOfDay = t % 1440; 
+    // 22:00(1320분) ~ 06:00(360분)
     if (timeOfDay >= 1320 || timeOfDay < 360) nightMin++;
   }
   return nightMin;
+}
+
+// ✅ [신규] 세금 계산 로직 공통 함수 (어디서든 똑같은 결과 보장)
+export function calculateTaxAmounts(totalPay: number, isFourIns: boolean, noTax: boolean) {
+  // 급여가 없거나 세금 안 냄 설정이면 0원
+  if (noTax || totalPay <= 0) {
+    return { pension: 0, health: 0, care: 0, employment: 0, incomeTax: 0, localTax: 0, total: 0 };
+  }
+
+  if (isFourIns) {
+    // 4대보험 (원단위 절사)
+    const pension = Math.floor(totalPay * TAX_RATES.pension / 10) * 10;
+    const health = Math.floor(totalPay * TAX_RATES.health / 10) * 10;
+    const care = Math.floor(health * TAX_RATES.care / 10) * 10;
+    const employment = Math.floor(totalPay * TAX_RATES.employment / 10) * 10;
+    return {
+      pension, health, care, employment, incomeTax: 0, localTax: 0,
+      total: pension + health + care + employment
+    };
+  } else {
+    // 3.3% 프리랜서
+    const incomeTax = Math.floor(totalPay * TAX_RATES.incomeTax / 10) * 10;
+    const localTax = Math.floor(incomeTax * TAX_RATES.localTax / 10) * 10;
+    return {
+      pension: 0, health: 0, care: 0, employment: 0,
+      incomeTax, localTax,
+      total: incomeTax + localTax
+    };
+  }
 }
 
 export function calculateMonthlyPayroll(
@@ -26,31 +66,37 @@ export function calculateMonthlyPayroll(
     const empSchedules = schedules.filter(s => s.employee_id === emp.id);
     const override = overrides.find(o => o.employee_id === emp.id);
 
-    // ✅ 직원 급여 타입 확인
     const isEmpDaily = emp.pay_type === 'day' || emp.pay_type === '일당';
     const isEmpMonthly = emp.pay_type === 'month' || (emp.monthly_wage && emp.monthly_wage > 0);
 
-    // ✅ [수정] 설정 우선순위 로직 명확화
-    // 1순위: override (개별 설정)이 있으면 무조건 따름 (true든 false든)
-    // 2순위: override가 없으면(null/undefined), 매장 기본 설정 + 5인 이상 여부 확인
+    // ✅ [수정] 설정값 병합 로직 (Override 우선순위 강화)
     const getSettingValue = (key: string, requireFivePlus: boolean) => {
-        // 개별 설정값이 명확히(true/false) 존재하면 그 값을 반환
+        // 1. 개별 설정(Override)이 있으면 무조건 따름 (5인 이상 여부 무시)
         if (override && override[key] !== undefined && override[key] !== null) {
-            return override[key];
+            const val = override[key];
+            // DB에서 true/false가 문자열이나 숫자로 올 경우 방어 코드
+            if (val === true || val === 'true' || val === 1) return true;
+            if (val === false || val === 'false' || val === 0) return false;
         }
-        // 개별 설정 없으면 매장 설정 따름 (5인 이상 조건이 필요하면 체크)
-        const storeValue = storeSettings[key] || false;
+
+        // 2. 개별 설정 없으면 매장 기본값 확인
+        const storeValRaw = storeSettings[key];
+        const isStoreSet = storeValRaw === true || storeValRaw === 'true' || storeValRaw === 1;
+
+        // 3. 매장 설정을 따를 때만 '5인 이상 필수' 조건 체크
         if (requireFivePlus) {
-            return storeSettings.is_five_plus && storeValue;
+             const isFivePlus = storeSettings.is_five_plus === true || storeSettings.is_five_plus === 'true';
+             if (!isFivePlus) return false; // 5인 미만이면 false 강제
         }
-        return storeValue;
+        return isStoreSet;
     };
 
+    // 설정 확정
     const cfg = {
-        pay_weekly: getSettingValue('pay_weekly', false), // 주휴는 5인 미만도 적용 가능하므로 5인체크 X (보통)
-        pay_night: getSettingValue('pay_night', true),    // 야간: 기본적으론 5인 이상만
-        pay_overtime: getSettingValue('pay_overtime', true), // 연장: 기본적으론 5인 이상만
-        pay_holiday: getSettingValue('pay_holiday', true),   // 휴일: 기본적으론 5인 이상만
+        pay_weekly: getSettingValue('pay_weekly', false), 
+        pay_night: getSettingValue('pay_night', true),    
+        pay_overtime: getSettingValue('pay_overtime', true), 
+        pay_holiday: getSettingValue('pay_holiday', true),   
         auto_deduct_break: override?.auto_deduct_break ?? ((isEmpDaily || isEmpMonthly) ? false : (storeSettings.auto_deduct_break !== false)),
         no_tax_deduction: override?.no_tax_deduction ?? (storeSettings.no_tax_deduction || false)
     };
@@ -121,7 +167,7 @@ export function calculateMonthlyPayroll(
                 activeBasePay = Math.floor((activeMins / 60) * hourlyWage);
             }
 
-            // 추가 수당 계산 (잠재적 금액 계산)
+            // 추가 수당 계산 (잠재적 금액 - 설정이 꺼져 있어도 계산해둠)
             const nightMins = calculateNightMinutes(s.start_time, s.end_time);
             const potentialNightPay = (isDaily || isEmpMonthly) ? 0 : Math.floor((nightMins / 60) * hourlyWage * 0.5);
 
@@ -150,18 +196,17 @@ export function calculateMonthlyPayroll(
                     hoursNoDeduct: (rawMins / 60).toFixed(1),
                     breakMins: breakMins,
 
-                    basePayDeducted: activeBasePay,
-                    basePayNoDeduct: activeBasePay,
+                    // 휴게 차감 여부에 따른 기본급 미리 계산
+                    basePayDeducted: activeBasePay, 
+                    basePayNoDeduct: isDaily ? dailyPay : Math.floor((rawMins / 60) * hourlyWage),
                     
                     basePay: activeBasePay,
                     
-                    // ✅ [중요] 실제 지급액
-                    nightPay: nightPay,       
+                    nightPay: nightPay,        
                     overtimePay: overtimePay, 
                     holidayWorkPay: holidayWorkPay,
                     
-                    // ✅ [핵심 수정] 설정이 꺼져있어도 계산된 '잠재적 금액'을 무조건 보냄
-                    // 그래야 팝업에서 체크박스를 켰을 때 이 금액을 보여줄 수 있음
+                    // 팝업에서 옵션 켤 때 보여줄 금액
                     potentialNightPay: potentialNightPay,
                     potentialOvertimePay: potentialOvertimePay,
                     potentialHolidayWorkPay: potentialHolidayWorkPay,
@@ -209,7 +254,7 @@ export function calculateMonthlyPayroll(
                     nightPay: 0,
                     overtimePay: 0,
                     holidayWorkPay: 0,
-                    potentialWeeklyPay: potentialWeeklyPay, // 이건 기존에도 잘 되어 있었음
+                    potentialWeeklyPay: potentialWeeklyPay,
                     weeklyPay: weeklyPay, 
                     note: `1주 ${Math.floor(weekMinutes/60)}시간 근무`
                 });
@@ -238,25 +283,12 @@ export function calculateMonthlyPayroll(
 
     const totalPay = totalBasePay + totalNightPay + totalOvertimePay + totalHolidayWorkPay + totalWeeklyPay;
 
-    let taxDetails = {
-        pension: 0, health: 0, care: 0, employment: 0, incomeTax: 0, localTax: 0, total: 0
-    };
-
-    if (cfg.no_tax_deduction) {
-        taxDetails.total = 0;
-    } else {
-        if (emp.employment_type && emp.employment_type.includes('four')) {
-            taxDetails.pension = Math.floor(totalPay * RATES.pension / 10) * 10;
-            taxDetails.health = Math.floor(totalPay * RATES.health / 10) * 10;
-            taxDetails.care = Math.floor(taxDetails.health * RATES.care / 10) * 10;
-            taxDetails.employment = Math.floor(totalPay * RATES.employment / 10) * 10;
-            taxDetails.total = taxDetails.pension + taxDetails.health + taxDetails.care + taxDetails.employment;
-        } else {
-            taxDetails.incomeTax = Math.floor(totalPay * RATES.incomeTax / 10) * 10;
-            taxDetails.localTax = Math.floor(taxDetails.incomeTax * RATES.localTax / 10) * 10;
-            taxDetails.total = taxDetails.incomeTax + taxDetails.localTax;
-        }
-    }
+    // ✅ [수정] 위에서 만든 공통 세금 함수 호출
+    const taxDetails = calculateTaxAmounts(
+        totalPay, 
+        emp.employment_type && emp.employment_type.includes('four'), 
+        cfg.no_tax_deduction
+    );
 
     return {
       empId: emp.id,
@@ -281,7 +313,7 @@ export function calculateMonthlyPayroll(
       birthDate: emp.birth_date,
       phoneNumber: emp.phone_number,
       ledger: ledger,
-      // storeSettingsSnapshot에는 계산된 cfg 값을 병합해서 보냄 (초기 팝업 상태용)
+      // storeSettingsSnapshot에 계산된 최종 cfg 값을 병합해서 보냄
       storeSettingsSnapshot: { ...storeSettings, ...cfg } 
     };
   });
