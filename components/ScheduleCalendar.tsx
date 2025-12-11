@@ -451,7 +451,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
           >
             <h3 style={{ marginTop: 0, marginBottom: 20, color: '#333', textAlign: 'center' }}>{isNew ? '새 스케줄 추가' : '스케줄 수정'} ({editDate})</h3>
             
-            {/* ✅ [수정] 근무 시간 설정 영역 디자인 개선 (회색 박스로 그룹화) */}
+{/* ✅ [수정] 근무 시간 설정 영역 */}
             <div style={{ backgroundColor:'#f9f9f9', padding: 15, borderRadius: 8, marginBottom: 20 }}>
                 {/* 1. 시간 간격 버튼 */}
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, gap: 10 }}>
@@ -463,58 +463,63 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                     </div>
                 </div>
 
-                {/* 2. 시작/종료 시간 선택 (중앙 정렬) */}
+                {/* 2. 시작/종료 시간 (라벨 너비 통일 및 정렬) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap: 12}}>
-                        <span style={{fontSize:13, color:'#555', fontWeight:'bold', minWidth: 30}}>시작</span>
+                    <div style={{display:'flex', alignItems:'center', gap: 10}}>
+                        <span style={{fontSize:13, color:'#555', fontWeight:'bold', minWidth: 60}}>시작</span>
                         <TimeSelector value={editStartTime} onChange={setEditStartTime} interval={minuteInterval} />
                     </div>
-                    <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap: 12}}>
-                        <span style={{fontSize:13, color:'#555', fontWeight:'bold', minWidth: 30}}>종료</span>
+                    <div style={{display:'flex', alignItems:'center', gap: 10}}>
+                        <span style={{fontSize:13, color:'#555', fontWeight:'bold', minWidth: 60}}>종료</span>
                         <TimeSelector value={editEndTime} onChange={setEditEndTime} interval={minuteInterval} isLast={true} />
                     </div>
                 </div>
             </div>
 
-            <div style={{ marginBottom: 20, textAlign: 'center' }}>
+<div style={{ marginBottom: 20, textAlign: 'center' }}>
               <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight:'bold', textAlign: 'left' }}>근무자 (대타)</label>
               
-              {/* ✅ [수정] 근무자 선택 드롭다운 너비를 줄이고 가운데 정렬 */}
-              <div 
-                onClick={() => setIsEmpListOpen(!isEmpListOpen)}
-                style={{ width: '80%', margin: '0 auto', padding: 12, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', borderRadius: 6, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <span>{selectedEmpName}</span>
-                <span style={{ fontSize: 12, color: '#999' }}>{isEmpListOpen ? '▲' : '▼'}</span>
-              </div>
+              {/* ✅ [수정] 80% 너비의 컨테이너를 만들어 내부 요소들 크기 통일 */}
+              <div style={{ width: '80%', margin: '0 auto' }}>
+                  
+                  {/* 선택 버튼 */}
+                  <div 
+                    onClick={() => setIsEmpListOpen(!isEmpListOpen)}
+                    style={{ width: '100%', padding: 12, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', borderRadius: 6, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box' }}
+                  >
+                    <span>{selectedEmpName}</span>
+                    <span style={{ fontSize: 12, color: '#999' }}>{isEmpListOpen ? '▲' : '▼'}</span>
+                  </div>
 
-              {isEmpListOpen && (
-                <div style={{ width: '80%', margin: '4px auto 0', border: '1px solid #ddd', borderRadius: 6, maxHeight: 150, overflowY: 'auto', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                    <div 
-                        onClick={() => handleSelectEmployee(null)}
-                        style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', color: '#999', textAlign: 'left' }}
-                    >
-                        (미배정)
-                    </div>
-                    {employees.map(emp => (
+                  {/* 드롭다운 리스트 */}
+                  {isEmpListOpen && (
+                    <div style={{ width: '100%', marginTop: 4, border: '1px solid #ddd', borderRadius: 6, maxHeight: 150, overflowY: 'auto', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', boxSizing: 'border-box' }}>
                         <div 
-                            key={emp.id} 
-                            onClick={() => handleSelectEmployee(emp.id)}
-                            style={{ 
-                                padding: '10px 12px', 
-                                borderBottom: '1px solid #f0f0f0', 
-                                cursor: 'pointer', 
-                                backgroundColor: editEmpId === emp.id ? '#e6f7ff' : '#fff',
-                                color: editEmpId === emp.id ? 'dodgerblue' : '#333',
-                                fontWeight: editEmpId === emp.id ? 'bold' : 'normal',
-                                textAlign: 'left'
-                            }}
+                            onClick={() => handleSelectEmployee(null)}
+                            style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', color: '#999', textAlign: 'left' }}
                         >
-                            {emp.name}
+                            (미배정)
                         </div>
-                    ))}
-                </div>
-              )}
+                        {employees.map(emp => (
+                            <div 
+                                key={emp.id} 
+                                onClick={() => handleSelectEmployee(emp.id)}
+                                style={{ 
+                                    padding: '10px 12px', 
+                                    borderBottom: '1px solid #f0f0f0', 
+                                    cursor: 'pointer', 
+                                    backgroundColor: editEmpId === emp.id ? '#e6f7ff' : '#fff',
+                                    color: editEmpId === emp.id ? 'dodgerblue' : '#333',
+                                    fontWeight: editEmpId === emp.id ? 'bold' : 'normal',
+                                    textAlign: 'left'
+                                }}
+                            >
+                                {emp.name}
+                            </div>
+                        ))}
+                    </div>
+                  )}
+              </div>
             </div>
 
             {isSelectedEmpDaily && (
