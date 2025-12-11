@@ -1,19 +1,23 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import { format, differenceInCalendarDays, subMonths } from 'date-fns';
 import DateSelector from './DateSelector';
+import html2canvas from 'html2canvas'; // 캡처 라이브러리
 
 type Props = { currentStoreId: string; employees: any[]; };
 
 export default function SeveranceCalculator({ currentStoreId, employees }: Props) {
   const supabase = createSupabaseBrowserClient();
+  
+  // ✅ [신규] 섹션 열림/닫힘 상태 (기본값: false - 닫힘)
+  const [isOpen, setIsOpen] = useState(false);
+
   const [selectedEmpId, setSelectedEmpId] = useState('');
   const [hireDate, setHireDate] = useState('');
   const [resignDate, setResignDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
-  // ✅ 콤마 처리를 위해 문자열로 관리 (초기값 빈 문자열)
   const [pay3MonthsStr, setPay3MonthsStr] = useState(''); 
   const [annualBonusStr, setAnnualBonusStr] = useState(''); 
 
@@ -22,15 +26,18 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
   const [severancePay, setSeverancePay] = useState(0); 
   const [loadingAuto, setLoadingAuto] = useState(false);
   
-  // ✅ 직원 선택 모달 상태
   const [isEmpSelectorOpen, setIsEmpSelectorOpen] = useState(false);
+  const [showMobileChoice, setShowMobileChoice] = useState(false); // 모바일 공유 팝업
+
+  // 캡처 영역 참조
+  const resultRef = useRef<HTMLDivElement>(null);
 
   // 직원 선택 핸들러
   const handleSelectEmployee = (empId: string) => {
     setSelectedEmpId(empId);
     const emp = employees.find(ep => ep.id === empId);
     setHireDate(emp?.hire_date || '');
-    setIsEmpSelectorOpen(false); // 선택 후 바로 닫기
+    setIsEmpSelectorOpen(false);
   };
 
   const selectedEmpName = employees.find(e => e.id === selectedEmpId)?.name || '';
@@ -44,10 +51,6 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
 
   const handlePayChange = (val: string) => {
     setPay3MonthsStr(formatNumber(val));
-  };
-
-  const handleBonusChange = (val: string) => {
-    setAnnualBonusStr(formatNumber(val));
   };
 
   useEffect(() => {
@@ -90,7 +93,6 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
     const rDate = new Date(resignDate);
     const daysIn3Months = differenceInCalendarDays(rDate, subMonths(rDate, 3));
     
-    // 콤마 제거 후 숫자 변환
     const payVal = Number(pay3MonthsStr.replace(/,/g, '')) || 0;
     const bonusVal = Number(annualBonusStr.replace(/,/g, '')) || 0;
 
@@ -101,63 +103,138 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
     setSeverancePay(Math.floor(result / 10) * 10); 
   };
 
+  // ✅ [신규] 이미지 저장/공유 기능
+  const handleCapture = async (isShare = false) => {
+    setShowMobileChoice(false);
+    if (!resultRef.current) return;
+
+    try {
+      const canvas = await html2canvas(resultRef.current, { scale: 2, backgroundColor: '#ffffff' });
+      
+      if (isShare) {
+        canvas.toBlob(async (blob) => {
+          if (!blob) return alert('이미지 생성 실패');
+          const file = new File([blob], `${selectedEmpName}_퇴직금계산.png`, { type: 'image/png' });
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: '퇴직금 계산 결과', text: `${selectedEmpName}님 퇴직금 계산 내역입니다.` });
+          } else {
+            alert('공유 기능을 사용할 수 없습니다.');
+          }
+        }, 'image/png');
+      } else {
+        const link = document.createElement('a');
+        link.download = `${selectedEmpName}_퇴직금계산.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
+    } catch (e) {
+      console.error(e);
+      alert('저장/공유 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 메인 버튼 클릭 (PC/모바일 분기)
+  const handleDownloadClick = () => {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
+    if (isMobile) {
+      setShowMobileChoice(true);
+    } else {
+      handleCapture(false); // PC는 바로 저장
+    }
+  };
+
   return (
     <div style={cardStyle}>
-      <h3 style={{ marginTop: 0, marginBottom: 20, color: '#333', borderBottom: '2px solid #eee', paddingBottom: 12 }}>💼 퇴직금 계산기</h3>
+      {/* ✅ [수정] 헤더 클릭 시 열림/닫힘 토글 */}
+      <div 
+        onClick={() => setIsOpen(!isOpen)} 
+        style={{ 
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+            cursor: 'pointer', paddingBottom: isOpen ? 20 : 0, 
+            borderBottom: isOpen ? '2px solid #eee' : 'none' 
+        }}
+      >
+        <h3 style={{ margin: 0, color: '#333', fontSize: '18px' }}>💼 퇴직금 계산기</h3>
+        <span style={{ fontSize: '14px', color: '#666' }}>{isOpen ? '▲ 접기' : '▼ 펼치기'}</span>
+      </div>
       
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 20 }}>
-        <div>
-            <label style={labelStyle}>직원 선택</label>
-            {/* ✅ 커스텀 선택 버튼 */}
-            <div onClick={() => setIsEmpSelectorOpen(true)} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>{selectedEmpName || '직원을 선택하세요'}</span>
-              <span style={{ fontSize: 12, color: '#999' }}>▼</span>
+      {/* ✅ [수정] 열렸을 때만 내용 표시 */}
+      {isOpen && (
+        <div style={{ marginTop: 20, animation: 'fadeIn 0.3s ease-out' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 20 }}>
+                <div>
+                    <label style={labelStyle}>직원 선택</label>
+                    <div onClick={() => setIsEmpSelectorOpen(true)} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{selectedEmpName || '직원을 선택하세요'}</span>
+                        <span style={{ fontSize: 12, color: '#999' }}>▼</span>
+                    </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={labelStyle}>퇴사일 (마지막 근무일)</label>
+                    <DateSelector value={resignDate} onChange={setResignDate} />
+                </div>
             </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={labelStyle}>퇴사일 (마지막 근무일)</label>
-            <DateSelector value={resignDate} onChange={setResignDate} />
-        </div>
-      </div>
 
-<div style={{ background: '#f9f9f9', padding: '16px', borderRadius: 8, marginBottom: 20, fontSize: 14, color: '#555' }}>
-         {/* ✅ 모바일 줄바꿈 개선: flex-wrap 사용 */}
-         <div style={{ marginBottom: 8 }}>
-            📅 재직 기간: 
-            {/* 모바일에서는 block으로 줄바꿈, PC에서는 inline 유지 (반응형 스타일) */}
-            <span className="date-range-text" style={{ fontWeight: 'bold', color: '#333', marginLeft: 4 }}>
-               {hireDate || '-'} ~ {resignDate}
-            </span>
-         </div>
-         
-         <div>
-            ⏳ 총 재직일수: <strong style={{ color: totalDays >= 365 ? 'green' : 'crimson', fontSize: 16 }}>{totalDays}일</strong>
-         </div>
-      </div>
+            <div style={{ background: '#f9f9f9', padding: '16px', borderRadius: 8, marginBottom: 20, fontSize: 14, color: '#555' }}>
+                <div style={{ marginBottom: 8 }}>
+                    📅 재직 기간: 
+                    <span className="date-range-text" style={{ fontWeight: 'bold', color: '#333', marginLeft: 4 }}>
+                        {hireDate || '-'} ~ {resignDate}
+                    </span>
+                </div>
+                <div>
+                    ⏳ 총 재직일수: <strong style={{ color: totalDays >= 365 ? 'green' : 'crimson', fontSize: 16 }}>{totalDays}일</strong>
+                </div>
+            </div>
 
-      <div style={{ marginBottom: 20 }}>
-        <label style={labelStyle}>퇴사 전 3개월 급여 총액 {loadingAuto && '(계산 중...)'}</label>
-        {/* ✅ 텍스트 입력으로 변경 (콤마 지원) */}
-        <input 
-          type="text" 
-          value={pay3MonthsStr} 
-          onChange={e => handlePayChange(e.target.value)} 
-          placeholder="0" 
-          style={inputStyle} 
-          inputMode="numeric"
-        />
-      </div>
+            <div style={{ marginBottom: 20 }}>
+                <label style={labelStyle}>퇴사 전 3개월 급여 총액 {loadingAuto && '(계산 중...)'}</label>
+                <input 
+                    type="text" 
+                    value={pay3MonthsStr} 
+                    onChange={e => handlePayChange(e.target.value)} 
+                    placeholder="0" 
+                    style={inputStyle} 
+                    inputMode="numeric"
+                />
+            </div>
 
-      <button onClick={calculateResult} style={btnStyle}>퇴직금 계산하기</button>
+            <button onClick={calculateResult} style={btnStyle}>퇴직금 계산하기</button>
 
-      {severancePay > 0 && (
-        <div style={{ marginTop: 24, padding: 20, borderRadius: 8, backgroundColor: '#f0f8ff', border: '1px solid #b3d7ff' }}>
-            <div style={{ fontSize: 14, color: '#666', marginBottom: 4 }}>예상 평균 일급: {avgWage.toLocaleString()}원</div>
-            <div style={{ fontSize: 20, fontWeight: 'bold', color: '#0056b3' }}>예상 퇴직금: {severancePay.toLocaleString()}원</div>
+            {/* ✅ [신규] 결과 표시 및 캡처 영역 */}
+            {severancePay > 0 && (
+                <div style={{ marginTop: 24 }}>
+                    <div ref={resultRef} style={{ padding: 24, borderRadius: 12, backgroundColor: '#f0f8ff', border: '1px solid #b3d7ff' }}>
+                        <h4 style={{ margin: '0 0 16px 0', textAlign: 'center', color: '#0056b3' }}>퇴직금 계산 결과</h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14, color: '#555' }}>
+                            <span>직원명</span>
+                            <span style={{ fontWeight: 'bold' }}>{selectedEmpName}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14, color: '#555' }}>
+                            <span>재직 기간</span>
+                            <span>{totalDays}일</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, fontSize: 14, color: '#555' }}>
+                            <span>평균 일급</span>
+                            <span>{avgWage.toLocaleString()}원</span>
+                        </div>
+                        <hr style={{ border: 'none', borderTop: '1px dashed #b3d7ff', margin: '10px 0' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}>예상 퇴직금</span>
+                            <span style={{ fontSize: 24, fontWeight: 'bold', color: '#0056b3' }}>{severancePay.toLocaleString()}원</span>
+                        </div>
+                        <div style={{ textAlign: 'center', fontSize: 11, color: '#999', marginTop: 16 }}>* 실제 지급액은 세금 공제 등에 따라 달라질 수 있습니다.</div>
+                    </div>
+                    
+                    <button onClick={handleDownloadClick} style={{ ...btnStyle, marginTop: 12, background: '#fff', border: '1px solid #ccc', color: '#333' }}>
+                        📥 결과 저장 / 공유
+                    </button>
+                </div>
+            )}
         </div>
       )}
 
-      {/* ✅ 직원 선택 모달 (모바일 최적화) */}
+      {/* 직원 선택 모달 */}
       {isEmpSelectorOpen && (
         <div style={modalOverlayStyle} onClick={() => setIsEmpSelectorOpen(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
@@ -182,12 +259,30 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
           </div>
         </div>
       )}
+
+      {/* 모바일 공유 선택 팝업 */}
+      {showMobileChoice && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={() => setShowMobileChoice(false)}>
+            <div style={{ width: '100%', background: '#fff', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', padding: '24px 20px 40px 20px', animation: 'slideUp 0.3s ease-out' }} onClick={e => e.stopPropagation()}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', textAlign: 'center', color: '#333', fontWeight: 'bold' }}>결과를 어떻게 할까요?</h3>
+                <div style={{ display: 'flex', gap: 12 }}>
+                    <button onClick={() => handleCapture(false)} style={{ flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #ddd', background: '#fff', fontSize: '15px', fontWeight: 'bold', color: '#333', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                        <span style={{fontSize: '24px'}}>📥</span> 갤러리에 저장
+                    </button>
+                    <button onClick={() => handleCapture(true)} style={{ flex: 1, padding: '16px', borderRadius: '12px', border: 'none', background: '#FEE500', fontSize: '15px', fontWeight: 'bold', color: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                        <span style={{fontSize: '24px'}}>💬</span> 카톡/공유하기
+                    </button>
+                </div>
+            </div>
+            <style jsx>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+        </div>
+      )}
     </div>
   );
 }
 
 // 스타일
-const cardStyle = { backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #ddd', marginBottom: '24px' };
+const cardStyle = { backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #ddd', marginBottom: '24px', transition: 'all 0.3s' };
 const labelStyle = { display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '6px', color: '#555' };
 const inputStyle = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', boxSizing: 'border-box' as const, backgroundColor: '#fff', color: '#333' };
 const btnStyle = { width: '100%', padding: '12px', backgroundColor: '#333', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' };

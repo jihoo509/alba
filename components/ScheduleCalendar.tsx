@@ -69,7 +69,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedDeleteIds, setSelectedDeleteIds] = useState<string[]>([]);
 
-  // ✅ [추가] 모바일 선택 팝업 상태
+  // 모바일 선택 팝업 상태
   const [showMobileChoice, setShowMobileChoice] = useState(false);
 
   const fetchSchedules = useCallback(async () => {
@@ -107,19 +107,19 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     }
   }, [editEmpId, employees, isNew]); 
 
-  // ✅ 1. 메인 버튼 동작 (PC vs 모바일 분기)
+  // 메인 버튼 동작 (PC vs 모바일 분기)
   const handleMainDownloadClick = () => {
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
     if (isMobile) {
-      setShowMobileChoice(true); // 모바일이면 선택창 띄우기
+      setShowMobileChoice(true); 
     } else {
-      handleDownloadImage(false); // PC면 바로 저장
+      handleDownloadImage(false); 
     }
   };
 
-  // ✅ 2. 이미지 생성 및 다운로드 (공용)
+  // 이미지 생성 및 다운로드 (공용)
   const handleDownloadImage = async (autoClose = false) => {
-    setShowMobileChoice(false); // 팝업 닫기
+    setShowMobileChoice(false); 
     if (!calendarRef.current) return;
     try {
       const originalElement = calendarRef.current;
@@ -129,7 +129,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
       clone.style.position = 'fixed';
       clone.style.top = '-10000px';
       clone.style.left = '-10000px';
-      clone.style.width = '1200px'; // 1200px 고정 (PC 크기)
+      clone.style.width = '1200px'; 
       clone.style.height = 'auto';
       clone.style.zIndex = '-1';
       clone.style.backgroundColor = '#ffffff';
@@ -154,12 +154,11 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     }
   };
 
-  // ✅ 3. 카카오톡/공유하기 (모바일 전용)
+  // 카카오톡/공유하기 (모바일 전용)
   const handleShareImage = async () => {
     setShowMobileChoice(false);
     if (!calendarRef.current) return;
     try {
-      // 1. 고정 크기 클론 생성
       const originalElement = calendarRef.current;
       const clone = originalElement.cloneNode(true) as HTMLElement;
       clone.classList.add('force-pc-view');
@@ -179,11 +178,9 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         tables[0].style.fontSize = '14px';
       }
 
-      // 2. 캡처
       const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', useCORS: true, windowWidth: 1600, width: 1200 });
       document.body.removeChild(clone);
 
-      // 3. 공유 실행
       canvas.toBlob(async (blob) => {
         if (!blob) return alert('이미지 생성 실패');
         const file = new File([blob], `${format(currentDate, 'yyyy-MM')}_스케줄표.png`, { type: 'image/png' });
@@ -328,6 +325,32 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
 
   return (
     <div style={{ backgroundColor: '#ffffff', padding: 24, borderRadius: 12, border: '1px solid #ddd', position: 'relative', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+      {/* ✅ [스타일] 반응형 CSS 추가 */}
+      <style jsx>{`
+        .calendar-header-mobile {
+          flex-direction: row;
+        }
+        .mobile-btn-group {
+          margin-top: 0;
+        }
+        @media (max-width: 600px) {
+          .calendar-header-mobile {
+            flex-direction: column;
+            gap: 12px;
+            align-items: stretch !important;
+          }
+          .mobile-btn-group {
+            justify-content: space-between;
+            width: 100%;
+          }
+          .mobile-sm-btn {
+            flex: 1;
+            padding: 10px 0 !important;
+            font-size: 13px !important;
+          }
+        }
+      `}</style>
+
       {/* 상단 컨트롤 영역 */}
       <div className="calendar-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
@@ -336,7 +359,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} style={btnStyle}>&gt;</button>
         </div>
         <div className="mobile-btn-group" style={{ display: 'flex', gap: 8 }}>
-           {/* ✅ [수정] 통합 버튼: PC에선 다운로드, 모바일에선 선택창 */}
            {!isDeleteMode && (
              <button onClick={handleMainDownloadClick} className="mobile-sm-btn" style={{ ...btnStyle, background: 'dodgerblue', color: '#fff', border: 'none', fontWeight: 'bold' }}>
                📷 이미지 저장
@@ -357,17 +379,15 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
       </div>
 
       {/* 캘린더 영역 */}
-      <div ref={calendarRef} style={{ backgroundColor: '#fff', paddingBottom: 10 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 10, textAlign: 'center' }}>
+      <div ref={calendarRef} style={{ backgroundColor: '#fff', paddingBottom: 10, overflowX: 'auto' }}>
+        <div style={{ minWidth: '100%', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 10, textAlign: 'center' }}>
           {weeks.map((day, idx) => (
             <div key={day} style={{ color: idx === 5 ? 'dodgerblue' : idx === 6 ? 'salmon' : '#666', fontWeight: 'bold', fontSize: 16 }}>{day}</div>
           ))}
         </div>
-        <div className="table-wrapper" style={{ backgroundColor: '#fff' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-            <thead><tr>{weeks.map(day => <th key={day} style={{ height: 0, padding: 0, border: 'none' }}></th>)}</tr></thead>
-            <tbody></tbody>
-          </table>
+        
+        {/* ✅ [수정] 테이블 레이아웃 안정화 (width: 100%) */}
+        <div className="table-wrapper" style={{ backgroundColor: '#fff', width: '100%' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderTop: '1px solid #ddd', borderLeft: '1px solid #ddd' }}>
             {calendarDays.map((day, idx) => {
               const dateStr = format(day, 'yyyy-MM-dd');
@@ -378,7 +398,18 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
               const dayColor = isSun ? 'salmon' : (idx % 7 === 5 ? 'dodgerblue' : '#333');
 
               return (
-                <div key={day.toString()} onClick={() => handleDateClick(day)} style={{ minHeight: 130, padding: '4px 2px 20px 2px', borderRight: '1px solid #ddd', borderBottom: '1px solid #ddd', backgroundColor: isCurrentMonth ? (isTodayDate ? '#f0f9ff' : 'transparent') : '#f9f9f9', opacity: 1, cursor: isDeleteMode ? 'default' : 'pointer', display: 'flex', flexDirection: 'column' }}>
+                <div key={day.toString()} onClick={() => handleDateClick(day)} 
+                     style={{ 
+                         // ✅ [수정] 높이 자동 조절로 스크롤 제거 (minHeight 줄임)
+                         minHeight: 100, 
+                         padding: '4px 2px 20px 2px', 
+                         borderRight: '1px solid #ddd', 
+                         borderBottom: '1px solid #ddd', 
+                         backgroundColor: isCurrentMonth ? (isTodayDate ? '#f0f9ff' : 'transparent') : '#f9f9f9', 
+                         cursor: isDeleteMode ? 'default' : 'pointer', 
+                         display: 'flex', flexDirection: 'column',
+                         overflow: 'hidden' // 내용 넘침 숨김
+                     }}>
                   <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14, color: isTodayDate ? 'dodgerblue' : dayColor, fontWeight: isTodayDate ? 'bold' : 'normal', paddingTop: 4 }}>{format(day, 'd')}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                     {daySchedules.map(sch => {
@@ -390,14 +421,14 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                       const patternName = sch.memo; 
 
                       return (
-                        <div key={sch.id} onClick={(e) => handleScheduleClick(e, sch)} className="schedule-box" style={{ backgroundColor: isDeleteMode ? (isSelectedForDelete ? 'darkred' : '#eee') : bgColor, color: isDeleteMode && !isSelectedForDelete ? '#aaa' : '#fff', fontSize: 12, padding: '6px', borderRadius: 6, cursor: 'pointer', border: isDeleteMode ? (isSelectedForDelete ? '2px solid red' : '1px solid #ccc') : (sch.employee_id ? 'none' : '2px dashed #999'), textAlign: 'center', opacity: isDeleteMode && !isSelectedForDelete ? 0.5 : 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                          <div className="schedule-emp-name" style={{ fontWeight: 'bold', fontSize: 13 }}>
+                        <div key={sch.id} onClick={(e) => handleScheduleClick(e, sch)} className="schedule-box" style={{ backgroundColor: isDeleteMode ? (isSelectedForDelete ? 'darkred' : '#eee') : bgColor, color: isDeleteMode && !isSelectedForDelete ? '#aaa' : '#fff', fontSize: 12, padding: '4px', borderRadius: 4, cursor: 'pointer', border: isDeleteMode ? (isSelectedForDelete ? '2px solid red' : '1px solid #ccc') : (sch.employee_id ? 'none' : '2px dashed #999'), textAlign: 'center', opacity: isDeleteMode && !isSelectedForDelete ? 0.5 : 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                          <div className="schedule-emp-name" style={{ fontWeight: 'bold', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {empName || '미배정'}
-                            {sch.is_holiday_work && <span style={{fontSize: 10, marginLeft: 4}}>🔴</span>}
-                            {sch.exclude_holiday_pay && <span style={{fontSize: 10, marginLeft: 4}}>🚫</span>}
+                            {sch.is_holiday_work && <span style={{fontSize: 10, marginLeft: 2}}>🔴</span>}
+                            {sch.exclude_holiday_pay && <span style={{fontSize: 10, marginLeft: 2}}>🚫</span>}
                           </div>
-                          <div className="schedule-time" style={{ fontSize: 11, opacity: 0.9 }}>{start} ~ {end}</div>
-                          <div className="schedule-pattern-only mobile-only-block" style={{ fontSize: 11, fontWeight: 'bold' }}>{patternName || ''}</div>
+                          <div className="schedule-time" style={{ fontSize: 10, opacity: 0.9 }}>{start}~{end}</div>
+                          {patternName && <div className="schedule-pattern-only mobile-only-block" style={{ fontSize: 10, fontWeight: 'bold' }}>{patternName}</div>}
                         </div>
                       );
                     })}
@@ -411,7 +442,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
 
       {popupOpen && (
         <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000}}>
-          <div style={{backgroundColor: '#ffffff', padding: 24, borderRadius: 12, border: '1px solid #ccc', width: 360, boxShadow: '0 10px 25px rgba(0,0,0,0.2)', color: '#333', maxHeight: '90vh', overflowY: 'auto'}}>
+          <div style={{backgroundColor: '#ffffff', padding: 24, borderRadius: 12, border: '1px solid #ccc', width: 360, boxShadow: '0 10px 25px rgba(0,0,0,0.2)', color: '#333', maxHeight: '90vh', overflowY: 'auto'}} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginTop: 0, marginBottom: 20, color: '#333', textAlign: 'center' }}>{isNew ? '새 스케줄 추가' : '스케줄 수정'} ({editDate})</h3>
             
             <div style={{ marginBottom: 20 }}>
@@ -505,7 +536,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         </div>
       )}
 
-      {/* ✅ [추가] 모바일 선택 팝업 (하단 슬라이드) */}
+      {/* 모바일 선택 팝업 */}
       {showMobileChoice && (
         <div style={{ 
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
