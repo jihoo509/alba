@@ -575,6 +575,8 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                     </button>
                 </div>
             </div>
+            
+            {/* ✅ [수정] 조건부 렌더링 밖으로 이동된 스타일 태그 */}
             <style jsx>{`
                 @keyframes slideUp {
                     from { transform: translateY(100%); }
