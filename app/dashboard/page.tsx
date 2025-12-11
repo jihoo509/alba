@@ -277,6 +277,30 @@ const renderTabContent = () => {
     if (!currentStoreId) return <div style={{textAlign:'center', marginTop: 40, color: '#fff'}}>관리할 매장을 선택해주세요.</div>;
 
     if (currentTab === 'home') {
+      // ✅ [팁 데이터 분리] 나중에 내용을 고치기 쉽게 따로 뺐습니다.
+      const tips = [
+        { 
+          title: "🛑 퇴사하는 주에는 주휴수당 X", 
+          desc: "주휴수당은 '다음 주 근무'를 전제로 합니다. 따라서 마지막 근무 주(퇴사 주)에는 발생하지 않습니다." 
+        },
+        { 
+          title: "📢 해고 예고는 30일 전에", 
+          desc: "30일 전 예고하지 않으면 30일분 통상임금을 줘야 합니다. (단, 근무 기간 3개월 미만 직원은 즉시 해고 가능)" 
+        },
+        { 
+          title: "🚑 대타 근무와 주휴수당", 
+          desc: "갑작스런 '대타' 근무는 소정근로시간에 포함되지 않아 주휴수당 대상이 아닌 경우가 많습니다." 
+        },
+        { 
+          title: "👶 수습기간 90% 급여 조건", 
+          desc: "'1년 이상' 근로 계약을 체결한 경우에만 수습 3개월간 최저임금의 90% 지급이 가능합니다. (단순 노무직 제외)" 
+        },
+        { 
+          title: "☕ 휴게시간은 필수입니다", 
+          desc: "4시간 근무 시 30분, 8시간 근무 시 1시간 이상 휴게시간을 '근로시간 도중'에 줘야 합니다." 
+        },
+      ];
+
       return (
         <div style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
           <div style={{ 
@@ -286,7 +310,7 @@ const renderTabContent = () => {
             alignItems: 'start'
           }}>
             
-            {/* 카드 1: 오늘 근무자 */}
+            {/* 1. 오늘 근무자 카드 */}
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #eee', paddingBottom: 8, color: '#000' }}>
                 📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
@@ -310,55 +334,45 @@ const renderTabContent = () => {
               )}
             </div>
 
-            {/* 카드 2: 급여 지출 */}
+            {/* 2. 급여 지출 카드 */}
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#555' }}>💰 11월 예상 급여 지출 (세전)</h3>
               <div style={{ fontSize: 32, fontWeight: 'bold', color: '#000' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
             </div>
 
-            {/* 카드 3: 사장님 필수 상식 (업데이트됨) */}
+            {/* 3. 사장님 필수 상식 (업데이트됨) */}
             <div style={cardStyle}>
-              <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 16, color: '#e67e22', display:'flex', alignItems:'center', gap: '6px' }}>
+              <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 16, color: '#e67e22', display:'flex', alignItems:'center', gap: '6px' }}>
                 💡 사장님 필수 상식
               </h3>
               
-              {/* 상식 리스트 영역 (내용이 많아지면 스크롤 되도록 설정) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
-                
-                <div style={{ padding: '10px', backgroundColor: '#fff8f0', borderRadius: '8px', border: '1px solid #ffeebb' }}>
-                  <strong style={{ display:'block', fontSize: '13px', color: '#d35400', marginBottom:'4px' }}>🛑 퇴사하는 주에는 주휴수당 X</strong>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#555', lineHeight: '1.4' }}>
-                    주휴수당은 '다음 주 근무'를 전제로 합니다. 따라서 마지막 근무 주(퇴사 주)에는 발생하지 않습니다.
-                  </p>
-                </div>
-
-                <div style={{ padding: '10px', backgroundColor: '#fff8f0', borderRadius: '8px', border: '1px solid #ffeebb' }}>
-                  <strong style={{ display:'block', fontSize: '13px', color: '#d35400', marginBottom:'4px' }}>📢 해고 예고는 30일 전에</strong>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#555', lineHeight: '1.4' }}>
-                    30일 전 예고하지 않으면 30일분 통상임금을 줘야 합니다. (단, 근무 기간 3개월 미만 직원은 즉시 해고 가능)
-                  </p>
-                </div>
-
-                <div style={{ padding: '10px', backgroundColor: '#fff8f0', borderRadius: '8px', border: '1px solid #ffeebb' }}>
-                  <strong style={{ display:'block', fontSize: '13px', color: '#d35400', marginBottom:'4px' }}>🚑 대타 근무와 주휴수당</strong>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#555', lineHeight: '1.4' }}>
-                    갑작스런 '대타' 근무는 소정근로시간에 포함되지 않아 주휴수당 대상이 아닌 경우가 많습니다. (단, 계속 반복되면 인정될 수 있음)
-                  </p>
-                </div>
-
-                <div style={{ padding: '10px', backgroundColor: '#fff8f0', borderRadius: '8px', border: '1px solid #ffeebb' }}>
-                  <strong style={{ display:'block', fontSize: '13px', color: '#d35400', marginBottom:'4px' }}>👶 수습기간 90% 급여 조건</strong>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#555', lineHeight: '1.4' }}>
-                    '1년 이상' 근로 계약을 체결한 경우에만 수습 3개월간 최저임금의 90% 지급이 가능합니다. (단순 노무직 제외)
-                  </p>
-                </div>
-
-                <div style={{ padding: '10px', backgroundColor: '#fff8f0', borderRadius: '8px', border: '1px solid #ffeebb' }}>
-                  <strong style={{ display:'block', fontSize: '13px', color: '#d35400', marginBottom:'4px' }}>☕ 휴게시간은 필수입니다</strong>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#555', lineHeight: '1.4' }}>
-                    4시간 근무 시 30분, 8시간 근무 시 1시간 이상 휴게시간을 '근로시간 도중'에 줘야 합니다. (위반 시 과태료 대상)
-                  </p>
-                </div>
+              {/* ✅ 스크롤 영역 설정 */}
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '12px', 
+                maxHeight: '320px', 
+                overflowY: 'auto', 
+                paddingRight: '4px',
+                paddingBottom: '4px' // 하단 그림자 잘림 방지
+              }}>
+                {/* 팁 데이터 맵핑해서 뿌려주기 */}
+                {tips.map((tip, index) => (
+                  <div key={index} style={{ 
+                    padding: '16px', 
+                    backgroundColor: '#fff', 
+                    borderRadius: '12px', 
+                    border: '1px solid #eee',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.03)' // 살짝 그림자 줘서 떠있는 느낌
+                  }}>
+                    <strong style={{ display:'block', fontSize: '14px', color: '#333', marginBottom:'6px' }}>
+                      {tip.title}
+                    </strong>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
+                      {tip.desc}
+                    </p>
+                  </div>
+                ))}
 
               </div>
             </div>
@@ -368,37 +382,36 @@ const renderTabContent = () => {
       );
     }
     
-    // ... (나머지 탭 코드는 그대로 유지)
     if (currentTab === 'employees') {
-        // ... (기존 코드)
-        return (
-             <div style={{ maxWidth: 750, margin: '0 auto', width: '100%' }}>
-               <EmployeeSection
-                 currentStoreId={currentStoreId}
-                 employees={employees}
-                 loadingEmployees={loadingEmployees}
-                 onCreateEmployee={handleCreateEmployee}
-                 onDeleteEmployee={handleDeleteEmployee}
-                 onUpdateEmployee={handleUpdateEmployee}
-               />
-             </div>
-           );
-    }
-    if (currentTab === 'schedules') {
       return (
-        <div>
-          <h2 style={{ fontSize: 24, marginBottom: 8, color: '#fff', fontWeight: 'bold' }}>스케줄 관리</h2>
-          <p style={{ color: '#ddd', marginBottom: 32 }}>월간 스케줄을 확인하고 관리합니다.</p>
-          <TemplateSection 
-            currentStoreId={currentStoreId} 
-            employees={employees} 
+        <div style={{ maxWidth: 750, margin: '0 auto', width: '100%' }}>
+          <EmployeeSection
+            currentStoreId={currentStoreId}
+            employees={employees}
+            loadingEmployees={loadingEmployees}
+            onCreateEmployee={handleCreateEmployee}
+            onDeleteEmployee={handleDeleteEmployee}
+            onUpdateEmployee={handleUpdateEmployee}
           />
         </div>
       );
     }
-    if (currentTab === 'payroll') {
-      return <PayrollSection currentStoreId={currentStoreId} />;
-    }
+    // ... 나머지 탭(schedules, payroll)은 기존과 동일하게 유지
+    if (currentTab === 'schedules') {
+        return (
+          <div>
+            <h2 style={{ fontSize: 24, marginBottom: 8, color: '#fff', fontWeight: 'bold' }}>스케줄 관리</h2>
+            <p style={{ color: '#ddd', marginBottom: 32 }}>월간 스케줄을 확인하고 관리합니다.</p>
+            <TemplateSection 
+              currentStoreId={currentStoreId} 
+              employees={employees} 
+            />
+          </div>
+        );
+      }
+      if (currentTab === 'payroll') {
+        return <PayrollSection currentStoreId={currentStoreId} />;
+      }
   };
 
   if (loading) return <main style={{ padding: 40, color: '#fff' }}>로딩 중...</main>;
