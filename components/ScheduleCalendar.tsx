@@ -446,47 +446,46 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
             <h3 style={{ marginTop: 0, marginBottom: 20, color: '#333', textAlign: 'center' }}>{isNew ? '새 스케줄 추가' : '스케줄 수정'} ({editDate})</h3>
             
             <div style={{ marginBottom: 20 }}>
+              {/* ✅ [수정] 근무 시간 라벨과 분 선택 버튼을 양 끝으로 배치 */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                {/* ✅ [수정] 분 선택 버튼을 라벨 바로 옆으로 이동 */}
-                <div style={{display:'flex', alignItems:'center', gap: 10}}>
-                    <label style={{ fontSize: 13, color: '#666', fontWeight:'bold' }}>근무 시간</label>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                    {[30, 10, 5].map((min) => (
-                        <button key={min} onClick={() => setMinuteInterval(min)} style={{ padding: '2px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer', backgroundColor: minuteInterval === min ? 'dodgerblue' : '#f0f0f0', color: minuteInterval === min ? '#fff' : '#666' }}>{min}분</button>
-                    ))}
-                    </div>
-                </div>
+                  <label style={{ fontSize: 13, color: '#666', fontWeight:'bold' }}>근무 시간</label>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                  {[30, 10, 5].map((min) => (
+                      <button key={min} onClick={() => setMinuteInterval(min)} style={{ padding: '2px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer', backgroundColor: minuteInterval === min ? 'dodgerblue' : '#f0f0f0', color: minuteInterval === min ? '#fff' : '#666' }}>{min}분</button>
+                  ))}
+                  </div>
               </div>
 
-              {/* ✅ [수정] 모바일 화면 최적화를 위해 시간 선택을 세로로 배치 (Stack) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-                    <span style={{fontSize:13, color:'#555', minWidth: 30}}>시작</span>
+              {/* ✅ [수정] 시작/종료 시간을 팝업 중앙으로 모아서 정렬 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+                <div style={{display:'flex', alignItems:'center', gap: 10}}>
+                    <span style={{fontSize:13, color:'#555'}}>시작</span>
                     <TimeSelector value={editStartTime} onChange={setEditStartTime} interval={minuteInterval} />
                 </div>
-                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-                    <span style={{fontSize:13, color:'#555', minWidth: 30}}>종료</span>
+                <div style={{display:'flex', alignItems:'center', gap: 10}}>
+                    <span style={{fontSize:13, color:'#555'}}>종료</span>
                     <TimeSelector value={editEndTime} onChange={setEditEndTime} interval={minuteInterval} isLast={true} />
                 </div>
               </div>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight:'bold' }}>근무자 (대타)</label>
+            <div style={{ marginBottom: 20, textAlign: 'center' }}>
+              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight:'bold', textAlign: 'left' }}>근무자 (대타)</label>
               
+              {/* ✅ [수정] 근무자 선택 드롭다운 너비를 줄이고 가운데 정렬 */}
               <div 
                 onClick={() => setIsEmpListOpen(!isEmpListOpen)}
-                style={{ width: '100%', padding: 12, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', borderRadius: 6, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                style={{ width: '80%', margin: '0 auto', padding: 12, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', borderRadius: 6, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
                 <span>{selectedEmpName}</span>
                 <span style={{ fontSize: 12, color: '#999' }}>{isEmpListOpen ? '▲' : '▼'}</span>
               </div>
 
               {isEmpListOpen && (
-                <div style={{ border: '1px solid #ddd', borderRadius: 6, marginTop: 4, maxHeight: 150, overflowY: 'auto', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '80%', margin: '4px auto 0', border: '1px solid #ddd', borderRadius: 6, maxHeight: 150, overflowY: 'auto', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                     <div 
                         onClick={() => handleSelectEmployee(null)}
-                        style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', color: '#999' }}
+                        style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', color: '#999', textAlign: 'left' }}
                     >
                         (미배정)
                     </div>
@@ -500,7 +499,8 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                                 cursor: 'pointer', 
                                 backgroundColor: editEmpId === emp.id ? '#e6f7ff' : '#fff',
                                 color: editEmpId === emp.id ? 'dodgerblue' : '#333',
-                                fontWeight: editEmpId === emp.id ? 'bold' : 'normal'
+                                fontWeight: editEmpId === emp.id ? 'bold' : 'normal',
+                                textAlign: 'left'
                             }}
                         >
                             {emp.name}
