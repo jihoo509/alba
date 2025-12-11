@@ -226,8 +226,12 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
   const [useHolidayWork, setUseHolidayWork] = useState(true);
   const [useBreakDeduct, setUseBreakDeduct] = useState(true);
   const [noTax, setNoTax] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  
+  // ✅ [신규] 모바일 급여 수정을 위한 상태 추가
+  const [overrideAmount, setOverrideAmount] = useState<string>('');
+  const [adjustmentAmount, setAdjustmentAmount] = useState<string>('');
 
+  const [isSaving, setIsSaving] = useState(false);
   const [showMobileChoice, setShowMobileChoice] = useState(false);
 
   useEffect(() => {
@@ -244,6 +248,16 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
       } else {
           setNoTax(s.no_tax_deduction || false);
       }
+
+      // ✅ [신규] 데이터에서 금액 값 불러오기
+      // 수정된 상태(isModified)라면 basePay가 곧 override 금액임
+      if (data.isModified && data.basePay !== data.originalCalcPay) {
+          setOverrideAmount(String(data.basePay).toLocaleString());
+      } else {
+          setOverrideAmount('');
+      }
+      // 조정액 불러오기
+      setAdjustmentAmount(data.adjustment !== 0 ? String(data.adjustment).toLocaleString() : '');
     }
   }, [isOpen, data]);
 
@@ -262,10 +276,30 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
     }
   }, [isOpen, mode]);
 
+  // ✅ [신규] 금액 입력 핸들러 (콤마 자동 추가)
+  const handleCurrencyInput = (e: React.ChangeEvent<HTMLInputElement>, setter: any) => {
+    const raw = e.target.value.replace(/,/g, '');
+    if (raw === '') {
+        setter('');
+        return;
+    }
+    const val = Number(raw);
+    if (!isNaN(val)) {
+      setter(val.toLocaleString());
+    } else if (raw === '-') {
+        // 음수 입력 허용 (조정액용)
+        setter('-'); 
+    }
+  };
+
   const handleSaveSettings = async () => {
     if (!onSave) return;
     setIsSaving(true);
     try {
+      // ✅ [수정] 금액 데이터도 함께 저장
+      const numOverride = overrideAmount.trim() === '' ? null : Number(overrideAmount.replace(/,/g, ''));
+      const numAdjustment = adjustmentAmount.trim() === '' ? 0 : Number(adjustmentAmount.replace(/,/g, ''));
+
       await onSave({
         employee_id: data.empId, 
         pay_weekly: useWeekly,
@@ -273,7 +307,10 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
         pay_overtime: useOvertime,
         pay_holiday: useHolidayWork,
         auto_deduct_break: useBreakDeduct,
-        no_tax_deduction: noTax
+        no_tax_deduction: noTax,
+        // 👇 추가된 부분
+        monthly_override: numOverride,
+        monthly_adjustment: numAdjustment
       });
       alert('설정이 저장되었습니다.');
       onClose(); 
@@ -399,19 +436,19 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
             <div style={overlayStyle} onClick={onClose}>
                 <div 
                     onClick={(e) => e.stopPropagation()} 
-                    style={{ ...modalStyle, maxWidth: '400px', height: 'auto', padding: '24px', borderRadius: '16px' }}
+                    style={{ ...modalStyle, maxWidth: '400px', height: 'auto', padding: '24px', borderRadius: '16px', maxHeight: '90vh', overflowY: 'auto' }}
                 >
-                    <h3 style={{ margin: '0 0 24px 0', textAlign: 'center', color: '#333', fontSize: '18px', borderBottom: '2px solid #f0f0f0', paddingBottom: '12px' }}>
+                    <h3 style={{ margin: '0 0 20px 0', textAlign: 'center', color: '#333', fontSize: '18px', borderBottom: '2px solid #f0f0f0', paddingBottom: '12px' }}>
                     ⚙️ <strong>{data.name} 님</strong> 급여 설정
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        {isModified && <div style={{fontSize: 12, color: 'blue', textAlign:'center', background:'#eff6ff', padding:8, borderRadius:4}}>※ 확정된 급여(수정됨)는 수당 옵션의 영향을 받지 않습니다.</div>}
+                        {isModified && <div style={{fontSize: 12, color: 'blue', textAlign:'center', background:'#eff6ff', padding:8, borderRadius:4}}>※ 확정 급여 상태입니다. 아래에서 금액을 수정할 수 있습니다.</div>}
                         
-                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} style={checkInput} disabled={isModified} /> <span style={{color: isModified?'#aaa':'#444'}}>주휴수당 <span style={{fontSize:11, color: isModified?'#ccc':'#888'}}>(15h↑)</span></span></label>
-                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} style={checkInput} disabled={isModified} /> <span style={{color: isModified?'#aaa':'#444'}}>야간수당 <span style={{fontSize:11, color: isModified?'#ccc':'#888'}}>(1.5배)</span></span></label>
-                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} style={checkInput} disabled={isModified} /> <span style={{color: isModified?'#aaa':'#444'}}>연장수당 <span style={{fontSize:11, color: isModified?'#ccc':'#888'}}>(1.5배)</span></span></label>
-                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} style={checkInput} disabled={isModified} /> <span style={{color: isModified?'#aaa':'#444'}}>휴일수당 <span style={{fontSize:11, color: isModified?'#ccc':'#ff6b6b'}}>(1.5배)</span></span></label>
-                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} style={checkInput} disabled={isModified} /> <span style={{color: isModified?'#aaa':'#444'}}>휴게시간 자동 차감</span></label>
+                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useWeekly} onChange={e => setUseWeekly(e.target.checked)} style={checkInput} /> <span style={{color: '#444'}}>주휴수당 <span style={{fontSize:11, color: '#888'}}>(15h↑)</span></span></label>
+                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useNight} onChange={e => setUseNight(e.target.checked)} style={checkInput} /> <span style={{color: '#444'}}>야간수당 <span style={{fontSize:11, color: '#888'}}>(1.5배)</span></span></label>
+                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useOvertime} onChange={e => setUseOvertime(e.target.checked)} style={checkInput} /> <span style={{color: '#444'}}>연장수당 <span style={{fontSize:11, color: '#888'}}>(1.5배)</span></span></label>
+                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useHolidayWork} onChange={e => setUseHolidayWork(e.target.checked)} style={checkInput} /> <span style={{color: '#444'}}>휴일수당 <span style={{fontSize:11, color: '#ff6b6b'}}>(1.5배)</span></span></label>
+                        <label style={checkboxLabelMobile}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} style={checkInput} /> <span style={{color: '#444'}}>휴게시간 자동 차감</span></label>
                         
                         <div style={{ borderTop: '1px dashed #ddd', margin: '4px 0' }}></div>
                         
@@ -419,13 +456,44 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
                             <input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} style={checkInput} /> 
                             <span>세금 공제 안 함 <span style={{fontSize:11}}>(100%)</span></span>
                         </label>
+
+                        {/* ✅ [신규] 모바일용 금액 수정 영역 */}
+                        <div style={{ backgroundColor: '#fafafa', padding: '12px', borderRadius: '8px', border: '1px solid #eee', marginTop: '4px' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#555', marginBottom: '8px' }}>✏️ 급여 직접 수정</div>
+                            
+                            <div style={{ marginBottom: '10px' }}>
+                                <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>확정 기본급 (덮어쓰기)</label>
+                                <input 
+                                    type="text" 
+                                    value={overrideAmount} 
+                                    onChange={(e) => handleCurrencyInput(e, setOverrideAmount)}
+                                    placeholder={`계산된 급여: ${data.originalCalcPay?.toLocaleString() || 0}`}
+                                    style={inputStyleMobile} 
+                                />
+                            </div>
+                            
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>추가/공제 (보너스 등)</label>
+                                <input 
+                                    type="text" 
+                                    value={adjustmentAmount} 
+                                    onChange={(e) => {
+                                        const raw = e.target.value.replace(/,/g, '');
+                                        if (raw === '-') setAdjustmentAmount('-');
+                                        else handleCurrencyInput(e, setAdjustmentAmount);
+                                    }}
+                                    placeholder="0"
+                                    style={inputStyleMobile} 
+                                />
+                            </div>
+                        </div>
                         
-                        {/* ✅ [신규] 모바일용 초기화 버튼 */}
+                        {/* 모바일용 초기화 버튼 */}
                         {data.isOverrideApplied && onReset && (
-                            <button onClick={handleResetClick} style={btnResetMobile}>🔄 매장 공통 설정 적용</button>
+                            <button onClick={handleResetClick} style={btnResetMobile}>🔄 매장 공통 설정 적용 (초기화)</button>
                         )}
                     </div>
-                    <div style={{ marginTop: 28, display: 'flex', gap: 10, justifyContent: 'center' }}>
+                    <div style={{ marginTop: 24, display: 'flex', gap: 10, justifyContent: 'center' }}>
                         <button onClick={onClose} style={btnCancelSmall}>취소</button>
                         <button onClick={handleSaveSettings} disabled={isSaving} style={btnSaveSmall}>{isSaving ? '...' : '저장'}</button>
                     </div>
@@ -458,7 +526,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
                                     <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게차감</label>
                                 </>
                             )}
-                            {/* ✅ [신규] 우측 그룹 */}
                             <div style={{ marginLeft: 'auto', display: 'flex', gap: 24, alignItems: 'center' }}>
                                 <label style={{display:'flex',gap:6,cursor:'pointer', color:'#ff6b6b'}}><input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함</label>
                                 
@@ -470,7 +537,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
                         </div>
                     </div>
 
-                    {/* ✅ [수정] paddingBottom 제거하여 하단 여백 축소 */}
                     <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff', paddingBottom: 0 }}>
                         <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                             <div style={{ transform: 'scale(0.9)', transformOrigin: 'top center' }}>
@@ -544,6 +610,8 @@ const checkboxLabelMobile = { display: 'flex', alignItems: 'center', gap: '10px'
 const btnCancelSmall = { padding: '10px 20px', background: '#f5f5f5', border: '1px solid #ddd', color: '#666', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
 const btnSaveSmall = { padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
 
-// ✅ [신규] 글씨 크기 13px로 조정
 const btnResetPC = { padding: '6px 12px', fontSize: '13px', background: '#444', color: '#ccc', border: '1px solid #666', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' };
 const btnResetMobile = { width: '100%', padding: '12px', margin: '10px 0 0 0', background: '#f0f0f0', color: '#555', border: '1px solid #ddd', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' };
+
+// ✅ [신규] 모바일 입력창 스타일
+const inputStyleMobile = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'right' as const, boxSizing: 'border-box' as const };
