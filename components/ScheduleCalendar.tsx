@@ -325,7 +325,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
 
   return (
     <div style={{ backgroundColor: '#ffffff', padding: 24, borderRadius: 12, border: '1px solid #ddd', position: 'relative', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-      {/* ✅ [스타일] 반응형 CSS 추가 */}
+      {/* ✅ [스타일] 반응형 CSS */}
       <style jsx>{`
         .calendar-header-mobile {
           flex-direction: row;
@@ -386,7 +386,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
           ))}
         </div>
         
-        {/* ✅ [수정] 테이블 레이아웃 안정화 (width: 100%) */}
         <div className="table-wrapper" style={{ backgroundColor: '#fff', width: '100%' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderTop: '1px solid #ddd', borderLeft: '1px solid #ddd' }}>
             {calendarDays.map((day, idx) => {
@@ -400,7 +399,6 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
               return (
                 <div key={day.toString()} onClick={() => handleDateClick(day)} 
                      style={{ 
-                         // ✅ [수정] 높이 자동 조절로 스크롤 제거 (minHeight 줄임)
                          minHeight: 100, 
                          padding: '4px 2px 20px 2px', 
                          borderRight: '1px solid #ddd', 
@@ -408,7 +406,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                          backgroundColor: isCurrentMonth ? (isTodayDate ? '#f0f9ff' : 'transparent') : '#f9f9f9', 
                          cursor: isDeleteMode ? 'default' : 'pointer', 
                          display: 'flex', flexDirection: 'column',
-                         overflow: 'hidden' // 내용 넘침 숨김
+                         overflow: 'hidden' 
                      }}>
                   <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14, color: isTodayDate ? 'dodgerblue' : dayColor, fontWeight: isTodayDate ? 'bold' : 'normal', paddingTop: 4 }}>{format(day, 'd')}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
@@ -575,16 +573,16 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                     </button>
                 </div>
             </div>
-            
-            {/* ✅ [수정] 조건부 렌더링 밖으로 이동된 스타일 태그 */}
-            <style jsx>{`
-                @keyframes slideUp {
-                    from { transform: translateY(100%); }
-                    to { transform: translateY(0); }
-                }
-            `}</style>
         </div>
       )}
+      
+      {/* ✅ [수정] 조건부 렌더링 밖으로 이동된 스타일 태그 */}
+      <style jsx>{`
+          @keyframes slideUp {
+              from { transform: translateY(100%); }
+              to { transform: translateY(0); }
+          }
+      `}</style>
     </div>
   );
 }
