@@ -8,7 +8,6 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
     const s = data.storeSettingsSnapshot || {};
     const u = data.userSettings || {};
 
-    // Override가 있으면 쓰고, 없으면 스냅샷을 따름
     const useWeekly = settingsOverride?.pay_weekly ?? (s.pay_weekly ?? true);
     const useNight = settingsOverride?.pay_night ?? (s.pay_night ?? false);
     const useOvertime = settingsOverride?.pay_overtime ?? (s.pay_overtime ?? false);
@@ -18,7 +17,6 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
 
     const isModified = data.isModified === true;
 
-    // 합계 변수 (NaN 방지 위해 0 초기화)
     let calcBasePay = 0;
     let calcNightPay = 0;
     let calcOvertimePay = 0;
@@ -90,7 +88,6 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
     const currentFinalPay = safeTotal - currentTax;
 
     return (
-        // ✅ [수정] minHeight 제거하여 불필요한 하단 여백 축소
         <div style={{ padding: 40, backgroundColor: '#fff', color: '#000', minHeight: 'auto', width: '800px', margin: '0 auto', boxSizing: 'border-box' }}>
             <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24, margin: '0 0 25px 0' }}>
                 {year}년 {month}월 급여 명세서
@@ -423,7 +420,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
                             <span>세금 공제 안 함 <span style={{fontSize:11}}>(100%)</span></span>
                         </label>
                         
-                        {/* 모바일용 초기화 버튼 */}
+                        {/* ✅ [신규] 모바일용 초기화 버튼 */}
                         {data.isOverrideApplied && onReset && (
                             <button onClick={handleResetClick} style={btnResetMobile}>🔄 매장 공통 설정 적용</button>
                         )}
@@ -461,7 +458,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
                                     <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게차감</label>
                                 </>
                             )}
-                            {/* ✅ [수정] 우측 그룹: gap을 넓혀서 '공제 안 함'을 왼쪽으로 밀기 */}
+                            {/* ✅ [신규] 우측 그룹 */}
                             <div style={{ marginLeft: 'auto', display: 'flex', gap: 24, alignItems: 'center' }}>
                                 <label style={{display:'flex',gap:6,cursor:'pointer', color:'#ff6b6b'}}><input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함</label>
                                 
@@ -547,6 +544,6 @@ const checkboxLabelMobile = { display: 'flex', alignItems: 'center', gap: '10px'
 const btnCancelSmall = { padding: '10px 20px', background: '#f5f5f5', border: '1px solid #ddd', color: '#666', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
 const btnSaveSmall = { padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
 
-// ✅ [수정] 글씨 크기 12px -> 13px로 변경
+// ✅ [신규] 글씨 크기 13px로 조정
 const btnResetPC = { padding: '6px 12px', fontSize: '13px', background: '#444', color: '#ccc', border: '1px solid #666', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' };
 const btnResetMobile = { width: '100%', padding: '12px', margin: '10px 0 0 0', background: '#f0f0f0', color: '#555', border: '1px solid #ddd', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' };

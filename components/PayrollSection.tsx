@@ -73,6 +73,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
         const override = setting?.monthly_override ? Number(setting.monthly_override) : null;
         const adjustment = setting?.monthly_adjustment ? Number(setting.monthly_adjustment) : 0;
 
+        // ✅ 39원 문제 해결 로직: 확정 급여가 없고 조정액도 없으면 계산된 값 사용
         if (override === null && adjustment === 0) {
           return { ...item, basePay: item.totalPay, adjustment: 0, originalCalcPay: item.totalPay, isModified: false };
         }
@@ -82,7 +83,10 @@ export default function PayrollSection({ currentStoreId }: Props) {
         const newTotalPay = basePay + adjustment;
         
         const isFourIns = item.type && item.type.includes('four');
-        const noTax = item.storeSettingsSnapshot?.no_tax_deduction || false;
+        // 개별 설정값이 있으면 쓰고, 없으면 매장 설정값 사용
+        const noTax = (setting?.no_tax_deduction !== null && setting?.no_tax_deduction !== undefined) 
+                      ? setting.no_tax_deduction 
+                      : (item.storeSettingsSnapshot?.no_tax_deduction || false);
         
         const newTax = calculateTaxAmounts(newTotalPay, isFourIns, noTax);
         const newFinalPay = newTotalPay - newTax.total;
@@ -129,9 +133,9 @@ export default function PayrollSection({ currentStoreId }: Props) {
     }
   };
 
-  // ✅ [수정] 초기화 시 확정 급여(monthly_override)도 함께 삭제하도록 수정
+  // ✅ [핵심] 초기화 버튼 로직: 확정 급여(monthly_override)도 null로 초기화하여 39원 삭제
   const handleResetStubSettings = async (employeeId: number) => {
-    if (!confirm('개별 설정 및 확정 급여를 모두 초기화하고 매장 기본 설정을 따르시겠습니까?')) return;
+    if (!confirm('개별 설정을 초기화하고 매장 기본 설정을 따르시겠습니까?\n(확정 급여 및 모든 개별 설정이 초기화됩니다)')) return;
     
     const { error } = await supabase.from('employee_settings').upsert({
         employee_id: employeeId,
@@ -141,13 +145,12 @@ export default function PayrollSection({ currentStoreId }: Props) {
         pay_holiday: null,
         auto_deduct_break: null,
         no_tax_deduction: null,
-        // 👇 이 부분 추가: 확정 급여와 조정액도 null/0으로 리셋
-        monthly_override: null,
+        monthly_override: null, // 39원 삭제의 핵심
         monthly_adjustment: 0
     }, { onConflict: 'employee_id' });
 
     if (error) {
-        alert('초기화 실패: ' + error.message);
+        alert('초기화 실패 (DB권한 확인 필요): ' + error.message);
     } else {
         await loadAndCalculate(); 
     }
