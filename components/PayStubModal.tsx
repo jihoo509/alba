@@ -27,7 +27,6 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
 
     const filteredLedger = (data.ledger || []).map((row: any) => {
         if (row.type === 'WORK') {
-            // ✅ [수정] null 체크 강화 (?? 0)
             const valDeducted = row.basePayDeducted ?? row.basePay ?? 0;
             const valNoDeduct = row.basePayNoDeduct ?? row.basePay ?? 0;
             const rowBase = useBreakDeduct ? valDeducted : valNoDeduct;
@@ -42,7 +41,6 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
                displayHoursStr = `${h}h`;
             }
       
-            // 체크박스 켜지면 잠재 금액(potential)을, 꺼지면 0원
             const nightAmount = useNight ? (row.potentialNightPay ?? row.nightPay ?? 0) : 0;
             const overtimeAmount = useOvertime ? (row.potentialOvertimePay ?? row.overtimePay ?? 0) : 0;
             const holidayAmount = useHolidayWork ? (row.potentialHolidayWorkPay ?? row.holidayWorkPay ?? 0) : 0;
@@ -75,18 +73,15 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
     }
     const safeTotal = finalTotal > 0 ? finalTotal : 0;
 
-    // ✅ [수정] 세금 계산 단순화 (화면 표시용)
     let currentTax = 0;
     if (!noTax && safeTotal > 0) {
           if (data.type && data.type.includes('four')) {
-              // 4대보험
               const p = Math.floor(safeTotal * 0.045 / 10) * 10;
               const h = Math.floor(safeTotal * 0.03545 / 10) * 10;
               const c = Math.floor(h * 0.1295 / 10) * 10;
               const e = Math.floor(safeTotal * 0.009 / 10) * 10;
               currentTax = p + h + c + e;
           } else {
-              // 3.3%
               const i = Math.floor(safeTotal * 0.03 / 10) * 10;
               const l = Math.floor(i * 0.1 / 10) * 10;
               currentTax = i + l;
@@ -95,7 +90,8 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
     const currentFinalPay = safeTotal - currentTax;
 
     return (
-        <div style={{ padding: 40, backgroundColor: '#fff', color: '#000', minHeight: 500, width: '800px', margin: '0 auto', boxSizing: 'border-box' }}>
+        // ✅ [수정] minHeight 제거하여 불필요한 하단 여백 축소
+        <div style={{ padding: 40, backgroundColor: '#fff', color: '#000', minHeight: 'auto', width: '800px', margin: '0 auto', boxSizing: 'border-box' }}>
             <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24, margin: '0 0 25px 0' }}>
                 {year}년 {month}월 급여 명세서
             </h2>
@@ -218,7 +214,6 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
   onSave?: (settings: any) => void;
-  // ✅ [신규] 초기화 함수 prop 추가
   onReset?: (employeeId: number) => void;
   year: number;
   month: number;
@@ -247,7 +242,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
       setUseHolidayWork(s.pay_holiday ?? false);
       setUseBreakDeduct(s.auto_deduct_break !== false);
       
-      // 사용자 설정이 없으면 매장 설정(s)을 사용
       if (data.userSettings) {
           setNoTax(data.userSettings.no_tax_deduction || false);
       } else {
@@ -294,7 +288,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
     }
   };
 
-  // ✅ [신규] 초기화 버튼 클릭 핸들러
   const handleResetClick = async () => {
     if (onReset && data.empId) {
         await onReset(data.empId);
@@ -302,7 +295,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
     }
   };
 
-  // 1. 단순 이미지 저장 (PC/모바일 공용)
   const handleSaveImage = async (autoClose = false) => {
     setShowMobileChoice(false);
     if (captureRef.current) {
@@ -328,7 +320,6 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
     }
   };
 
-  // 2. 카카오톡/공유하기 (모바일 전용)
   const handleShareImage = async () => {
     setShowMobileChoice(false); 
 
@@ -432,7 +423,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
                             <span>세금 공제 안 함 <span style={{fontSize:11}}>(100%)</span></span>
                         </label>
                         
-                        {/* ✅ [신규] 모바일용 초기화 버튼 (개별 설정이 있는 경우에만 표시) */}
+                        {/* 모바일용 초기화 버튼 */}
                         {data.isOverrideApplied && onReset && (
                             <button onClick={handleResetClick} style={btnResetMobile}>🔄 매장 공통 설정 적용</button>
                         )}
@@ -452,7 +443,7 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
              </div>
         )}
 
-        {/* 3. 풀 모드 */}
+        {/* 3. 풀 모드 (PC) */}
         {mode === 'full' && (
             <div style={overlayStyle} onClick={onClose}>
                 <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
@@ -470,11 +461,11 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
                                     <label style={{display:'flex',gap:6,cursor:'pointer'}}><input type="checkbox" checked={useBreakDeduct} onChange={e => setUseBreakDeduct(e.target.checked)} /> 휴게차감</label>
                                 </>
                             )}
-                            {/* 우측 정렬된 그룹 */}
-                            <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
+                            {/* ✅ [수정] 우측 그룹: gap을 넓혀서 '공제 안 함'을 왼쪽으로 밀기 */}
+                            <div style={{ marginLeft: 'auto', display: 'flex', gap: 24, alignItems: 'center' }}>
                                 <label style={{display:'flex',gap:6,cursor:'pointer', color:'#ff6b6b'}}><input type="checkbox" checked={noTax} onChange={e => setNoTax(e.target.checked)} /> 공제 안 함</label>
                                 
-                                {/* ✅ [신규] PC용 초기화 버튼 (개별 설정이 있는 경우에만 표시) */}
+                                {/* PC용 초기화 버튼 */}
                                 {data.isOverrideApplied && onReset && (
                                     <button onClick={handleResetClick} style={btnResetPC}>🔄 매장 공통 설정 적용</button>
                                 )}
@@ -482,7 +473,8 @@ export default function PayStubModal({ data, isOpen, onClose, onSave, onReset, y
                         </div>
                     </div>
 
-                    <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff', paddingBottom: '20px' }}>
+                    {/* ✅ [수정] paddingBottom 제거하여 하단 여백 축소 */}
+                    <div style={{ overflowY: 'auto', flex: 1, backgroundColor: '#fff', paddingBottom: 0 }}>
                         <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                             <div style={{ transform: 'scale(0.9)', transformOrigin: 'top center' }}>
                                 <PayStubPaper data={data} year={year} month={month} settingsOverride={currentSettings} />
@@ -555,6 +547,6 @@ const checkboxLabelMobile = { display: 'flex', alignItems: 'center', gap: '10px'
 const btnCancelSmall = { padding: '10px 20px', background: '#f5f5f5', border: '1px solid #ddd', color: '#666', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
 const btnSaveSmall = { padding: '10px 20px', background: 'dodgerblue', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', minWidth: '80px' };
 
-// ✅ [신규] 초기화 버튼 스타일 추가
-const btnResetPC = { padding: '6px 12px', fontSize: '12px', background: '#444', color: '#ccc', border: '1px solid #666', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' };
+// ✅ [수정] 글씨 크기 12px -> 13px로 변경
+const btnResetPC = { padding: '6px 12px', fontSize: '13px', background: '#444', color: '#ccc', border: '1px solid #666', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' };
 const btnResetMobile = { width: '100%', padding: '12px', margin: '10px 0 0 0', background: '#f0f0f0', color: '#555', border: '1px solid #ddd', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' };
