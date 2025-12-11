@@ -277,7 +277,6 @@ const renderTabContent = () => {
     if (!currentStoreId) return <div style={{textAlign:'center', marginTop: 40, color: '#fff'}}>관리할 매장을 선택해주세요.</div>;
 
     if (currentTab === 'home') {
-      // ✅ 팁 데이터 (화면을 채울 콘텐츠들)
       const tips = [
         { 
           id: 1,
@@ -312,12 +311,15 @@ const renderTabContent = () => {
       ];
 
       return (
-        <div style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+        // ✅ [수정 핵심] 전체 너비를 1000px -> 760px로 줄였습니다.
+        // 이러면 공간이 좁아져서 카드가 작더라도 한 줄에 3개가 못 들어가고 2개만 들어갑니다.
+        <div style={{ maxWidth: 760, margin: '0 auto', width: '100%' }}>
           <div style={{ 
             display: 'grid', 
-            // ✅ 카드가 화면 크기에 맞춰서 빈 공간을 자동으로 채웁니다.
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-            gap: 24, 
+            // ✅ 다시 300px(작은 크기)로 되돌렸습니다. 
+            // 하지만 위에서 폭을 760px로 제한했기 때문에 2줄로 나옵니다.
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+            gap: 20, 
             alignItems: 'start'
           }}>
             
@@ -351,15 +353,14 @@ const renderTabContent = () => {
               <div style={{ fontSize: 32, fontWeight: 'bold', color: '#000' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
             </div>
 
-            {/* 3. [상식] 팁 카드들을 개별 박스로 뿌려주기 */}
-            {/* tips 배열을 돌면서 각각 별도의 카드(div)를 만듭니다 */}
+            {/* 3. [상식] 팁 카드들 */}
             {tips.map((tip) => (
               <div key={tip.id} style={cardStyle}>
                 <h3 style={{ 
                   marginTop: 0, 
                   marginBottom: 12, 
                   fontSize: 14, 
-                  color: '#e67e22', // 오렌지색
+                  color: '#e67e22', 
                   fontWeight: 'bold',
                   display: 'flex',
                   alignItems: 'center',
@@ -369,10 +370,10 @@ const renderTabContent = () => {
                 </h3>
                 
                 <div>
-                  <strong style={{ display:'block', fontSize: '16px', color: '#222', marginBottom:'8px' }}>
+                  <strong style={{ display:'block', fontSize: '15px', color: '#222', marginBottom:'8px' }}>
                     {tip.icon} {tip.title}
                   </strong>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.6', wordBreak: 'keep-all' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.5', wordBreak: 'keep-all' }}>
                     {tip.desc}
                   </p>
                 </div>
@@ -383,7 +384,7 @@ const renderTabContent = () => {
         </div>
       );
     }
-    
+
     // ... (나머지 탭 코드는 그대로 유지)
     if (currentTab === 'employees') {
         return (
