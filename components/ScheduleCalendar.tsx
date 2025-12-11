@@ -107,6 +107,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     }
   }, [editEmpId, employees, isNew]); 
 
+  // 메인 버튼 동작 (PC vs 모바일 분기)
   const handleMainDownloadClick = () => {
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
     if (isMobile) {
@@ -116,6 +117,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     }
   };
 
+  // 이미지 생성 및 다운로드 (공용)
   const handleDownloadImage = async (autoClose = false) => {
     setShowMobileChoice(false); 
     if (!calendarRef.current) return;
@@ -152,6 +154,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
     }
   };
 
+  // 카카오톡/공유하기 (모바일 전용)
   const handleShareImage = async () => {
     setShowMobileChoice(false);
     if (!calendarRef.current) return;
@@ -322,7 +325,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
 
   return (
     <div style={{ backgroundColor: '#ffffff', padding: 24, borderRadius: 12, border: '1px solid #ddd', position: 'relative', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-      {/* 반응형 스타일 */}
+      {/* ✅ [스타일] 반응형 CSS */}
       <style jsx>{`
         .calendar-header-mobile {
           flex-direction: row;
@@ -348,7 +351,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         }
       `}</style>
 
-      {/* 상단 컨트롤 */}
+      {/* 상단 컨트롤 영역 */}
       <div className="calendar-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} style={btnStyle}>&lt;</button>
@@ -375,7 +378,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
         </div>
       </div>
 
-      {/* 캘린더 */}
+      {/* 캘린더 영역 */}
       <div ref={calendarRef} style={{ backgroundColor: '#fff', paddingBottom: 10 }}>
         <div style={{ minWidth: '100%', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 10, textAlign: 'center' }}>
           {weeks.map((day, idx) => (
@@ -383,6 +386,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
           ))}
         </div>
         
+        {/* ✅ [수정] 스크롤바 제거 (overflowX 제거 및 width 100%) */}
         <div className="table-wrapper" style={{ backgroundColor: '#fff', width: '100%' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderTop: '1px solid #ddd', borderLeft: '1px solid #ddd' }}>
             {calendarDays.map((day, idx) => {
@@ -396,6 +400,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
               return (
                 <div key={day.toString()} onClick={() => handleDateClick(day)} 
                      style={{ 
+                         // ✅ [수정] minHeight 제거 -> 내용만큼 늘어남
                          minHeight: 80, 
                          padding: '4px 2px 10px 2px', 
                          borderRight: '1px solid #ddd', 
@@ -403,7 +408,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                          backgroundColor: isCurrentMonth ? (isTodayDate ? '#f0f9ff' : 'transparent') : '#f9f9f9', 
                          cursor: isDeleteMode ? 'default' : 'pointer', 
                          display: 'flex', flexDirection: 'column',
-                         overflow: 'hidden'
+                         overflow: 'hidden' // 내용 넘침 숨김
                      }}>
                   <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14, color: isTodayDate ? 'dodgerblue' : dayColor, fontWeight: isTodayDate ? 'bold' : 'normal', paddingTop: 4 }}>{format(day, 'd')}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
@@ -461,32 +466,33 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                 {/* 2. 시작/종료 시간 선택 (중앙 정렬) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap: 12}}>
-                        <span style={{fontSize:13, color:'#555', fontWeight:'bold'}}>시작</span>
+                        <span style={{fontSize:13, color:'#555', fontWeight:'bold', minWidth: 30}}>시작</span>
                         <TimeSelector value={editStartTime} onChange={setEditStartTime} interval={minuteInterval} />
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap: 12}}>
-                        <span style={{fontSize:13, color:'#555', fontWeight:'bold'}}>종료</span>
+                        <span style={{fontSize:13, color:'#555', fontWeight:'bold', minWidth: 30}}>종료</span>
                         <TimeSelector value={editEndTime} onChange={setEditEndTime} interval={minuteInterval} isLast={true} />
                     </div>
                 </div>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight:'bold' }}>근무자 (대타)</label>
+            <div style={{ marginBottom: 20, textAlign: 'center' }}>
+              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight:'bold', textAlign: 'left' }}>근무자 (대타)</label>
               
+              {/* ✅ [수정] 근무자 선택 드롭다운 너비를 줄이고 가운데 정렬 */}
               <div 
                 onClick={() => setIsEmpListOpen(!isEmpListOpen)}
-                style={{ width: '100%', padding: 12, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', borderRadius: 6, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                style={{ width: '80%', margin: '0 auto', padding: 12, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', borderRadius: 6, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
                 <span>{selectedEmpName}</span>
                 <span style={{ fontSize: 12, color: '#999' }}>{isEmpListOpen ? '▲' : '▼'}</span>
               </div>
 
               {isEmpListOpen && (
-                <div style={{ border: '1px solid #ddd', borderRadius: 6, marginTop: 4, maxHeight: 150, overflowY: 'auto', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '80%', margin: '4px auto 0', border: '1px solid #ddd', borderRadius: 6, maxHeight: 150, overflowY: 'auto', backgroundColor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                     <div 
                         onClick={() => handleSelectEmployee(null)}
-                        style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', color: '#999' }}
+                        style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer', color: '#999', textAlign: 'left' }}
                     >
                         (미배정)
                     </div>
@@ -500,7 +506,8 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
                                 cursor: 'pointer', 
                                 backgroundColor: editEmpId === emp.id ? '#e6f7ff' : '#fff',
                                 color: editEmpId === emp.id ? 'dodgerblue' : '#333',
-                                fontWeight: editEmpId === emp.id ? 'bold' : 'normal'
+                                fontWeight: editEmpId === emp.id ? 'bold' : 'normal',
+                                textAlign: 'left'
                             }}
                         >
                             {emp.name}
@@ -536,6 +543,7 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
               </label>
             </div>
 
+            {/* ✅ [수정] 하단 버튼 그룹: 취소/저장 가운데 정렬 + 삭제 버튼 좌측 배치 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
                <div>
                   {!isNew && <button onClick={handleDelete} style={{ width: '100%', padding: '12px', background: '#ffebeb', color: 'red', border: '1px solid #ffcccc', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', fontSize: 13 }}>삭제</button>}
