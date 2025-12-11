@@ -30,11 +30,27 @@ export function calculateMonthlyPayroll(
     const isEmpDaily = emp.pay_type === 'day' || emp.pay_type === '일당';
     const isEmpMonthly = emp.pay_type === 'month' || (emp.monthly_wage && emp.monthly_wage > 0);
 
+    // ✅ [수정] 설정 우선순위 로직 명확화
+    // 1순위: override (개별 설정)이 있으면 무조건 따름 (true든 false든)
+    // 2순위: override가 없으면(null/undefined), 매장 기본 설정 + 5인 이상 여부 확인
+    const getSettingValue = (key: string, requireFivePlus: boolean) => {
+        // 개별 설정값이 명확히(true/false) 존재하면 그 값을 반환
+        if (override && override[key] !== undefined && override[key] !== null) {
+            return override[key];
+        }
+        // 개별 설정 없으면 매장 설정 따름 (5인 이상 조건이 필요하면 체크)
+        const storeValue = storeSettings[key] || false;
+        if (requireFivePlus) {
+            return storeSettings.is_five_plus && storeValue;
+        }
+        return storeValue;
+    };
+
     const cfg = {
-        pay_weekly: override?.pay_weekly ?? ((isEmpDaily || isEmpMonthly) ? false : storeSettings.pay_weekly),
-        pay_night: override?.pay_night ?? (storeSettings.is_five_plus && storeSettings.pay_night),
-        pay_overtime: override?.pay_overtime ?? (storeSettings.is_five_plus && storeSettings.pay_overtime),
-        pay_holiday: override?.pay_holiday ?? (storeSettings.is_five_plus && storeSettings.pay_holiday),
+        pay_weekly: getSettingValue('pay_weekly', false), // 주휴는 5인 미만도 적용 가능하므로 5인체크 X (보통)
+        pay_night: getSettingValue('pay_night', true),    // 야간: 기본적으론 5인 이상만
+        pay_overtime: getSettingValue('pay_overtime', true), // 연장: 기본적으론 5인 이상만
+        pay_holiday: getSettingValue('pay_holiday', true),   // 휴일: 기본적으론 5인 이상만
         auto_deduct_break: override?.auto_deduct_break ?? ((isEmpDaily || isEmpMonthly) ? false : (storeSettings.auto_deduct_break !== false)),
         no_tax_deduction: override?.no_tax_deduction ?? (storeSettings.no_tax_deduction || false)
     };
@@ -48,7 +64,6 @@ export function calculateMonthlyPayroll(
     
     let ledger: any[] = []; 
 
-    // ✅ [수정] 월급제여도 날짜별 기록을 위해 루프를 돌림
     const monthStart = new Date(year, month - 1, 1);
     const monthEnd = new Date(year, month, 0);
     
@@ -86,32 +101,27 @@ export function calculateMonthlyPayroll(
             
             const deductedMins = rawMins - breakMins;
 
-            // 스케줄별 일당 여부 확인
             const isScheduleDaily = s.pay_type === 'day' || s.pay_type === '일당';
             const isDaily = isScheduleDaily || isEmpDaily;
 
             const hourlyWage = Number(emp.hourly_wage || 0);
             const dailyPay = Number(s.daily_pay_amount || 0) > 0 ? Number(s.daily_pay_amount) : Number(emp.daily_wage || 0);
 
-            // ✅ 금액 계산 로직 분기
             let activeBasePay = 0;
             let activeMins = 0;
 
             if (isEmpMonthly) {
-                // [월급제] 시간은 계산하되, 하루치 급여는 0원으로 처리 (나중에 통으로 더함)
                 activeBasePay = 0; 
-                activeMins = rawMins; // 휴게시간 공제 없이 순수 근무시간 기록 (보통 월급제는 이렇게 봄)
+                activeMins = rawMins; 
             } else if (isDaily) {
-                // [일당제]
                 activeBasePay = dailyPay;
                 activeMins = cfg.auto_deduct_break ? deductedMins : rawMins;
             } else {
-                // [시급제]
                 activeMins = cfg.auto_deduct_break ? deductedMins : rawMins;
                 activeBasePay = Math.floor((activeMins / 60) * hourlyWage);
             }
 
-            // 추가 수당 계산 (월급제/일당제는 보통 0원 처리, 필요시 수정 가능)
+            // 추가 수당 계산 (잠재적 금액 계산)
             const nightMins = calculateNightMinutes(s.start_time, s.end_time);
             const potentialNightPay = (isDaily || isEmpMonthly) ? 0 : Math.floor((nightMins / 60) * hourlyWage * 0.5);
 
@@ -124,6 +134,7 @@ export function calculateMonthlyPayroll(
                 potentialHolidayWorkPay = Math.floor((activeMins / 60) * hourlyWage * 0.5);
             }
 
+            // 실제 지급액 (설정에 따라 결정)
             const nightPay = cfg.pay_night ? potentialNightPay : 0;
             const overtimePay = cfg.pay_overtime ? potentialOvertimePay : 0;
             const holidayWorkPay = cfg.pay_holiday ? potentialHolidayWorkPay : 0;
@@ -139,16 +150,22 @@ export function calculateMonthlyPayroll(
                     hoursNoDeduct: (rawMins / 60).toFixed(1),
                     breakMins: breakMins,
 
-                    // 월급제면 0원 찍힘, 일당제면 일당, 시급제면 시급계산액
                     basePayDeducted: activeBasePay,
                     basePayNoDeduct: activeBasePay,
                     
                     basePay: activeBasePay,
-                    nightPay: nightPay,      
+                    
+                    // ✅ [중요] 실제 지급액
+                    nightPay: nightPay,       
                     overtimePay: overtimePay, 
                     holidayWorkPay: holidayWorkPay,
                     
-                    // 비고란에 표시
+                    // ✅ [핵심 수정] 설정이 꺼져있어도 계산된 '잠재적 금액'을 무조건 보냄
+                    // 그래야 팝업에서 체크박스를 켰을 때 이 금액을 보여줄 수 있음
+                    potentialNightPay: potentialNightPay,
+                    potentialOvertimePay: potentialOvertimePay,
+                    potentialHolidayWorkPay: potentialHolidayWorkPay,
+                    
                     note: [
                         s.is_holiday_work ? '특근' : '', 
                         isDaily ? '일당' : '',
@@ -156,7 +173,6 @@ export function calculateMonthlyPayroll(
                     ].filter(Boolean).join(', ')
                 });
 
-                // 월급제는 여기서 합산하지 않고(0원이니까), 나중에 통으로 더함
                 totalBasePay += activeBasePay;
                 totalNightPay += nightPay;
                 totalOvertimePay += overtimePay;
@@ -169,7 +185,7 @@ export function calculateMonthlyPayroll(
             }
         });
 
-        // 주휴수당 (시급제일 때만)
+        // 주휴수당
         if (isSameMonth(weekSunday, monthStart)) {
             let potentialWeeklyPay = 0;
             const hourlyWage = Number(emp.hourly_wage || 0);
@@ -193,21 +209,19 @@ export function calculateMonthlyPayroll(
                     nightPay: 0,
                     overtimePay: 0,
                     holidayWorkPay: 0,
-                    potentialWeeklyPay: potentialWeeklyPay,
+                    potentialWeeklyPay: potentialWeeklyPay, // 이건 기존에도 잘 되어 있었음
                     weeklyPay: weeklyPay, 
                     note: `1주 ${Math.floor(weekMinutes/60)}시간 근무`
                 });
             }
         }
         current = addDays(current, 7);
-    } // Loop End
+    } 
 
-    // ✅ [핵심 추가] 월급제인 경우, 고정 월급을 기본급에 더하고 별도 항목 추가
     if (isEmpMonthly) {
         const monthlyWage = Number(emp.monthly_wage || 0);
-        totalBasePay += monthlyWage; // 총액에 반영
+        totalBasePay += monthlyWage; 
 
-        // 명세서 맨 아래에 '기본급' 항목 추가
         ledger.push({
             type: 'MONTHLY_BASE',
             date: '',
@@ -267,6 +281,7 @@ export function calculateMonthlyPayroll(
       birthDate: emp.birth_date,
       phoneNumber: emp.phone_number,
       ledger: ledger,
+      // storeSettingsSnapshot에는 계산된 cfg 값을 병합해서 보냄 (초기 팝업 상태용)
       storeSettingsSnapshot: { ...storeSettings, ...cfg } 
     };
   });
