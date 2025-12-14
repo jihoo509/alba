@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 
-// ✅ 요청하신 대로 모든 이미지 확장자를 .png로 변경했습니다.
+// ✅ 이미지 확장자 png 유지
 const PROMO_IMAGES = [
   '1.png',
   '2.png',
@@ -71,7 +71,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
       style={{
         minHeight: '100vh',
         width: '100%',
-        // ✅ 배경 설정 (Parallax 고정)
+        // ✅ 배경 설정 (Parallax 고정, 밝은 톤 유지)
         backgroundImage: "url('/login-bg.jpg')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
@@ -82,19 +82,19 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
         position: 'relative'
       }}
     >
-      {/* ❌ 기존에 있던 어두운 오버레이(div)를 삭제하여 밝게 만들었습니다. */}
-
       {/* 콘텐츠 영역 */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
-        {/* 1. 매장 등록 카드 영역 (화면 꽉 찬 높이에서 중앙 정렬) */}
+        {/* 1. 매장 등록 카드 영역 */}
         <div style={{ 
             minHeight: '100vh', 
             width: '100%', 
             display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', // ✅ 상하 중앙 정렬 (내려가 있는 문제 해결)
-            paddingBottom: '50px'  // 하단 스크롤 유도를 위한 약간의 여백
+            justifyContent: 'center',
+            // ✅ [수정] center(중앙) 대신 flex-start(위쪽)로 변경하고 패딩으로 위치를 잡음
+            alignItems: 'flex-start', 
+            paddingTop: '140px', // 이 숫자로 높이 조절 (기존 위치 고려하여 140px 설정)
+            paddingBottom: '50px' 
         }}>
             <div style={cardStyle}>
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
