@@ -93,7 +93,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
             justifyContent: 'center',
             // ✅ [수정] center(중앙) 대신 flex-start(위쪽)로 변경하고 패딩으로 위치를 잡음
             alignItems: 'flex-start', 
-            paddingTop: '60px', // 이 숫자로 높이 조절 (기존 위치 고려하여 140px 설정)
+            paddingTop: '30px', // 이 숫자로 높이 조절 (기존 위치 고려하여 140px 설정)
             paddingBottom: '50px' 
         }}>
             <div style={cardStyle}>
