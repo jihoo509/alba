@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 
-// ✅ 홍보 이미지 리스트 (로그인 페이지와 동일)
+// ✅ 요청하신 대로 모든 이미지 확장자를 .png로 변경했습니다.
 const PROMO_IMAGES = [
   '1.png',
   '2.png',
@@ -71,33 +71,31 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
       style={{
         minHeight: '100vh',
         width: '100%',
-        // ✅ 배경 이미지 설정 (로그인 페이지와 통일)
+        // ✅ 배경 설정 (Parallax 고정)
         backgroundImage: "url('/login-bg.jpg')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed', // 배경 고정 (Parallax)
+        backgroundAttachment: 'fixed', 
         fontFamily: 'sans-serif',
         overflowY: 'auto',
         position: 'relative'
       }}
     >
-      {/* 배경 어둡게 까는 오버레이 */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 0 }}></div>
+      {/* ❌ 기존에 있던 어두운 오버레이(div)를 삭제하여 밝게 만들었습니다. */}
 
-      {/* 실제 콘텐츠 영역 */}
+      {/* 콘텐츠 영역 */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
-        {/* 1. 매장 등록 카드 영역 (화면 중앙 정렬 100vh) */}
+        {/* 1. 매장 등록 카드 영역 (화면 꽉 찬 높이에서 중앙 정렬) */}
         <div style={{ 
             minHeight: '100vh', 
             width: '100%', 
             display: 'flex', 
             justifyContent: 'center', 
-            alignItems: 'center',
-            paddingBottom: '50px'
+            alignItems: 'center', // ✅ 상하 중앙 정렬 (내려가 있는 문제 해결)
+            paddingBottom: '50px'  // 하단 스크롤 유도를 위한 약간의 여백
         }}>
-            {/* 기존 카드 디자인 유지 */}
             <div style={cardStyle}>
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <div style={{ fontSize: '32px', marginBottom: '4px' }}>🎉</div>
@@ -186,7 +184,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
 
         {/* 2. 홍보 이미지 리스트 (스크롤 내리면 보임) */}
         <div style={{ width: '100%', maxWidth: '800px', padding: '0 20px 100px 20px', display: 'flex', flexDirection: 'column', gap: '0' }}>
-            <div style={{ color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginBottom: '20px', fontSize: '14px', animation: 'bounce 2s infinite' }}>
+            <div style={{ color: 'rgba(255,255,255,0.9)', textAlign: 'center', marginBottom: '20px', fontSize: '14px', fontWeight: 'bold', animation: 'bounce 2s infinite' }}>
              ▼ 서비스 소개 자세히 보기
             </div>
 
@@ -205,12 +203,11 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
             ))}
         </div>
 
-        {/* 하단 카피라이트 */}
         <div 
             style={{ 
             width: '100%', 
             textAlign: 'center',
-            color: 'rgba(255,255,255,0.5)', 
+            color: 'rgba(255,255,255,0.6)', 
             fontSize: '11px',
             lineHeight: '1.5',
             paddingBottom: '40px'
@@ -264,7 +261,6 @@ const cardStyle = {
   width: '90%', 
   maxWidth: '400px', 
   margin: '0 auto',
-  // 카드 내부는 흰색 배경이라 글자가 잘 보입니다.
 };
 
 const sectionStyle = { marginBottom: '16px', display: 'flex', flexDirection: 'column' as const, gap: '6px' };
