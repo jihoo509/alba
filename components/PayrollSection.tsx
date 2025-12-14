@@ -131,11 +131,9 @@ export default function PayrollSection({ currentStoreId }: Props) {
     }
   };
 
-  // ✅ [중요] 초기화 시 monthly_override(39원)를 NULL로 덮어쓰기
   const handleResetStubSettings = async (employeeId: number) => {
     if (!confirm('개별 설정을 초기화하고 매장 기본 설정을 따르시겠습니까?\n(확정 급여 및 모든 개별 설정이 초기화됩니다)')) return;
     
-    // 이 기능이 작동하려면 반드시 1단계 SQL을 먼저 실행해야 합니다.
     const { error } = await supabase.from('employee_settings').upsert({
         employee_id: employeeId,
         pay_weekly: null,
@@ -144,7 +142,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
         pay_holiday: null,
         auto_deduct_break: null,
         no_tax_deduction: null,
-        monthly_override: null, // 여기서 39원을 날려버립니다
+        monthly_override: null, 
         monthly_adjustment: 0
     }, { onConflict: 'employee_id' });
 
@@ -157,14 +155,13 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => (acc + (curr.totalPay || 0)), 0), [payrollData]);
 
-const handleDownloadExcel = () => {
+  const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
 
     const excelRows = payrollData.map(p => {
       const empInfo = employees.find(e => e.id === p.empId);
       
-      // 1. 각 공제 항목 안전하게 가져오기
       const incomeTax = p.taxDetails.incomeTax || 0;
       const localTax = p.taxDetails.localTax || 0;
       const pension = p.taxDetails.pension || 0;
@@ -172,7 +169,7 @@ const handleDownloadExcel = () => {
       const employment = p.taxDetails.employment || 0;
       const care = p.taxDetails.care || 0;
 
-      // 2. [핵심 수정] 모든 공제 항목을 다 더합니다.
+      // ✅ [확인 완료] 모든 공제 항목 합산
       const totalDeductions = incomeTax + localTax + pension + health + employment + care;
 
       return {
@@ -185,8 +182,6 @@ const handleDownloadExcel = () => {
         '총 지급 급여': fmt(p.totalPay), 
         '세후 지급 급여': fmt(p.finalPay), 
         
-        // 3. 엑셀 컬럼 순서 및 내용 변경
-        // 헷갈리는 '세금 토탈' 대신 '총 공제액(세금+보험)'으로 변경
         '총 공제액': fmt(totalDeductions), 
 
         '소득세': fmt(incomeTax), 
@@ -199,12 +194,11 @@ const handleDownloadExcel = () => {
     });
 
     const ws = XLSX.utils.json_to_sheet(excelRows);
-    // 컬럼 너비 조금 넓혀주기 (보기 좋게)
     ws['!cols'] = [
-      { wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 12 }, // 개인정보
-      { wch: 12 }, { wch: 12 }, // 지급액
-      { wch: 12 }, // 총 공제액
-      { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 } // 상세 공제
+      { wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 12 }, 
+      { wch: 12 }, { wch: 12 }, 
+      { wch: 12 }, 
+      { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 } 
     ];
 
     const wb = XLSX.utils.book_new();

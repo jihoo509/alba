@@ -5,6 +5,42 @@ export const TAX_RATES = {
 };
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+// ✅ [위치 이동] 근로소득 간이세액표 약식 계산 함수 (2025년 기준, 1인 가구)
+// calculateTaxAmounts에서 사용하기 위해 상단으로 올림
+export const calculateIncomeTax = (monthlyPay: number) => {
+  const income = monthlyPay; 
+
+  // 1. 월 급여 106만원 미만은 세금 0원 (면세점)
+  if (income < 1060000) {
+    return { incomeTax: 0, localTax: 0 };
+  }
+
+  let tax = 0;
+
+  // 2. 구간별 약식 계산
+  if (income < 1500000) {
+    tax = (income - 1060000) * 0.015; 
+  } else if (income < 2000000) {
+    tax = 6600 + (income - 1500000) * 0.03; 
+  } else if (income < 3000000) {
+    tax = 21600 + (income - 2000000) * 0.05; 
+  } else if (income < 4000000) {
+    tax = 71600 + (income - 3000000) * 0.07; 
+  } else if (income < 5000000) {
+    tax = 141600 + (income - 4000000) * 0.09; 
+  } else if (income < 7000000) {
+    tax = 231600 + (income - 5000000) * 0.12; 
+  } else {
+    tax = 471600 + (income - 7000000) * 0.15;
+  }
+
+  // 3. 10원 단위 절사
+  const incomeTax = Math.floor(tax / 10) * 10;
+  const localTax = Math.floor((incomeTax * 0.1) / 10) * 10;
+
+  return { incomeTax, localTax };
+};
+
 function calculateNightMinutes(start: string, end: string) {
   const [sH, sM] = start.split(':').map(Number);
   const [eH, eM] = end.split(':').map(Number);
@@ -23,13 +59,25 @@ export function calculateTaxAmounts(totalPay: number, isFourIns: boolean, noTax:
   if (noTax || totalPay <= 0) {
     return { pension: 0, health: 0, care: 0, employment: 0, incomeTax: 0, localTax: 0, total: 0 };
   }
+  
   if (isFourIns) {
+    // 4대보험 계산
     const pension = Math.floor(totalPay * TAX_RATES.pension / 10) * 10;
     const health = Math.floor(totalPay * TAX_RATES.health / 10) * 10;
     const care = Math.floor(health * TAX_RATES.care / 10) * 10;
     const employment = Math.floor(totalPay * TAX_RATES.employment / 10) * 10;
-    return { pension, health, care, employment, incomeTax: 0, localTax: 0, total: pension + health + care + employment };
+    
+    // ✅ [핵심 수정] 소득세/지방소득세 0원이 아니라 함수 호출해서 계산
+    const { incomeTax, localTax } = calculateIncomeTax(totalPay);
+
+    // 공제 총액 반환
+    return { 
+        pension, health, care, employment, 
+        incomeTax, localTax, 
+        total: pension + health + care + employment + incomeTax + localTax 
+    };
   } else {
+    // 3.3% 프리랜서
     const incomeTax = Math.floor(totalPay * TAX_RATES.incomeTax / 10) * 10;
     const localTax = Math.floor(incomeTax * TAX_RATES.localTax / 10) * 10;
     return { pension: 0, health: 0, care: 0, employment: 0, incomeTax, localTax, total: incomeTax + localTax };
@@ -43,7 +91,7 @@ export function calculateMonthlyPayroll(
     const empSchedules = schedules.filter(s => s.employee_id === emp.id);
     const override = overrides.find(o => o.employee_id === emp.id);
 
-    // 개별 설정 적용 여부 확인 (39원 같은 확정 급여가 있는지 체크)
+    // 개별 설정 적용 여부 확인
     const isOverrideApplied = override && (
         override.pay_weekly !== null || override.pay_night !== null || 
         override.pay_overtime !== null || override.pay_holiday !== null || 
