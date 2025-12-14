@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import StoreSettings from './StoreSettings';
 import { calculateMonthlyPayroll, calculateTaxAmounts } from '@/lib/payroll';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import PayStubModal, { PayStubPaper } from './PayStubModal';
 import PayrollEditModal from './PayrollEditModal';
 import SeveranceCalculator from './SeveranceCalculator';
@@ -194,6 +194,33 @@ export default function PayrollSection({ currentStoreId }: Props) {
     });
 
     const ws = XLSX.utils.json_to_sheet(excelRows);
+
+    // ✅ [수정 4] 엑셀 가운데 정렬 스타일 적용하기
+    // 시트의 모든 셀(A1, B1 ...)을 돌면서 스타일 객체(.s)를 넣어줍니다.
+    const range = XLSX.utils.decode_range(ws['!ref'] || "A1:A1");
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[cell_address]) continue;
+        
+        // 스타일 객체 추가 (가운데 정렬)
+        ws[cell_address].s = {
+          alignment: { horizontal: "center", vertical: "center" },
+          font: { name: "맑은 고딕" } // 폰트도 깔끔하게
+        };
+        
+        // 헤더(첫 줄)는 굵게 처리하고 배경색 넣기 (옵션)
+        if (R === 0) {
+            ws[cell_address].s = {
+                alignment: { horizontal: "center", vertical: "center" },
+                font: { name: "맑은 고딕", bold: true },
+                fill: { fgColor: { rgb: "EEEEEE" } }
+            };
+        }
+      }
+    }
+
+    // 컬럼 너비 설정 (기존 코드)
     ws['!cols'] = [
       { wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 12 }, 
       { wch: 12 }, { wch: 12 }, 

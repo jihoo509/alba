@@ -3,6 +3,25 @@
 import React, { useRef, useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 
+// ✅ [내장] 근로소득 간이세액표 약식 계산 함수 (반응형 계산을 위해 포함)
+const calculateIncomeTaxSimple = (monthlyPay: number) => {
+  const income = monthlyPay; 
+  if (income < 1060000) return { i: 0, l: 0 }; // 면세점
+
+  let tax = 0;
+  if (income < 1500000) tax = (income - 1060000) * 0.015; 
+  else if (income < 2000000) tax = 6600 + (income - 1500000) * 0.03; 
+  else if (income < 3000000) tax = 21600 + (income - 2000000) * 0.05; 
+  else if (income < 4000000) tax = 71600 + (income - 3000000) * 0.07; 
+  else if (income < 5000000) tax = 141600 + (income - 4000000) * 0.09; 
+  else if (income < 7000000) tax = 231600 + (income - 5000000) * 0.12; 
+  else tax = 471600 + (income - 7000000) * 0.15;
+
+  const i = Math.floor(tax / 10) * 10;
+  const l = Math.floor((i * 0.1) / 10) * 10;
+  return { i, l };
+};
+
 // ✅ PayStubPaper: 화면과 이미지 저장용으로 공통 사용되는 명세서 부품
 export function PayStubPaper({ data, year, month, settingsOverride = null }: { data: any, year: number, month: number, settingsOverride?: any }) {
     const s = data.storeSettingsSnapshot || {};
@@ -71,24 +90,33 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
     }
     const safeTotal = finalTotal > 0 ? finalTotal : 0;
 
-    let currentTax = 0;
+    // ✅ [수정] 세금 계산 로직 개선 (4대보험도 소득세/지방세 계산 포함)
+    let p=0, h=0, c=0, e=0, i=0, l=0;
+
     if (!noTax && safeTotal > 0) {
-          if (data.type && data.type.includes('four')) {
-              const p = Math.floor(safeTotal * 0.045 / 10) * 10;
-              const h = Math.floor(safeTotal * 0.03545 / 10) * 10;
-              const c = Math.floor(h * 0.1295 / 10) * 10;
-              const e = Math.floor(safeTotal * 0.009 / 10) * 10;
-              currentTax = p + h + c + e;
-          } else {
-              const i = Math.floor(safeTotal * 0.03 / 10) * 10;
-              const l = Math.floor(i * 0.1 / 10) * 10;
-              currentTax = i + l;
-          }
+        if (data.type && data.type.includes('four')) {
+             // 4대보험
+             p = Math.floor(safeTotal * 0.045 / 10) * 10;
+             h = Math.floor(safeTotal * 0.03545 / 10) * 10;
+             c = Math.floor(h * 0.1295 / 10) * 10;
+             e = Math.floor(safeTotal * 0.009 / 10) * 10;
+             
+             // 4대보험 근로자도 소득세 계산 (간이세액표)
+             const taxes = calculateIncomeTaxSimple(safeTotal);
+             i = taxes.i;
+             l = taxes.l;
+        } else {
+             // 3.3% 프리랜서
+             i = Math.floor(safeTotal * 0.03 / 10) * 10;
+             l = Math.floor(i * 0.1 / 10) * 10;
+        }
     }
+    const currentTax = p + h + c + e + i + l;
     const currentFinalPay = safeTotal - currentTax;
 
     return (
-        <div style={{ padding: 40, backgroundColor: '#fff', color: '#000', minHeight: 'auto', width: '800px', margin: '0 auto', boxSizing: 'border-box' }}>
+        // ✅ [수정] 패딩 축소 (40 -> 30px 20px)로 쓸데없는 여백 제거
+        <div style={{ padding: '30px 20px', backgroundColor: '#fff', color: '#000', minHeight: 'auto', width: '800px', margin: '0 auto', boxSizing: 'border-box' }}>
             <h2 style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 15, marginBottom: 25, fontSize: 24, margin: '0 0 25px 0' }}>
                 {year}년 {month}월 급여 명세서
             </h2>
@@ -116,7 +144,8 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
                                 <tr key={idx} style={{ backgroundColor: '#fff8c4', borderBottom: '1px solid #ddd' }}>
                                     <td colSpan={3} style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold', color: '#d68910' }}>⭐ {row.dayLabel} ({row.note})</td>
                                     <td style={tdStyle}>-</td>
-                                    <td colSpan={3} style={{ ...tdStyle, textAlign: 'right', fontWeight: 'bold', color: '#d68910' }}>{(row.displayWeekly || 0).toLocaleString()}</td>
+                                    {/* ✅ [수정] 가운데 정렬 */}
+                                    <td colSpan={3} style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold', color: '#d68910' }}>{(row.displayWeekly || 0).toLocaleString()}</td>
                                 </tr>
                             );
                         }
@@ -125,10 +154,11 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
                                 <td style={tdStyle}>{row.date ? row.date.slice(5) : ''} ({row.dayLabel})</td>
                                 <td style={tdStyle}>{row.timeRange}</td>
                                 <td style={tdStyle}>{row.displayHours}</td>
-                                <td style={{ ...tdStyle, textAlign: 'right' }}>{(row.displayBase || 0).toLocaleString()}</td>
-                                <td style={{ ...tdStyle, textAlign: 'right', color: row.displayNight > 0 ? 'red' : '#eee' }}>{(row.displayNight || 0).toLocaleString()}</td>
-                                <td style={{ ...tdStyle, textAlign: 'right', color: row.displayOvertime > 0 ? 'blue' : '#eee' }}>{(row.displayOvertime || 0).toLocaleString()}</td>
-                                <td style={{ ...tdStyle, textAlign: 'right', color: row.displayHoliday > 0 ? 'red' : '#eee' }}>{(row.displayHoliday || 0).toLocaleString()}</td>
+                                {/* ✅ [수정] 금액 부분 가운데 정렬 (textAlign: 'center') */}
+                                <td style={{ ...tdStyle, textAlign: 'center' }}>{(row.displayBase || 0).toLocaleString()}</td>
+                                <td style={{ ...tdStyle, textAlign: 'center', color: row.displayNight > 0 ? 'red' : '#eee' }}>{(row.displayNight || 0).toLocaleString()}</td>
+                                <td style={{ ...tdStyle, textAlign: 'center', color: row.displayOvertime > 0 ? 'blue' : '#eee' }}>{(row.displayOvertime || 0).toLocaleString()}</td>
+                                <td style={{ ...tdStyle, textAlign: 'center', color: row.displayHoliday > 0 ? 'red' : '#eee' }}>{(row.displayHoliday || 0).toLocaleString()}</td>
                             </tr>
                         );
                     })}
@@ -169,6 +199,7 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
                         </div>
                         <div style={{...rowStyle, color: 'red'}}>
                             <span>- 공제 ({noTax ? '미적용' : '세금 등'})</span>
+                            {/* 총 공제액 (4대보험 + 소득세 합산) */}
                             <span>{currentTax.toLocaleString()}원</span>
                         </div>
                     </div>
@@ -188,15 +219,18 @@ export function PayStubPaper({ data, year, month, settingsOverride = null }: { d
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 20px', fontSize: 14, color: '#000' }}>
                     {data.type && data.type.includes('four') ? (
                         <>
-                        <div style={{display:'flex', justifyContent:'space-between'}}><span>국민연금</span> <span>{(Math.floor(safeTotal * 0.045 / 10) * 10).toLocaleString()}원</span></div>
-                        <div style={{display:'flex', justifyContent:'space-between'}}><span>건강보험</span> <span>{(Math.floor(safeTotal * 0.03545 / 10) * 10).toLocaleString()}원</span></div>
-                        <div style={{display:'flex', justifyContent:'space-between'}}><span>장기요양</span> <span>{(Math.floor((safeTotal * 0.03545) * 0.1295 / 10) * 10).toLocaleString()}원</span></div>
-                        <div style={{display:'flex', justifyContent:'space-between'}}><span>고용보험</span> <span>{(Math.floor(safeTotal * 0.009 / 10) * 10).toLocaleString()}원</span></div>
+                        {/* ✅ [수정] 4대보험 가입자도 소득세/지방소득세 표시 */}
+                        <div style={{display:'flex', justifyContent:'space-between'}}><span>국민연금</span> <span>{p.toLocaleString()}원</span></div>
+                        <div style={{display:'flex', justifyContent:'space-between'}}><span>건강보험</span> <span>{h.toLocaleString()}원</span></div>
+                        <div style={{display:'flex', justifyContent:'space-between'}}><span>장기요양</span> <span>{c.toLocaleString()}원</span></div>
+                        <div style={{display:'flex', justifyContent:'space-between'}}><span>고용보험</span> <span>{e.toLocaleString()}원</span></div>
+                        <div style={{display:'flex', justifyContent:'space-between'}}><span>소득세</span> <span>{i.toLocaleString()}원</span></div>
+                        <div style={{display:'flex', justifyContent:'space-between'}}><span>지방소득세</span> <span>{l.toLocaleString()}원</span></div>
                         </>
                     ) : (
                         <>
-                        <div style={{display:'flex', justifyContent:'space-between'}}><span>소득세(3%)</span> <span>{(Math.floor(safeTotal * 0.03 / 10) * 10).toLocaleString()}원</span></div>
-                        <div style={{display:'flex', justifyContent:'space-between'}}><span>지방세(0.3%)</span> <span>{(Math.floor(safeTotal * 0.003 / 10) * 10).toLocaleString()}원</span></div>
+                        <div style={{display:'flex', justifyContent:'space-between'}}><span>소득세(3%)</span> <span>{i.toLocaleString()}원</span></div>
+                        <div style={{display:'flex', justifyContent:'space-between'}}><span>지방세(0.3%)</span> <span>{l.toLocaleString()}원</span></div>
                         </>
                     )}
                     </div>
