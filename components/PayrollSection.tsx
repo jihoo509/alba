@@ -164,7 +164,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
       const empInfo = employees.find(e => e.id === p.empId);
       const totalTax = (p.taxDetails.incomeTax || 0) + (p.taxDetails.localTax || 0);
       return {
-        '이름': p.name, '전화번호': empInfo?.phone_number || '-', '은행': empInfo?.bank_name || '-', '계좌번호': empInfo?.account_number || '-', '생년월일': empInfo?.resident_number || '-',
+        '이름': p.name, '전화번호': empInfo?.phone_number || '-', '은행': empInfo?.bank_name || '-', '계좌번호': empInfo?.account_number || '-', '생년월일': empInfo?.birth_date || '-',
         '총 지급 급여': fmt(p.totalPay), '세후 지급 급여': fmt(p.finalPay), '소득세': fmt(p.taxDetails.incomeTax), '지방소득세': fmt(p.taxDetails.localTax), '세금 토탈': fmt(totalTax),
         '국민연금': fmt(p.taxDetails.pension), '건강보험': fmt(p.taxDetails.health), '고용보험': fmt(p.taxDetails.employment), '장기요양보험': fmt(p.taxDetails.care),
       };
