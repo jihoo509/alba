@@ -7,6 +7,17 @@ import SignupModal from '@/components/SignupModal';
 
 type OAuthProvider = 'google' | 'kakao';
 
+// ✅ 홍보 이미지 파일명 배열 (public 폴더에 이 이름대로 파일이 있어야 합니다)
+// 보내주신 파일명: 1.jpg, 2.png, 3.jpg, 4.jpg, 5.jpg, 6.png (확장자 주의!)
+const PROMO_IMAGES = [
+  '1.png',
+  '2.png',
+  '3.png',
+  '4.png',
+  '5.png',
+  '6.png'
+];
+
 export default function AuthPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
@@ -19,17 +30,7 @@ export default function AuthPage() {
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   const [rememberId, setRememberId] = useState(false);
 
-  // ✅ [확인 필요] public 폴더에 있는 이미지 파일명과 정확히 일치해야 합니다! (대소문자 구분)
-  // 예: 파일명이 Image.JPG라면 아래에도 '/Image.JPG'로 써야 합니다.
-  const introImages = [
-    '/1.jpg',
-    '/2.png',
-    '/3.jpg',
-    '/4.jpg',
-    '/5.jpg',
-    '/6.png'
-  ];
-
+  // 초기 로딩 시 자동 로그인 로직
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('logout') === 'true') {
@@ -74,6 +75,7 @@ export default function AuthPage() {
       });
 
       if (error) {
+        console.log('로그인 에러:', error.message);
         switch (error.message) {
           case 'Invalid login credentials':
             setMsg('아이디(이메일) 또는 비밀번호가 일치하지 않습니다.');
@@ -103,7 +105,11 @@ export default function AuthPage() {
       const { data, error } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPw,
-        options: { data: { phone: signupPhone } }
+        options: {
+            data: {
+                phone: signupPhone,
+            }
+        }
       });
 
       if (error) throw error;
@@ -126,7 +132,9 @@ export default function AuthPage() {
       setMsg(null);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: provider as any,
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
       if (error) throw error;
     } catch (e: any) {
@@ -135,149 +143,204 @@ export default function AuthPage() {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100%', minHeight: '100vh' }}>
-      
-      {/* ✅ [수정] 배경화면 고정 (Fixed) */}
-      <div 
-        style={{ 
-          position: 'fixed', 
-          top: 0, 
-          left: 0, 
-          width: '100%', 
-          height: '100%', 
-          zIndex: -1, // 맨 뒤로
-          backgroundImage: "url('/login-bg.jpg')", // 배경 이미지 확인 필요
-          backgroundSize: 'cover', 
-          backgroundPosition: 'center', 
-          backgroundRepeat: 'no-repeat'
-        }} 
-      >
-        {/* 배경 어둡게 (Overlay) */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }}></div>
-      </div>
+    <div
+      style={{
+        minHeight: '100vh',
+        width: '100%',
+        // ✅ 배경 이미지 고정 (Parallax 효과 핵심)
+        backgroundImage: "url('/login-bg.jpg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed', // 스크롤 내려도 배경은 고정됨
+        fontFamily: 'sans-serif',
+        overflowY: 'auto', // 세로 스크롤 허용
+        position: 'relative'
+      }}
+    >
+      {/* 배경 어둡게 까는 오버레이 (fixed로 고정하여 스크롤 내려도 계속 어둡게 유지) */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 0 }}></div>
 
-      {/* ✅ [수정] 스크롤되는 콘텐츠 영역 */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
+      {/* 실제 콘텐츠 영역 (로그인창 + 이미지들) */}
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
-        {/* 1. 로그인 폼 섹션 (화면 전체 높이 100vh 사용) */}
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-          
-          {/* 로그인 박스 */}
-          <div
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              padding: '32px 28px',
-              borderRadius: '16px',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
-              width: '100%',
-              maxWidth: '380px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '14px',
-              marginBottom: '60px' // 하단 화살표 공간 확보
-            }}
-          >
-            <div style={{ textAlign: 'center', marginBottom: 4 }}>
-              <h3 style={{ margin: 0, color: '#666', fontSize: '13px', fontWeight: 'normal' }}>직원 관리가 쉬워진다</h3>
-              <h1 style={{ margin: '2px 0 0 0', color: '#0052cc', fontSize: '28px', fontWeight: '800', letterSpacing: '-1px' }}>
-                Easy Alba
-              </h1>
-            </div>
+        {/* 1. 로그인 박스 영역 (첫 화면에 꽉 차게 보이도록 minHeight 100vh 설정) */}
+        <div style={{ 
+            minHeight: '100vh', 
+            width: '100%', 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            paddingBottom: '50px' // 하단 화살표나 여백을 위한 공간
+        }}>
+            <div
+                style={{
+                position: 'relative',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                padding: '32px 28px',
+                borderRadius: '16px',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+                width: '90%',
+                maxWidth: '360px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+                }}
+            >
+                <div style={{ textAlign: 'center', marginBottom: '4px' }}>
+                <h3 style={{ margin: 0, color: '#666', fontSize: '13px', fontWeight: 'normal' }}>직원 관리가 쉬워진다</h3>
+                <h1 style={{ margin: '2px 0 0 0', color: '#0052cc', fontSize: '28px', fontWeight: '800', letterSpacing: '-1px' }}>
+                    Easy Alba
+                </h1>
+                </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <input type="email" placeholder="이메일" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
-              <input type="password" placeholder="비밀번호" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} style={inputStyle} />
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <input type="checkbox" id="rememberId" checked={rememberId} onChange={(e) => setRememberId(e.target.checked)} style={{ cursor: 'pointer' }} />
-              <label htmlFor="rememberId" style={{ fontSize: '13px', color: '#555', cursor: 'pointer' }}>아이디 기억하기</label>
-            </div>
-
-            {msg && <div style={{ color: 'salmon', fontSize: '12px', textAlign: 'center' }}>{msg}</div>}
-
-            <button onClick={handleLogin} disabled={loading} style={loginBtnStyle}>
-              {loading ? '처리 중...' : '로그인'}
-            </button>
-
-            <div style={{ textAlign: 'center', fontSize: '12px', color: '#666' }}>
-              아직 계정이 없으신가요?
-              <span onClick={() => { setIsSignupOpen(true); setMsg(null); }} style={{ color: '#0052cc', fontWeight: 'bold', cursor: 'pointer', marginLeft: '6px', textDecoration: 'underline' }}>회원가입하기</span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', margin: '10px 0' }}>
-              <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
-              <span style={{ padding: '0 10px', color: '#999', fontSize: '11px' }}>간편 로그인</span>
-              <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button onClick={() => handleOAuthLogin('google')} style={{ ...socialBtnStyle, background: '#fff', border: '1px solid #ddd', color: '#333' }}>
-                <span style={{ marginRight: '8px', fontWeight: 'bold', color: '#ea4335' }}>G</span> Google 계정으로 계속
-              </button>
-              <button onClick={() => handleOAuthLogin('kakao')} style={{ ...socialBtnStyle, background: '#FEE500', color: '#3c1e1e' }}>
-                <span style={{ marginRight: '8px', fontWeight: 'bold', color: '#3c1e1e' }}>K</span> Kakao 계정으로 계속
-              </button>
-            </div>
-          </div>
-
-          {/* 스크롤 유도 화살표 */}
-          <div 
-             onClick={() => window.scrollTo({top: window.innerHeight, behavior: 'smooth'})}
-             style={{ position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)', color: '#fff', fontSize: '30px', animation: 'bounce 2s infinite', cursor:'pointer', opacity: 0.8 }}
-          >
-             ⌄
-          </div>
-        </div>
-
-        {/* 2. 서비스 소개 이미지 (흰색 배경) */}
-        <div style={{ backgroundColor: '#fff', width: '100%', paddingBottom: '0' }}>
-           <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-             {introImages.map((src, idx) => (
-                // ✅ [수정] 이미지 사이 틈 제거 (display: block)
-                <img 
-                    key={idx} 
-                    src={src} 
-                    alt={`서비스 소개 ${idx + 1}`} 
-                    style={{ width: '100%', height: 'auto', display: 'block' }} 
-                    // 이미지가 깨질 경우를 대비한 대체 텍스트 표시
-                    onError={(e) => { e.currentTarget.style.display='none'; console.log('이미지 로드 실패:', src); }}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <input
+                    type="email"
+                    placeholder="이메일"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={inputStyle}
                 />
-             ))}
-           </div>
+                <input
+                    type="password"
+                    placeholder="비밀번호"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                    style={inputStyle}
+                />
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input 
+                    type="checkbox" 
+                    id="rememberId" 
+                    checked={rememberId} 
+                    onChange={(e) => setRememberId(e.target.checked)}
+                    style={{ cursor: 'pointer' }} 
+                />
+                <label htmlFor="rememberId" style={{ fontSize: '13px', color: '#555', cursor: 'pointer' }}>아이디 기억하기</label>
+                </div>
+
+                {msg && <div style={{ color: 'salmon', fontSize: '12px', textAlign: 'center' }}>{msg}</div>}
+
+                <button
+                    onClick={handleLogin}
+                    disabled={loading}
+                    style={{
+                        padding: '12px',
+                        backgroundColor: '#0052cc', 
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '15px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        marginTop: '4px',
+                        transition: 'background-color 0.2s',
+                    }}
+                >
+                {loading ? '처리 중...' : '로그인'}
+                </button>
+
+                <div style={{ textAlign: 'center', fontSize: '12px', color: '#666' }}>
+                아직 계정이 없으신가요?
+                <span 
+                    onClick={() => { setIsSignupOpen(true); setMsg(null); }}
+                    style={{ color: '#0052cc', fontWeight: 'bold', cursor: 'pointer', marginLeft: '6px', textDecoration: 'underline' }}
+                >
+                    회원가입하기
+                </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', margin: '10px 0' }}>
+                <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
+                <span style={{ padding: '0 10px', color: '#999', fontSize: '11px' }}>간편 로그인</span>
+                <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button onClick={() => handleOAuthLogin('google')} style={{ ...socialBtnStyle, background: '#c0c0c0ff', border: '1px solid #ddd', color: '#333' }}>
+                    <span style={{ marginRight: '8px', fontWeight: 'bold', color: '#ea4335' }}>G</span> Google 계정으로 계속
+                </button>
+                <button onClick={() => handleOAuthLogin('kakao')} style={{ ...socialBtnStyle, background: '#FEE500', color: '#333' }}>
+                    <span style={{ marginRight: '8px', fontWeight: 'bold', color: '#3c1e1e' }}>K</span> Kakao 계정으로 계속
+                </button>
+                </div>
+            </div>
         </div>
 
-        {/* 3. 푸터 */}
-        <div style={{ backgroundColor: '#1a1a1a', color: '#888', padding: '40px 20px', textAlign: 'center', fontSize: '12px' }}>
-            <p style={{ marginBottom: 8, fontSize: '15px', fontWeight: 'bold', color: '#fff' }}>Easy Alba</p>
-            <p>직원 관리의 시작, 이지알바</p>
-            <p style={{ marginTop: 20 }}>© 2025 Easy Alba. All rights reserved.</p>
+        {/* 2. 홍보 이미지 리스트 영역 (스크롤 내리면 보임) */}
+        <div style={{ width: '100%', maxWidth: '800px', padding: '0 20px 100px 20px', display: 'flex', flexDirection: 'column', gap: '0' }}>
+            {/* 스크롤 유도를 위한 안내 문구 (선택 사항) */}
+            <div style={{ color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginBottom: '20px', fontSize: '14px', animation: 'bounce 2s infinite' }}>
+             ▼ 서비스 소개 자세히 보기
+            </div>
+
+            {PROMO_IMAGES.map((src, index) => (
+                <img 
+                    key={index}
+                    src={`/${src}`} 
+                    alt={`Easy Alba 소개 ${index + 1}`}
+                    style={{ 
+                        width: '100%', 
+                        height: 'auto', 
+                        display: 'block',
+                        // 이미지가 서로 딱 붙게 하려면 marginBottom을 없애거나 조정
+                        marginBottom: '-1px' 
+                    }} 
+                />
+            ))}
+        </div>
+
+        {/* 저작권 문구 - 맨 아래로 이동 */}
+        <div 
+            style={{ 
+            width: '100%', 
+            textAlign: 'center',
+            color: 'rgba(255,255,255,0.5)', 
+            fontSize: '11px',
+            lineHeight: '1.5',
+            paddingBottom: '40px'
+            }}
+        >
+            © 2025 Easy Alba. All rights reserved.<br />
         </div>
 
       </div>
 
-      <SignupModal isOpen={isSignupOpen} onClose={() => setIsSignupOpen(false)} onSignup={handleSignup} loading={loading} />
-      
-      <style jsx global>{`
-        @keyframes bounce {
-          0%, 20%, 50%, 80%, 100% {transform: translateX(-50%) translateY(0);}
-          40% {transform: translateX(-50%) translateY(-10px);}
-          60% {transform: translateX(-50%) translateY(-5px);}
-        }
-      `}</style>
+      <SignupModal 
+        isOpen={isSignupOpen} 
+        onClose={() => setIsSignupOpen(false)} 
+        onSignup={handleSignup}
+        loading={loading}
+      />
     </div>
   );
 }
 
-// 스타일 객체
 const inputStyle = {
-  padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', outline: 'none', backgroundColor: '#f9f9f9', color: '#333', width: '100%', boxSizing: 'border-box' as const
-};
-
-const loginBtnStyle = {
-  padding: '14px', backgroundColor: '#0052cc', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', marginTop: '4px', transition: 'background-color 0.2s', width: '100%'
+  padding: '12px',
+  borderRadius: '8px',
+  border: '1px solid #ddd',
+  fontSize: '14px',
+  outline: 'none',
+  backgroundColor: '#f9f9f9',
+  color: '#333',
+  width: '100%',
+  boxSizing: 'border-box' as const
 };
 
 const socialBtnStyle = {
-  padding: '12px', borderRadius: '8px', border: 'none', fontSize: '14px', fontWeight: '600' as const, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%'
+  padding: '10px',
+  borderRadius: '8px',
+  border: 'none',
+  fontSize: '13px',
+  fontWeight: '600' as const,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '100%'
 };
