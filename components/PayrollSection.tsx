@@ -157,19 +157,56 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => (acc + (curr.totalPay || 0)), 0), [payrollData]);
 
-  const handleDownloadExcel = () => {
+const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
+
     const excelRows = payrollData.map(p => {
       const empInfo = employees.find(e => e.id === p.empId);
-      const totalTax = (p.taxDetails.incomeTax || 0) + (p.taxDetails.localTax || 0);
+      
+      // 1. 각 공제 항목 안전하게 가져오기
+      const incomeTax = p.taxDetails.incomeTax || 0;
+      const localTax = p.taxDetails.localTax || 0;
+      const pension = p.taxDetails.pension || 0;
+      const health = p.taxDetails.health || 0;
+      const employment = p.taxDetails.employment || 0;
+      const care = p.taxDetails.care || 0;
+
+      // 2. [핵심 수정] 모든 공제 항목을 다 더합니다.
+      const totalDeductions = incomeTax + localTax + pension + health + employment + care;
+
       return {
-        '이름': p.name, '전화번호': empInfo?.phone_number || '-', '은행': empInfo?.bank_name || '-', '계좌번호': empInfo?.account_number || '-', '생년월일': empInfo?.birth_date || '-',
-        '총 지급 급여': fmt(p.totalPay), '세후 지급 급여': fmt(p.finalPay), '소득세': fmt(p.taxDetails.incomeTax), '지방소득세': fmt(p.taxDetails.localTax), '세금 토탈': fmt(totalTax),
-        '국민연금': fmt(p.taxDetails.pension), '건강보험': fmt(p.taxDetails.health), '고용보험': fmt(p.taxDetails.employment), '장기요양보험': fmt(p.taxDetails.care),
+        '이름': p.name, 
+        '전화번호': empInfo?.phone_number || '-', 
+        '은행': empInfo?.bank_name || '-', 
+        '계좌번호': empInfo?.account_number || '-', 
+        '생년월일': empInfo?.birth_date || '-', 
+        
+        '총 지급 급여': fmt(p.totalPay), 
+        '세후 지급 급여': fmt(p.finalPay), 
+        
+        // 3. 엑셀 컬럼 순서 및 내용 변경
+        // 헷갈리는 '세금 토탈' 대신 '총 공제액(세금+보험)'으로 변경
+        '총 공제액': fmt(totalDeductions), 
+
+        '소득세': fmt(incomeTax), 
+        '지방소득세': fmt(localTax), 
+        '국민연금': fmt(pension), 
+        '건강보험': fmt(health), 
+        '고용보험': fmt(employment), 
+        '장기요양보험': fmt(care),
       };
     });
+
     const ws = XLSX.utils.json_to_sheet(excelRows);
+    // 컬럼 너비 조금 넓혀주기 (보기 좋게)
+    ws['!cols'] = [
+      { wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 12 }, // 개인정보
+      { wch: 12 }, { wch: 12 }, // 지급액
+      { wch: 12 }, // 총 공제액
+      { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 } // 상세 공제
+    ];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "급여대장");
     XLSX.writeFile(wb, `${year}년_${month}월_급여대장.xlsx`);
