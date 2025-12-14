@@ -71,24 +71,24 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
       style={{
         minHeight: '100vh',
         width: '100%',
-        // ✅ 배경 이미지 및 고정 설정 (Parallax)
+        // ✅ 배경 이미지 설정 (로그인 페이지와 통일)
         backgroundImage: "url('/login-bg.jpg')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed',
+        backgroundAttachment: 'fixed', // 배경 고정 (Parallax)
         fontFamily: 'sans-serif',
         overflowY: 'auto',
         position: 'relative'
       }}
     >
-      {/* 배경 오버레이 */}
+      {/* 배경 어둡게 까는 오버레이 */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 0 }}></div>
 
-      {/* 콘텐츠 영역 */}
+      {/* 실제 콘텐츠 영역 */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
-        {/* 1. 매장 등록 카드 영역 (화면 중앙 정렬) */}
+        {/* 1. 매장 등록 카드 영역 (화면 중앙 정렬 100vh) */}
         <div style={{ 
             minHeight: '100vh', 
             width: '100%', 
@@ -97,6 +97,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
             alignItems: 'center',
             paddingBottom: '50px'
         }}>
+            {/* 기존 카드 디자인 유지 */}
             <div style={cardStyle}>
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <div style={{ fontSize: '32px', marginBottom: '4px' }}>🎉</div>
@@ -254,7 +255,7 @@ function CheckboxItem({ label, subLabel, checked, onChange }: any) {
   );
 }
 
-// --- 스타일 (배경 관련 스타일은 inline으로 이동했으므로 카드 스타일만 유지) ---
+// --- 스타일 ---
 const cardStyle = {
   backgroundColor: 'white', 
   padding: '24px 20px', 
@@ -262,7 +263,8 @@ const cardStyle = {
   boxShadow: '0 10px 40px rgba(0,0,0,0.1)', 
   width: '90%', 
   maxWidth: '400px', 
-  margin: '0 auto' 
+  margin: '0 auto',
+  // 카드 내부는 흰색 배경이라 글자가 잘 보입니다.
 };
 
 const sectionStyle = { marginBottom: '16px', display: 'flex', flexDirection: 'column' as const, gap: '6px' };
