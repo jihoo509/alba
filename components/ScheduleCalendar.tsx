@@ -523,21 +523,27 @@ export default function ScheduleCalendar({ currentStoreId, selectedTemplate, emp
             <span style={{ fontSize: 12, color: '#999' }}>{isEmpListOpen ? '▲' : '▼'}</span>
         </div>
 
-        {isEmpListOpen && (
-            <div style={{ 
-                position: 'absolute', 
-                top: '100%', 
-                left: 0, 
-                right: 0, 
-                zIndex: 10, 
-                marginTop: 4, 
-                border: '1px solid #ddd', 
-                borderRadius: 8, 
-                maxHeight: 200, 
-                overflowY: 'auto', 
-                backgroundColor: '#fff', 
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)' 
-            }}>
+{isEmpListOpen && (
+    <div style={{ 
+        position: 'absolute', 
+        top: '100%', 
+        left: 0, 
+        right: 0, 
+        zIndex: 10, 
+        marginTop: 4, 
+        border: '1px solid #ddd', 
+        borderRadius: 8, 
+        
+        // ✅ [수정] 높이 늘리기 (200 -> 250)
+        maxHeight: 250, 
+        
+        overflowY: 'auto', 
+        backgroundColor: '#fff', 
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        
+        // ✅ [추가] 마지막 직원이 잘리지 않게 하단 여백 추가
+        paddingBottom: 20 
+    }}>
                 <div 
                     onClick={() => handleSelectEmployee(null)}
                     style={{ padding: '12px 16px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', color: '#999' }}
