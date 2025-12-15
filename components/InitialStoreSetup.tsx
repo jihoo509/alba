@@ -154,7 +154,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
             display: 'flex', 
             justifyContent: 'center',
             alignItems: 'flex-start', 
-            paddingTop: '60px', 
+            paddingTop: '10px', 
             paddingBottom: '40px' 
         }}>
             <div style={cardStyle}>
