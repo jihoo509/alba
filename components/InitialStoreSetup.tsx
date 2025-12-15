@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 
-// ✅ 이미지와 함께 들어갈 텍스트 데이터
 const FEATURES = [
   {
     title: "직원 & 알바 관리, 평생 무료로 시작하세요",
@@ -90,15 +89,17 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
     }
   };
 
-  // ✅ 타이틀 공통 스타일 정의
+  // ✅ 타이틀 공통 스타일
   const titleStyle = {
-    fontSize: '36px',          // 폰트 크기 키움
-    fontWeight: '900',         // 폰트 두께 가장 두껍게
-    color: '#fff',             // 텍스트 색상 흰색으로 변경
+    fontSize: '32px',          
+    fontWeight: '900',         
+    color: '#fff',             
     textAlign: 'center' as const,
-    marginBottom: '40px',
-    textShadow: '0 2px 4px rgba(0,0,0,0.5)', // 텍스트 그림자 추가로 가독성 높임
-    letterSpacing: '-1px'      // 자간 약간 좁혀서 단단한 느낌
+    marginBottom: '60px',
+    textShadow: '0 2px 10px rgba(0,0,0,0.5)', 
+    letterSpacing: '-1px',
+    lineHeight: '1.3',
+    wordBreak: 'keep-all' as const // ✅ 타이틀도 단어 단위 줄바꿈
   };
 
   return (
@@ -106,33 +107,61 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
       style={{
         minHeight: '100vh',
         width: '100%',
-        backgroundImage: "url('/login-bg.jpg')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed', 
         fontFamily: 'sans-serif',
-        overflowY: 'auto',
+        position: 'relative',
+        // ✅ [수정] 스크롤바가 생기지 않도록 가로 넘침 방지
         overflowX: 'hidden', 
-        position: 'relative'
       }}
     >
+      {/* ✅ [핵심 수정 1] 배경 이미지 분리 (모바일 울렁거림 해결)
+        - position: fixed로 화면 뒤에 딱 고정시킵니다.
+        - zIndex: -1로 모든 콘텐츠 뒤로 보냅니다.
+      */}
+      <div 
+        style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: -1,
+        }}
+      >
+        {/* 실제 배경 이미지 */}
+        <img 
+            src="/login-bg.jpg" 
+            alt="background"
+            style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover', // 비율 유지하면서 꽉 채우기
+            }}
+        />
+        {/* ✅ [핵심 수정 2] 가독성을 위한 어두운 오버레이
+          - 배경 이미지 위에 60% 투명도의 검은색을 덮습니다.
+          - 이렇게 하면 흰색 글씨가 아주 선명하게 보입니다.
+        */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }}></div>
+      </div>
+
+
+      {/* 실제 콘텐츠 영역 */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
-        {/* 1. 매장 등록 카드 (상단 배치) */}
+        {/* 1. 매장 등록 카드 */}
         <div style={{ 
             width: '100%', 
             display: 'flex', 
             justifyContent: 'center',
             alignItems: 'flex-start', 
-            paddingTop: '10px', 
+            paddingTop: '60px', 
             paddingBottom: '40px' 
         }}>
             <div style={cardStyle}>
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <div style={{ fontSize: '32px', marginBottom: '4px' }}>🎉</div>
                 <h2 style={{ color: '#111', margin: 0, fontSize: '20px', fontWeight: '800' }}>환영합니다, 사장님!</h2>
-                <p style={{ color: '#666', marginTop: '4px', fontSize: '13px', lineHeight: '1.4' }}>
+                <p style={{ color: '#666', marginTop: '4px', fontSize: '13px', lineHeight: '1.4', wordBreak: 'keep-all' }}>
                     관리할 첫 매장을 등록하고<br />
                     쉽고 편한 알바 관리를 시작해보세요.
                 </p>
@@ -173,7 +202,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
                     <span style={{ fontSize: '14px', fontWeight: 'bold', color: isFivePlus ? '#0052cc' : '#333' }}>
                     5인 이상 사업장입니다.
                     </span>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#666', lineHeight: '1.3' }}>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#666', lineHeight: '1.3', wordBreak: 'keep-all' }}>
                     체크 시 가산수당(야간/휴일/연장 1.5배)이 자동으로 선택됩니다.
                     </p>
                 </div>
@@ -195,12 +224,12 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
         </div>
 
         {/* 2. 기능 소개 섹션 */}
-        {/* ✅ backgroundColor: '#fff' 제거하여 배경 투명하게 만듦 */}
         <div style={{ width: '100%', padding: '60px 0', display: 'flex', justifyContent: 'center' }}>
             <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '80px', padding: '0 20px' }}>
-                {/* ✅ 타이틀 스타일 적용 */}
+                
+                {/* ✅ [수정] 모바일에서만 줄바꿈이 일어나도록 <br> 처리 */}
                 <h2 style={titleStyle}>
-                    이지알바, 왜 써야 할까요?
+                    이지알바,<br className='mobile-only'/> 왜 써야 할까요?
                 </h2>
                 
                 {FEATURES.map((feature, index) => (
@@ -217,23 +246,29 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
                         <div style={{ 
                             flex: '1 1 300px', 
                             maxWidth: '100%',
-                            padding: '10px' 
+                            padding: '10px',
+                            // ✅ 텍스트 가독성을 위해 살짝 그림자 추가
+                            textShadow: '0 1px 4px rgba(0,0,0,0.8)' 
                         }}>
                             <h3 style={{ 
                                 fontSize: '22px', 
                                 fontWeight: '800', 
-                                color: '#4da6ff', // ✅ 어두운 배경에서도 잘 보이는 밝은 파란색으로 변경
+                                color: '#fff', // 흰색으로 변경 (어두운 배경 위)
                                 marginBottom: '16px',
-                                wordBreak: 'keep-all' 
+                                // ✅ [핵심 수정] 단어 중간에 끊기지 않게 함
+                                wordBreak: 'keep-all',
+                                lineHeight: '1.4'
                             }}>
                                 {feature.title}
                             </h3>
                             <p style={{ 
                                 fontSize: '16px', 
                                 lineHeight: '1.7', 
-                                color: '#eee', // ✅ 밝은 회색으로 변경하여 가독성 확보
+                                color: '#eee', // 아주 밝은 회색
+                                // ✅ [핵심 수정] 단어 중간에 끊기지 않게 함
                                 wordBreak: 'keep-all', 
-                                margin: 0 
+                                margin: 0,
+                                opacity: 0.9 
                             }}>
                                 {feature.desc}
                             </p>
@@ -254,7 +289,8 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
                                     maxWidth: '450px', 
                                     height: 'auto', 
                                     borderRadius: '12px',
-                                    boxShadow: '0 10px 30px rgba(0,0,0,0.3)' // 그림자 조금 더 진하게
+                                    // ✅ 이미지가 배경에 묻히지 않게 그림자 강화
+                                    boxShadow: '0 15px 35px rgba(0,0,0,0.5)' 
                                 }} 
                             />
                         </div>
@@ -264,10 +300,8 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
         </div>
 
         {/* 3. 자주 묻는 질문 (FAQ) */}
-        {/* ✅ backgroundColor: '#f9f9f9' 제거 */}
         <div style={{ width: '100%', padding: '60px 0', display: 'flex', justifyContent: 'center' }}>
             <div style={{ maxWidth: '1000px', width: '100%', padding: '0 20px' }}>
-                {/* ✅ 타이틀 스타일 적용 */}
                 <h2 style={titleStyle}>자주 묻는 질문</h2>
                 <FaqItem q="5인 미만 사업장도 사용할 수 있나요?" a="네, 가능합니다. 매장 설정에서 '5인 이상 사업장' 체크를 해제하시면 야간, 휴일, 연장 수당 가산 없이 시급과 주휴수당만 계산됩니다." />
                 <FaqItem q="정말 무료인가요?" a="네, 이지알바의 모든 기능은 현재 무료로 제공되고 있습니다. 직원 등록 수나 스케줄 생성 횟수에 제한이 없습니다." />
@@ -277,6 +311,15 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
         </div>
 
       </div>
+
+      <style jsx global>{`
+        /* 모바일에서만 줄바꿈 되도록 하는 유틸리티 클래스 */
+        @media (min-width: 768px) {
+            .mobile-only {
+                display: none;
+            }
+        }
+      `}</style>
     </div>
   );
 }
@@ -284,12 +327,9 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
 // FAQ 아이템 컴포넌트
 function FaqItem({ q, a }: { q: string, a: string }) {
     return (
-        // ✅ 구분선 색상을 투명도 있는 흰색으로 변경
-        <div style={{ marginBottom: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.2)', paddingBottom: '20px' }}>
-            {/* ✅ 질문 텍스트 색상 흰색으로 변경 */}
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#fff', wordBreak: 'keep-all' }}>Q. {q}</h4>
-            {/* ✅ 답변 텍스트 색상 밝은 회색으로 변경 */}
-            <p style={{ margin: 0, fontSize: '14px', color: '#eee', lineHeight: '1.5', wordBreak: 'keep-all' }}>A. {a}</p>
+        <div style={{ marginBottom: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.3)', paddingBottom: '20px' }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#fff', wordBreak: 'keep-all', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>Q. {q}</h4>
+            <p style={{ margin: 0, fontSize: '14px', color: '#ddd', lineHeight: '1.5', wordBreak: 'keep-all', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>A. {a}</p>
         </div>
     );
 }
@@ -314,10 +354,9 @@ function CheckboxItem({ label, subLabel, checked, onChange }: any) {
   );
 }
 
-// 스타일
 const cardStyle = {
   backgroundColor: 'white', padding: '24px 20px', borderRadius: '16px',
-  boxShadow: '0 10px 40px rgba(0,0,0,0.1)', width: '90%', maxWidth: '400px', margin: '0 auto',
+  boxShadow: '0 10px 40px rgba(0,0,0,0.3)', width: '90%', maxWidth: '400px', margin: '0 auto',
 };
 const sectionStyle = { marginBottom: '16px', display: 'flex', flexDirection: 'column' as const, gap: '6px' };
 const labelStyle = { fontSize: '13px', fontWeight: 'bold', color: '#333' };
