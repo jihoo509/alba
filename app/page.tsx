@@ -171,7 +171,7 @@ export default function AuthPage() {
             display: 'flex', 
             justifyContent: 'center', 
             alignItems: 'center',
-            paddingBottom: '50px' // 하단 화살표나 여백을 위한 공간
+            paddingBottom: '200px' // 하단 화살표나 여백을 위한 공간
         }}>
             <div
                 style={{
