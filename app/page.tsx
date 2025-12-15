@@ -164,22 +164,23 @@ export default function AuthPage() {
       {/* 실제 콘텐츠 영역 (로그인창 + 이미지들) */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
-{/* 1. 로그인 박스 영역 (첫 화면에 꽉 차게 보이도록 minHeight 100vh 설정) */}
+{/* 1. 로그인 박스 영역 수정됨 */}
         <div style={{ 
-            minHeight: '100vh', 
+            // ❌ minHeight: '100vh' 삭제! -> 이제 박스가 화면 전체를 차지하지 않음
             width: '100%', 
             display: 'flex', 
             justifyContent: 'center', 
             
-            // 👇 [수정함] 기존 alignItems: 'center'를 'flex-start'로 변경 (위쪽 기준 정렬)
+            // ✅ 위쪽 정렬
             alignItems: 'flex-start', 
             
-            // 👇 [수정함] 위에서부터 얼마나 내릴지 결정 (이 숫자를 조절해 보세요!)
-            // 120px ~ 150px 정도면 배경 사람 머리 위쪽쯤에 위치할 겁니다.
-            paddingTop: '130px', 
+            // ✅ 위에서 떨어지는 거리 (PC/모바일 공통 적용)
+            // 100px ~ 120px 정도가 적당합니다. (기존 130px보다 약간 줄임)
+            paddingTop: '110px', 
             
-            // 👇 [수정함] 아래 여백은 최소한으로 줄여서 다음 콘텐츠와의 간격 유지
-            paddingBottom: '40px' 
+            // ✅ 로그인 박스와 아래 홍보 이미지 사이의 간격
+            // 이 값을 줄이면 이미지가 더 위로 붙습니다.
+            paddingBottom: '20px' 
         }}>
             <div
                 style={{
