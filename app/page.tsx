@@ -176,11 +176,11 @@ export default function AuthPage() {
             
             // ✅ 위에서 떨어지는 거리 (PC/모바일 공통 적용)
             // 100px ~ 120px 정도가 적당합니다. (기존 130px보다 약간 줄임)
-            paddingTop: '110px', 
+            paddingTop: '60px', 
             
             // ✅ 로그인 박스와 아래 홍보 이미지 사이의 간격
             // 이 값을 줄이면 이미지가 더 위로 붙습니다.
-            paddingBottom: '20px' 
+            paddingBottom: '40px' 
         }}>
             <div
                 style={{
