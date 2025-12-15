@@ -7,15 +7,38 @@ import SignupModal from '@/components/SignupModal';
 
 type OAuthProvider = 'google' | 'kakao';
 
-// ✅ 홍보 이미지 파일명 배열 (public 폴더에 이 이름대로 파일이 있어야 합니다)
-// 보내주신 파일명: 1.jpg, 2.png, 3.jpg, 4.jpg, 5.jpg, 6.png (확장자 주의!)
-const PROMO_IMAGES = [
-  '1.png',
-  '2.png',
-  '3.png',
-  '4.png',
-  '5.png',
-  '6.png'
+// ✅ 새로 추가된 기능 소개 데이터 (이미지 + 텍스트)
+const FEATURES = [
+  {
+    title: "직원 & 알바 관리, 평생 무료로 시작하세요",
+    desc: "복잡한 직원 관리, 아직도 엑셀로 하시나요? 이지알바는 직원 등록부터 급여 명세서 생성까지 모든 기능을 무료로 제공합니다. PC와 모바일 어디서든 사장님의 매장을 효율적으로 관리해보세요.",
+    img: "1.png"
+  },
+  {
+    title: "이메일 & 카카오로 3초 간편 가입",
+    desc: "복잡한 절차 없이 구글, 카카오 계정으로 3초 만에 시작할 수 있습니다. 별도의 설치가 필요 없는 웹 기반 서비스로, 언제 어디서나 즉시 접속하여 매장 현황을 파악할 수 있습니다.",
+    img: "2.png"
+  },
+  {
+    title: "복잡한 직원 정보, 한 페이지에서 끝",
+    desc: "이름, 연락처, 시급, 입사일 등 흩어져 있는 직원 정보를 한눈에 관리하세요. 근로계약서 작성에 필요한 필수 정보들을 체계적으로 정리하여 보관할 수 있습니다.",
+    img: "3.png"
+  },
+  {
+    title: "근무 패턴 생성으로 스케줄 자동화",
+    desc: "오픈조, 미들조, 마감조 등 매장의 고정된 근무 패턴을 미리 만들어두세요. 매번 새로 짤 필요 없이, 만들어둔 패턴을 직원에 할당하기만 하면 시간표가 완성됩니다.",
+    img: "4.png"
+  },
+  {
+    title: "클릭 한 번으로 월별 스케줄 완성",
+    desc: "설정해둔 근무 패턴과 직원 데이터를 바탕으로 달력에 스케줄을 자동으로 생성합니다. 급하게 대타가 필요하거나 근무가 변경되어도 드래그 앤 드롭으로 손쉽게 수정할 수 있습니다.",
+    img: "5.png"
+  },
+  {
+    title: "급여 명세서 자동 생성 및 발송",
+    desc: "가장 골치 아픈 급여 계산, 이제 자동으로 해결하세요. 주휴수당, 야간수당, 연장수당 등 복잡한 가산 수당이 법 기준에 맞춰 자동으로 계산되며, 급여 명세서까지 원클릭으로 생성됩니다.",
+    img: "6.png"
+  }
 ];
 
 export default function AuthPage() {
@@ -142,44 +165,63 @@ export default function AuthPage() {
     }
   }
 
+  // ✅ 밝은 배경용 타이틀 스타일
+  const titleStyle = {
+    fontSize: '32px',          
+    fontWeight: '900',         
+    color: '#333', // 검은색 글씨            
+    textAlign: 'center' as const,
+    marginBottom: '60px',
+    letterSpacing: '-1px',
+    lineHeight: '1.3',
+    wordBreak: 'keep-all' as const
+  };
+
   return (
     <div
       style={{
         minHeight: '100vh',
         width: '100%',
-        // ✅ 배경 이미지 고정 (Parallax 효과 핵심)
-        backgroundImage: "url('/login-bg.jpg')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed', // 스크롤 내려도 배경은 고정됨
         fontFamily: 'sans-serif',
-        overflowY: 'auto', // 세로 스크롤 허용
-        position: 'relative'
+        position: 'relative',
+        overflowX: 'hidden', // 가로 스크롤 방지
       }}
     >
-      {/* 배경 어둡게 까는 오버레이 (fixed로 고정하여 스크롤 내려도 계속 어둡게 유지) */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 0 }}></div>
+      {/* ✅ [모바일 흔들림 방지] 배경 이미지 고정
+         - background-attachment: fixed 대신 position: fixed 사용
+         - 어두운 오버레이(black background)는 제거함
+      */}
+      <div 
+        style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: -1,
+        }}
+      >
+        <img 
+            src="/login-bg.jpg" 
+            alt="background"
+            style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+            }}
+        />
+      </div>
 
-      {/* 실제 콘텐츠 영역 (로그인창 + 이미지들) */}
+      {/* 실제 콘텐츠 영역 */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
-{/* 1. 로그인 박스 영역 수정됨 */}
+        {/* 1. 로그인 박스 영역 (기존 코드 유지) */}
         <div style={{ 
-            // ❌ minHeight: '100vh' 삭제! -> 이제 박스가 화면 전체를 차지하지 않음
             width: '100%', 
             display: 'flex', 
             justifyContent: 'center', 
-            
-            // ✅ 위쪽 정렬
             alignItems: 'flex-start', 
-            
-            // ✅ 위에서 떨어지는 거리 (PC/모바일 공통 적용)
-            // 100px ~ 120px 정도가 적당합니다. (기존 130px보다 약간 줄임)
             paddingTop: '60px', 
-            
-            // ✅ 로그인 박스와 아래 홍보 이미지 사이의 간격
-            // 이 값을 줄이면 이미지가 더 위로 붙습니다.
             paddingBottom: '40px' 
         }}>
             <div
@@ -280,41 +322,98 @@ export default function AuthPage() {
             </div>
         </div>
 
-        {/* 2. 홍보 이미지 리스트 영역 (스크롤 내리면 보임) */}
-        <div style={{ width: '100%', maxWidth: '800px', padding: '0 20px 100px 20px', display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {/* 스크롤 유도를 위한 안내 문구 (선택 사항) */}
-            <div style={{ color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginBottom: '20px', fontSize: '14px', animation: 'bounce 2s infinite' }}>
-             ▼ 서비스 소개 자세히 보기
-            </div>
+        {/* 2. 기능 소개 섹션 (흰색 배경) */}
+        <div style={{ width: '100%', backgroundColor: '#fff', padding: '60px 0', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '80px', padding: '0 20px' }}>
+                
+                <h2 style={titleStyle}>
+                    이지알바,<br className='mobile-only'/> 왜 써야 할까요?
+                </h2>
+                
+                {FEATURES.map((feature, index) => (
+                    <div key={index} style={{ 
+                        display: 'flex', 
+                        flexWrap: 'wrap', 
+                        flexDirection: index % 2 === 0 ? 'row' : 'row-reverse',
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        gap: '40px',
+                        width: '100%',
+                    }}>
+                        {/* 텍스트 영역 */}
+                        <div style={{ 
+                            flex: '1 1 300px', 
+                            maxWidth: '100%',
+                            padding: '10px',
+                        }}>
+                            <h3 style={{ 
+                                fontSize: '22px', 
+                                fontWeight: '800', 
+                                color: '#0052cc', // 파란색 포인트
+                                marginBottom: '16px',
+                                wordBreak: 'keep-all',
+                                lineHeight: '1.4'
+                            }}>
+                                {feature.title}
+                            </h3>
+                            <p style={{ 
+                                fontSize: '16px', 
+                                lineHeight: '1.7', 
+                                color: '#555', // 진한 회색
+                                wordBreak: 'keep-all', 
+                                margin: 0,
+                            }}>
+                                {feature.desc}
+                            </p>
+                        </div>
 
-            {PROMO_IMAGES.map((src, index) => (
-                <img 
-                    key={index}
-                    src={`/${src}`} 
-                    alt={`Easy Alba 소개 ${index + 1}`}
-                    style={{ 
-                        width: '100%', 
-                        height: 'auto', 
-                        display: 'block',
-                        // 이미지가 서로 딱 붙게 하려면 marginBottom을 없애거나 조정
-                        marginBottom: '-1px' 
-                    }} 
-                />
-            ))}
+                        {/* 이미지 영역 */}
+                        <div style={{ 
+                            flex: '1 1 300px', 
+                            display: 'flex', 
+                            justifyContent: 'center',
+                            maxWidth: '100%' 
+                        }}>
+                            <img 
+                                src={`/${feature.img}`} 
+                                alt={feature.title}
+                                style={{ 
+                                    width: '100%', 
+                                    maxWidth: '450px', 
+                                    height: 'auto', 
+                                    borderRadius: '12px',
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.15)' 
+                                }} 
+                            />
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
 
-        {/* 저작권 문구 - 맨 아래로 이동 */}
-        <div 
-            style={{ 
-            width: '100%', 
-            textAlign: 'center',
-            color: 'rgba(255,255,255,0.5)', 
-            fontSize: '11px',
-            lineHeight: '1.5',
-            paddingBottom: '40px'
-            }}
-        >
-            © 2025 Easy Alba. All rights reserved.<br />
+        {/* 3. 자주 묻는 질문 (FAQ, 회색 배경) */}
+        <div style={{ width: '100%', backgroundColor: '#f9f9f9', padding: '60px 0', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ maxWidth: '1000px', width: '100%', padding: '0 20px' }}>
+                <h2 style={titleStyle}>자주 묻는 질문</h2>
+                <FaqItem q="5인 미만 사업장도 사용할 수 있나요?" a="네, 가능합니다. 매장 설정에서 '5인 이상 사업장' 체크를 해제하시면 야간, 휴일, 연장 수당 가산 없이 시급과 주휴수당만 계산됩니다." />
+                <FaqItem q="정말 무료인가요?" a="네, 이지알바의 모든 기능은 현재 무료로 제공되고 있습니다. 직원 등록 수나 스케줄 생성 횟수에 제한이 없습니다." />
+                <FaqItem q="모바일에서도 되나요?" a="네, PC와 모바일, 태블릿 등 기기에 상관없이 웹 브라우저만 있으면 어디서든 접속하여 관리할 수 있습니다." />
+                <FaqItem q="급여 명세서는 어떻게 보내나요?" a="자동 생성된 급여 명세서는 이미지로 저장이 가능하며, 카카오톡이나 문자로 직원에게 바로 공유할 수 있습니다." />
+                
+                {/* 저작권 문구 */}
+                <div 
+                    style={{ 
+                    width: '100%', 
+                    textAlign: 'center',
+                    color: '#999', 
+                    fontSize: '12px',
+                    lineHeight: '1.5',
+                    marginTop: '60px'
+                    }}
+                >
+                    © 2025 Easy Alba. All rights reserved.<br />
+                </div>
+            </div>
         </div>
 
       </div>
@@ -325,8 +424,26 @@ export default function AuthPage() {
         onSignup={handleSignup}
         loading={loading}
       />
+
+      <style jsx global>{`
+        @media (min-width: 768px) {
+            .mobile-only {
+                display: none;
+            }
+        }
+      `}</style>
     </div>
   );
+}
+
+// FAQ 아이템 컴포넌트
+function FaqItem({ q, a }: { q: string, a: string }) {
+    return (
+        <div style={{ marginBottom: '20px', borderBottom: '1px solid #e0e0e0', paddingBottom: '20px' }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#333', wordBreak: 'keep-all' }}>Q. {q}</h4>
+            <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.5', wordBreak: 'keep-all' }}>A. {a}</p>
+        </div>
+    );
 }
 
 const inputStyle = {
