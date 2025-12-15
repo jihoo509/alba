@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 
-// ✅ [핵심] 이미지와 함께 들어갈 텍스트 데이터 (애드센스 통과용 콘텐츠)
+// ✅ 이미지와 함께 들어갈 텍스트 데이터
 const FEATURES = [
   {
     title: "직원 & 알바 관리, 평생 무료로 시작하세요",
@@ -109,13 +109,13 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
         
         {/* 1. 매장 등록 카드 (상단 배치) */}
         <div style={{ 
-            minHeight: '100vh', 
             width: '100%', 
             display: 'flex', 
             justifyContent: 'center',
             alignItems: 'flex-start', 
-            paddingTop: '-20px',
-            paddingBottom: '50px' 
+            // ✅ [수정] 상단 여백은 유지하되, 하단 여백을 줄여 아래 내용과 가깝게 붙임
+            paddingTop: '120px', 
+            paddingBottom: '40px' 
         }}>
             <div style={cardStyle}>
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
@@ -184,52 +184,55 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
         </div>
 
         {/* 2. 기능 소개 섹션 (랜딩 페이지 스타일) */}
-        <div style={{ width: '100%', backgroundColor: '#fff', padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '80px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: '-20px' }}>
-                이지알바, 왜 써야 할까요?
-            </h2>
-            
-            {FEATURES.map((feature, index) => (
-                <div key={index} style={{ 
-                    display: 'flex', 
-                    flexDirection: index % 2 === 0 ? 'row' : 'row-reverse', // 지그재그 배치
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    gap: '40px',
-                    maxWidth: '1000px',
-                    width: '100%',
-                    flexWrap: 'wrap' // 모바일 대응
-                }}>
-                    {/* 텍스트 영역 */}
-                    <div style={{ flex: 1, minWidth: '300px', padding: '0 20px' }}>
-                        <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#0052cc', marginBottom: '16px' }}>
-                            {feature.title}
-                        </h3>
-                        <p style={{ fontSize: '16px', lineHeight: '1.6', color: '#555', wordBreak: 'keep-all' }}>
-                            {feature.desc}
-                        </p>
-                    </div>
+        {/* ✅ [수정] 배경 흰색 영역의 width는 100%로 두되, 내부 콘텐츠 박스에 maxWidth: 1000px을 주어 너비를 제한함 */}
+        <div style={{ width: '100%', backgroundColor: '#fff', padding: '60px 20px 80px 20px', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '80px' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: '-20px' }}>
+                    이지알바, 왜 써야 할까요?
+                </h2>
+                
+                {FEATURES.map((feature, index) => (
+                    <div key={index} style={{ 
+                        display: 'flex', 
+                        flexDirection: index % 2 === 0 ? 'row' : 'row-reverse', // 지그재그 배치
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        gap: '40px',
+                        width: '100%',
+                        flexWrap: 'wrap' // 모바일 대응
+                    }}>
+                        {/* 텍스트 영역 */}
+                        <div style={{ flex: 1, minWidth: '300px', padding: '0 10px' }}>
+                            <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#0052cc', marginBottom: '16px' }}>
+                                {feature.title}
+                            </h3>
+                            <p style={{ fontSize: '16px', lineHeight: '1.6', color: '#555', wordBreak: 'keep-all' }}>
+                                {feature.desc}
+                            </p>
+                        </div>
 
-                    {/* 이미지 영역 */}
-                    <div style={{ flex: 1, minWidth: '300px', display: 'flex', justifyContent: 'center' }}>
-                        <img 
-                            src={`/${feature.img}`} 
-                            alt={feature.title}
-                            style={{ 
-                                width: '100%', 
-                                maxWidth: '400px', 
-                                borderRadius: '12px',
-                                boxShadow: '0 10px 30px rgba(0,0,0,0.1)'
-                            }} 
-                        />
+                        {/* 이미지 영역 */}
+                        <div style={{ flex: 1, minWidth: '300px', display: 'flex', justifyContent: 'center' }}>
+                            <img 
+                                src={`/${feature.img}`} 
+                                alt={feature.title}
+                                style={{ 
+                                    width: '100%', 
+                                    maxWidth: '450px', // 이미지 크기 적당히 제한
+                                    borderRadius: '12px',
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.1)'
+                                }} 
+                            />
+                        </div>
                     </div>
-                </div>
-            ))}
+                ))}
+            </div>
         </div>
 
-        {/* 3. 자주 묻는 질문 (FAQ) - 텍스트 양 늘리기용 */}
-        <div style={{ width: '100%', backgroundColor: '#f9f9f9', padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ maxWidth: '800px', width: '100%' }}>
+        {/* 3. 자주 묻는 질문 (FAQ) */}
+        <div style={{ width: '100%', backgroundColor: '#f9f9f9', padding: '60px 20px', display: 'flex', justifyContent: 'center' }}>
+            {/* ✅ [수정] FAQ도 마찬가지로 1000px 제한 */}
+            <div style={{ maxWidth: '1000px', width: '100%' }}>
                 <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: '40px' }}>자주 묻는 질문</h2>
                 <FaqItem q="5인 미만 사업장도 사용할 수 있나요?" a="네, 가능합니다. 매장 설정에서 '5인 이상 사업장' 체크를 해제하시면 야간, 휴일, 연장 수당 가산 없이 시급과 주휴수당만 계산됩니다." />
                 <FaqItem q="정말 무료인가요?" a="네, 이지알바의 모든 기능은 현재 무료로 제공되고 있습니다. 직원 등록 수나 스케줄 생성 횟수에 제한이 없습니다." />
@@ -238,12 +241,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
             </div>
         </div>
 
-        {/* 4. 푸터 (Footer) */}
-        <div style={{ width: '100%', backgroundColor: '#333', color: '#aaa', padding: '40px 20px', textAlign: 'center', fontSize: '13px', lineHeight: '1.6' }}>
-            <strong>Easy Alba (이지알바)</strong><br />
-            이메일: help@easyalba.kr | 고객센터: 010-0000-0000<br />
-            <span style={{ display: 'block', marginTop: '10px' }}>© 2025 Easy Alba. All rights reserved.</span>
-        </div>
+        {/* ✅ [수정] 회색 푸터(Footer) 완전히 삭제됨 */}
 
       </div>
     </div>
