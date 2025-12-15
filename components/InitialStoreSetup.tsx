@@ -90,6 +90,17 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
     }
   };
 
+  // ✅ 타이틀 공통 스타일 정의
+  const titleStyle = {
+    fontSize: '36px',          // 폰트 크기 키움
+    fontWeight: '900',         // 폰트 두께 가장 두껍게
+    color: '#fff',             // 텍스트 색상 흰색으로 변경
+    textAlign: 'center' as const,
+    marginBottom: '40px',
+    textShadow: '0 2px 4px rgba(0,0,0,0.5)', // 텍스트 그림자 추가로 가독성 높임
+    letterSpacing: '-1px'      // 자간 약간 좁혀서 단단한 느낌
+  };
+
   return (
     <div
       style={{
@@ -102,7 +113,6 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
         backgroundAttachment: 'fixed', 
         fontFamily: 'sans-serif',
         overflowY: 'auto',
-        // ✅ [수정] 가로 스크롤 방지 핵심
         overflowX: 'hidden', 
         position: 'relative'
       }}
@@ -115,8 +125,7 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
             display: 'flex', 
             justifyContent: 'center',
             alignItems: 'flex-start', 
-            // ✅ [수정] 위쪽 여백 대폭 감소 (120px -> 60px)
-            paddingTop: '60px', 
+            paddingTop: '10px', 
             paddingBottom: '40px' 
         }}>
             <div style={cardStyle}>
@@ -186,22 +195,18 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
         </div>
 
         {/* 2. 기능 소개 섹션 */}
-        <div style={{ width: '100%', backgroundColor: '#fff', padding: '60px 0', display: 'flex', justifyContent: 'center' }}>
+        {/* ✅ backgroundColor: '#fff' 제거하여 배경 투명하게 만듦 */}
+        <div style={{ width: '100%', padding: '60px 0', display: 'flex', justifyContent: 'center' }}>
             <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '80px', padding: '0 20px' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: '-20px' }}>
+                {/* ✅ 타이틀 스타일 적용 */}
+                <h2 style={titleStyle}>
                     이지알바, 왜 써야 할까요?
                 </h2>
                 
                 {FEATURES.map((feature, index) => (
                     <div key={index} style={{ 
                         display: 'flex', 
-                        // ✅ [수정] 모바일 등 좁은 화면에서는 자동 줄바꿈
                         flexWrap: 'wrap', 
-                        // PC에서는 지그재그, 모바일(wrap)에서는 순서가 꼬일 수 있으므로 
-                        // 안전하게 'row'로 통일하거나 미디어쿼리를 써야하지만, 
-                        // 여기선 inline style 한계로 'row' 또는 index 체크 유지.
-                        // 단, wrap이 되면 아래 요소가 내려가므로 flex-direction을 단순히 쓰기보다
-                        // 텍스트/이미지 순서를 고정하는게 모바일에서 더 깔끔할 수 있습니다.
                         flexDirection: index % 2 === 0 ? 'row' : 'row-reverse',
                         alignItems: 'center', 
                         justifyContent: 'center',
@@ -210,25 +215,24 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
                     }}>
                         {/* 텍스트 영역 */}
                         <div style={{ 
-                            flex: '1 1 300px', // ✅ 유연하게 늘어나되 최소 300px 확보 (좁아지면 줄바꿈됨)
+                            flex: '1 1 300px', 
                             maxWidth: '100%',
                             padding: '10px' 
                         }}>
                             <h3 style={{ 
                                 fontSize: '22px', 
                                 fontWeight: '800', 
-                                color: '#0052cc', 
+                                color: '#4da6ff', // ✅ 어두운 배경에서도 잘 보이는 밝은 파란색으로 변경
                                 marginBottom: '16px',
-                                // ✅ 한국어 단어 끊김 방지
                                 wordBreak: 'keep-all' 
                             }}>
                                 {feature.title}
                             </h3>
                             <p style={{ 
                                 fontSize: '16px', 
-                                lineHeight: '1.7', // ✅ 줄간격 약간 넓혀서 가독성 확보
-                                color: '#555', 
-                                wordBreak: 'keep-all', // ✅ 텍스트 뭉침 방지
+                                lineHeight: '1.7', 
+                                color: '#eee', // ✅ 밝은 회색으로 변경하여 가독성 확보
+                                wordBreak: 'keep-all', 
                                 margin: 0 
                             }}>
                                 {feature.desc}
@@ -248,9 +252,9 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
                                 style={{ 
                                     width: '100%', 
                                     maxWidth: '450px', 
-                                    height: 'auto', // ✅ 비율 유지
+                                    height: 'auto', 
                                     borderRadius: '12px',
-                                    boxShadow: '0 10px 30px rgba(0,0,0,0.1)'
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.3)' // 그림자 조금 더 진하게
                                 }} 
                             />
                         </div>
@@ -260,9 +264,11 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
         </div>
 
         {/* 3. 자주 묻는 질문 (FAQ) */}
-        <div style={{ width: '100%', backgroundColor: '#f9f9f9', padding: '60px 0', display: 'flex', justifyContent: 'center' }}>
+        {/* ✅ backgroundColor: '#f9f9f9' 제거 */}
+        <div style={{ width: '100%', padding: '60px 0', display: 'flex', justifyContent: 'center' }}>
             <div style={{ maxWidth: '1000px', width: '100%', padding: '0 20px' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: '40px' }}>자주 묻는 질문</h2>
+                {/* ✅ 타이틀 스타일 적용 */}
+                <h2 style={titleStyle}>자주 묻는 질문</h2>
                 <FaqItem q="5인 미만 사업장도 사용할 수 있나요?" a="네, 가능합니다. 매장 설정에서 '5인 이상 사업장' 체크를 해제하시면 야간, 휴일, 연장 수당 가산 없이 시급과 주휴수당만 계산됩니다." />
                 <FaqItem q="정말 무료인가요?" a="네, 이지알바의 모든 기능은 현재 무료로 제공되고 있습니다. 직원 등록 수나 스케줄 생성 횟수에 제한이 없습니다." />
                 <FaqItem q="모바일에서도 되나요?" a="네, PC와 모바일, 태블릿 등 기기에 상관없이 웹 브라우저만 있으면 어디서든 접속하여 관리할 수 있습니다." />
@@ -278,9 +284,12 @@ export default function InitialStoreSetup({ userId, onComplete }: { userId: stri
 // FAQ 아이템 컴포넌트
 function FaqItem({ q, a }: { q: string, a: string }) {
     return (
-        <div style={{ marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#333', wordBreak: 'keep-all' }}>Q. {q}</h4>
-            <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.5', wordBreak: 'keep-all' }}>A. {a}</p>
+        // ✅ 구분선 색상을 투명도 있는 흰색으로 변경
+        <div style={{ marginBottom: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.2)', paddingBottom: '20px' }}>
+            {/* ✅ 질문 텍스트 색상 흰색으로 변경 */}
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#fff', wordBreak: 'keep-all' }}>Q. {q}</h4>
+            {/* ✅ 답변 텍스트 색상 밝은 회색으로 변경 */}
+            <p style={{ margin: 0, fontSize: '14px', color: '#eee', lineHeight: '1.5', wordBreak: 'keep-all' }}>A. {a}</p>
         </div>
     );
 }
