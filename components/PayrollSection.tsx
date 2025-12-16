@@ -79,7 +79,7 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
       return { s: format(sDate, 'yyyy-MM-dd'), e: format(eDate, 'yyyy-MM-dd') };
   };
 
-  // ✅ 1. 초기 로딩 & refreshTrigger 감지 시 설정 다시 불러오기
+  // ✅ 1. 초기 로딩 & refreshTrigger 감지 시 설정 다시 불러오기 (수정됨)
   useEffect(() => {
     if(!currentStoreId) return;
     const fetchSettings = async () => {
@@ -87,8 +87,26 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
         if(data) {
             setSavedSettings(data);
             
-            // 최초 로딩이거나 리프레시된 경우, 현재 viewMode에 맞춰 날짜 재설정
-            const range = calculateRangeBySettings(viewMode, data, new Date());
+            // 🔥 [핵심 추가] 저장된 설정에 따라 ViewMode 자동 전환
+            // refreshTrigger가 0보다 클 때(즉, 설정 저장 후) 또는 초기 로딩 시 적용
+            let targetMode: ViewMode = viewMode;
+            
+            // 사용자가 '기간지정(custom)'을 보고 있지 않다면, 설정에 따라 탭 전환
+            if (viewMode !== 'custom') {
+                if (data.pay_rule_type === 'week') targetMode = 'week';
+                else targetMode = 'month';
+            }
+            
+            // 만약 방금 저장을 눌러서(refreshTrigger 변경) 들어온 경우라면 무조건 설정값으로 강제 전환
+            if (refreshTrigger > 0) {
+                 if (data.pay_rule_type === 'week') targetMode = 'week';
+                 else targetMode = 'month';
+            }
+
+            setViewMode(targetMode); // 탭 상태 변경
+
+            // 변경된 모드에 맞춰 날짜 재계산
+            const range = calculateRangeBySettings(targetMode, data, new Date());
             if (range) {
                 setStartDate(range.s);
                 setEndDate(range.e);
@@ -97,6 +115,7 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
     };
     fetchSettings();
   }, [currentStoreId, supabase, refreshTrigger]); // refreshTrigger가 변하면 실행됨
+
 
   // ✅ 2. 뷰 모드 변경 시 날짜 재계산 (ex: 월별 -> 주별 클릭 시 바로 적용)
   useEffect(() => {

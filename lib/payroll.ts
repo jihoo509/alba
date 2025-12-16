@@ -220,12 +220,39 @@ export function calculatePayrollByRange(
     const totalPay = totalBasePay + totalNightPay + totalOvertimePay + totalHolidayWorkPay + totalWeeklyPay;
     const taxDetails = calculateTaxAmounts(totalPay, emp.employment_type && emp.employment_type.includes('four'), cfg.no_tax_deduction);
 
-    return {
-      empId: emp.id, name: emp.name, wage: emp.hourly_wage, dailyWage: emp.daily_wage, monthlyWage: emp.monthly_wage, type: emp.employment_type,
-      totalHours: (totalWorkMinutes / 60).toFixed(1), basePay: totalBasePay, nightPay: totalNightPay, overtimePay: totalOvertimePay, holidayWorkPay: totalHolidayWorkPay, weeklyHolidayPay: totalWeeklyPay,
-      totalPay: totalPay, taxDetails: taxDetails, finalPay: totalPay - taxDetails.total,
-      details: { bank: emp.bank_name, account: emp.account_number }, birthDate: emp.birth_date, phoneNumber: emp.phone_number,
-      ledger: ledger.sort((a,b) => (a.date > b.date ? 1 : -1)), 
+return {
+      empId: emp.id, 
+      name: emp.name, 
+      wage: emp.hourly_wage, 
+      dailyWage: emp.daily_wage, 
+      monthlyWage: emp.monthly_wage, 
+      type: emp.employment_type,
+      totalHours: (totalWorkMinutes / 60).toFixed(1), 
+      basePay: totalBasePay, 
+      nightPay: totalNightPay, 
+      overtimePay: totalOvertimePay, 
+      holidayWorkPay: totalHolidayWorkPay, 
+      weeklyHolidayPay: totalWeeklyPay,
+      totalPay: totalPay, 
+      taxDetails: taxDetails, 
+      finalPay: totalPay - taxDetails.total,
+      details: { bank: emp.bank_name, account: emp.account_number }, 
+      birthDate: emp.birth_date, 
+      phoneNumber: emp.phone_number,
+      
+      // ✅ [수정] 날짜가 같으면 주휴수당(WEEKLY)을 맨 뒤로 보내는 정렬 로직
+      ledger: ledger.sort((a, b) => {
+        // 1. 날짜가 다르면 날짜순 정렬 (오름차순)
+        if (a.date !== b.date) {
+            return a.date > b.date ? 1 : -1;
+        }
+        // 2. 날짜가 같다면(일요일), '주휴(WEEKLY)'가 뒤로 가도록 설정
+        if (a.type === 'WEEKLY') return 1;
+        if (b.type === 'WEEKLY') return -1;
+        
+        return 0;
+      }), 
+
       storeSettingsSnapshot: { ...storeSettings, ...cfg },
       isOverrideApplied: isOverrideApplied 
     };

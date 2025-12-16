@@ -5,6 +5,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import { format, differenceInCalendarDays, subMonths } from 'date-fns';
 import DateSelector from './DateSelector';
 import html2canvas from 'html2canvas';
+import CustomSelect from './ui/CustomSelect'; // ✅ CustomSelect 임포트
 
 type Props = { currentStoreId: string; employees: any[]; };
 
@@ -30,16 +31,16 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
   const [finalPay, setFinalPay] = useState(0);         // 실수령액
 
   const [loadingAuto, setLoadingAuto] = useState(false);
-  const [isEmpSelectorOpen, setIsEmpSelectorOpen] = useState(false);
   const [showMobileChoice, setShowMobileChoice] = useState(false);
 
   const resultRef = useRef<HTMLDivElement>(null);
 
-  const handleSelectEmployee = (empId: string) => {
-    setSelectedEmpId(empId);
-    const emp = employees.find(ep => ep.id === empId);
+  // ✅ [수정] CustomSelect용 핸들러 (value만 받음)
+  const handleSelectEmployee = (empId: any) => {
+    const idStr = String(empId);
+    setSelectedEmpId(idStr);
+    const emp = employees.find(ep => ep.id === idStr);
     setHireDate(emp?.hire_date || '');
-    setIsEmpSelectorOpen(false);
   };
 
   const selectedEmpName = employees.find(e => e.id === selectedEmpId)?.name || '';
@@ -104,10 +105,7 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
     const grossSeverance = Math.floor(result / 10) * 10; // 세전 퇴직금 (원단위 절사)
 
     // --- 💰 간이 세금 계산 (매우 단순화된 로직) ---
-    // 실제로는 근속연수 공제, 환산 급여 등 복잡하지만
-    // 알바/단시간 근로자의 경우 공제액이 커서 세금이 0원인 경우가 많음.
-    // 여기서는 기본적으로 0원으로 계산하되, 구조만 잡아둠.
-    const tax = 0; // 복잡한 세금 계산 대신 0원으로 처리 (추후 필요시 로직 추가 가능)
+    const tax = 0; 
     const local = Math.floor(tax * 0.1 / 10) * 10;
 
     setAvgWage(Math.floor(dailyWage));
@@ -155,6 +153,12 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
     }
   };
 
+  // ✅ 직원 목록 옵션 생성
+  const employeeOptions = employees.map(emp => ({
+      value: emp.id,
+      label: emp.name
+  }));
+
   return (
     <div style={cardStyle}>
       <div 
@@ -172,20 +176,24 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
       {isOpen && (
         <div style={{ marginTop: 20, animation: 'fadeIn 0.3s ease-out' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 20 }}>
+                {/* ✅ [수정] CustomSelect 적용 */}
                 <div>
                     <label style={labelStyle}>직원 선택</label>
-                    <div onClick={() => setIsEmpSelectorOpen(true)} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>{selectedEmpName || '직원을 선택하세요'}</span>
-                        <span style={{ fontSize: 12, color: '#999' }}>▼</span>
-                    </div>
+                    <CustomSelect 
+                        value={selectedEmpId}
+                        options={employeeOptions}
+                        onChange={handleSelectEmployee}
+                        placeholder="직원을 선택하세요"
+                    />
                 </div>
+                
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label style={labelStyle}>퇴사일 (마지막 근무일)</label>
                     <DateSelector value={resignDate} onChange={setResignDate} />
                 </div>
             </div>
 
-            {/* ✅ [수정] 재직 기간 표시 한 줄로 통합 */}
+            {/* 재직 기간 표시 */}
             <div style={{ background: '#f9f9f9', padding: '16px', borderRadius: 8, marginBottom: 20, fontSize: 14, color: '#333' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 'bold' }}>📅 재직 기간:</span>
@@ -212,7 +220,7 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
 
             <button onClick={calculateResult} style={btnStyle}>퇴직금 계산하기</button>
 
-            {/* ✅ [수정] 결과 표시: 세금 공제 내역 추가 및 레이아웃 정리 */}
+            {/* 결과 표시 */}
             {severancePay > 0 && (
                 <div style={{ marginTop: 24 }}>
                     <div ref={resultRef} style={{ padding: 24, borderRadius: 12, backgroundColor: '#f0f8ff', border: '1px solid #b3d7ff' }}>
@@ -238,7 +246,6 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
 
                         <hr style={{ border: 'none', borderTop: '1px dashed #b3d7ff', margin: '12px 0' }} />
 
-                        {/* ✅ [신규] 세금 및 공제 내역 표시 */}
                         <div style={resultRowStyle}>
                             <span style={{color:'#333'}}>예상 퇴직금 (세전)</span>
                             <span style={{ fontWeight: 'bold', fontSize: 15 }}>{severancePay.toLocaleString()}원</span>
@@ -274,31 +281,6 @@ export default function SeveranceCalculator({ currentStoreId, employees }: Props
         </div>
       )}
 
-      {isEmpSelectorOpen && (
-        <div style={modalOverlayStyle} onClick={() => setIsEmpSelectorOpen(false)}>
-          <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h4 style={{ margin: '0 0 16px 0', textAlign: 'center', color:'#333' }}>직원 선택</h4>
-            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-              {employees.map(emp => (
-                <div 
-                  key={emp.id} 
-                  onClick={() => handleSelectEmployee(emp.id)}
-                  style={{ 
-                    padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer', 
-                    color: selectedEmpId === emp.id ? 'dodgerblue' : '#333',
-                    fontWeight: selectedEmpId === emp.id ? 'bold' : 'normal',
-                    backgroundColor: selectedEmpId === emp.id ? '#f0f9ff' : 'transparent'
-                  }}
-                >
-                  {emp.name}
-                </div>
-              ))}
-            </div>
-            <button onClick={() => setIsEmpSelectorOpen(false)} style={{ width: '100%', padding: '12px', marginTop: '16px', background: '#f5f5f5', border: 'none', borderRadius: '8px', fontWeight: 'bold', color: '#666' }}>닫기</button>
-          </div>
-        </div>
-      )}
-
       {showMobileChoice && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={() => setShowMobileChoice(false)}>
             <div style={{ width: '100%', background: '#fff', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', padding: '24px 20px 40px 20px', animation: 'slideUp 0.3s ease-out' }} onClick={e => e.stopPropagation()}>
@@ -326,6 +308,3 @@ const labelStyle = { display: 'block', fontSize: '13px', fontWeight: 'bold', mar
 const inputStyle = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', boxSizing: 'border-box' as const, backgroundColor: '#fff', color: '#333' };
 const btnStyle = { width: '100%', padding: '12px', backgroundColor: '#333', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' };
 const resultRowStyle = { display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 14, color: '#555', alignItems: 'flex-start' };
-
-const modalOverlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' };
-const modalContentStyle: React.CSSProperties = { width: '80%', maxWidth: '320px', backgroundColor: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' };
