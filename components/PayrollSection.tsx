@@ -3,23 +3,28 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser';
 import StoreSettings from './StoreSettings';
-import { calculateMonthlyPayroll, calculateTaxAmounts } from '@/lib/payroll';
+import { calculatePayrollByRange, calculateTaxAmounts } from '@/lib/payroll';
 import * as XLSX from 'xlsx-js-style';
 import PayStubModal, { PayStubPaper } from './PayStubModal';
 import PayrollEditModal from './PayrollEditModal';
 import SeveranceCalculator from './SeveranceCalculator';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, subWeeks, startOfWeek, endOfWeek, addDays, setDate } from 'date-fns';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
 type Props = { currentStoreId: string; };
+type ViewMode = 'month' | 'week' | 'custom';
 
 export default function PayrollSection({ currentStoreId }: Props) {
   const supabase = createSupabaseBrowserClient();
-  const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth() + 1);
+  
+  // ✅ [변경] 날짜 상태 관리
+  const [viewMode, setViewMode] = useState<ViewMode>('month'); // 기본값은 month지만 로딩 후 store setting에 따라 변할 수 있음
+  const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [storeSettings, setStoreSettings] = useState<any>(null);
+
   const [payrollData, setPayrollData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -36,11 +41,77 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const handlePrevMonth = () => { if (month === 1) { setYear(y => y - 1); setMonth(12); } else { setMonth(m => m - 1); } };
-  const handleNextMonth = () => { if (month === 12) { setYear(y => y + 1); setMonth(1); } else { setMonth(m => m + 1); } };
+  // ✅ 초기 설정 로드 및 기간 자동 세팅
+  useEffect(() => {
+    if(!currentStoreId) return;
+    const fetchSettings = async () => {
+        const { data } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
+        if(data) {
+            setStoreSettings(data);
+            const today = new Date();
+            let sDate, eDate;
+            
+            // 1. 매장 설정이 '주급'이면 주별 보기 기본
+            if (data.pay_rule_type === 'week') {
+                setViewMode('week');
+                sDate = startOfWeek(today, { weekStartsOn: 1 });
+                eDate = endOfWeek(today, { weekStartsOn: 1 });
+            } 
+            // 2. 월급이면 매장 시작일(pay_rule_start_day) 기준 계산
+            else {
+                setViewMode('month');
+                const startDay = data.pay_rule_start_day || 1;
+                if (startDay === 1) {
+                    sDate = startOfMonth(today);
+                    eDate = endOfMonth(today);
+                } else {
+                    // 예: 오늘 12월 16일, 시작일 25일 -> 11월 25일 ~ 12월 24일이 기본
+                    // 예: 오늘 12월 26일, 시작일 25일 -> 12월 25일 ~ 1월 24일이 기본
+                    if (today.getDate() >= startDay) {
+                        sDate = setDate(today, startDay);
+                        eDate = addDays(setDate(addMonths(today, 1), startDay), -1);
+                    } else {
+                        sDate = setDate(subMonths(today, 1), startDay);
+                        eDate = addDays(setDate(today, startDay), -1);
+                    }
+                }
+            }
+            setStartDate(format(sDate, 'yyyy-MM-dd'));
+            setEndDate(format(eDate, 'yyyy-MM-dd'));
+        }
+    };
+    fetchSettings();
+  }, [currentStoreId, supabase]);
 
+
+  // ✅ 기간 이동 핸들러
+  const handleRangeMove = (direction: 'prev' | 'next') => {
+    const s = new Date(startDate);
+    const e = new Date(endDate);
+    
+    if (viewMode === 'month') {
+        // 월 단위 이동 (단순 1달 +/- 가 아니라 기간 간격 유지)
+        if (direction === 'prev') {
+            setStartDate(format(addMonths(s, -1), 'yyyy-MM-dd'));
+            setEndDate(format(addMonths(e, -1), 'yyyy-MM-dd'));
+        } else {
+            setStartDate(format(addMonths(s, 1), 'yyyy-MM-dd'));
+            setEndDate(format(addMonths(e, 1), 'yyyy-MM-dd'));
+        }
+    } else if (viewMode === 'week') {
+        if (direction === 'prev') {
+            setStartDate(format(addWeeks(s, -1), 'yyyy-MM-dd'));
+            setEndDate(format(addWeeks(e, -1), 'yyyy-MM-dd'));
+        } else {
+            setStartDate(format(addWeeks(s, 1), 'yyyy-MM-dd'));
+            setEndDate(format(addWeeks(e, 1), 'yyyy-MM-dd'));
+        }
+    }
+  };
+
+  // ✅ 데이터 계산 로직
   const loadAndCalculate = useCallback(async () => {
-    if (!currentStoreId) return;
+    if (!currentStoreId || !startDate || !endDate) return;
     setLoading(true);
 
     const { data: storeData } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
@@ -49,24 +120,24 @@ export default function PayrollSection({ currentStoreId }: Props) {
     
     const { data: overData } = await supabase.from('employee_settings').select('*');
 
-    const safeStart = `${year}-${String(month).padStart(2, '0')}-01`;
-    const safeEnd = format(new Date(year, month, 0), 'yyyy-MM-dd');
-    const { data: schedules } = await supabase.from('schedules').select('*').eq('store_id', currentStoreId).gte('date', safeStart).lte('date', safeEnd);
+    // 스케줄 가져오기 (범위 넉넉하게 앞뒤로 조금 더 가져와서 필터링은 함수 내부에서 정확히 함)
+    const { data: schedules } = await supabase.from('schedules').select('*')
+        .eq('store_id', currentStoreId)
+        .gte('date', startDate)
+        .lte('date', endDate);
 
     if (empData && schedules && storeData) {
-      const targetMonthStart = new Date(year, month - 1, 1);
-      const targetMonthEnd = new Date(year, month, 0);
-      const targetMonthStartStr = format(targetMonthStart, 'yyyy-MM-dd');
-      const targetMonthEndStr = format(targetMonthEnd, 'yyyy-MM-dd');
-
       const activeEmps = empData.filter((emp: any) => {
-        const joined = !emp.hire_date || emp.hire_date <= targetMonthEndStr;
-        const notLeft = !emp.end_date || emp.end_date >= targetMonthStartStr;
+        // 퇴사자 필터링: 조회 종료일 이전에 입사했어야 하고, 조회 시작일 이후에 퇴사했어야 함
+        const joined = !emp.hire_date || emp.hire_date <= endDate;
+        const notLeft = !emp.end_date || emp.end_date >= startDate;
         return joined && notLeft;
       });
 
-      let result = calculateMonthlyPayroll(year, month, activeEmps, schedules, storeData, overData || []);
+      // ✅ [핵심 변경] calculatePayrollByRange 호출
+      let result = calculatePayrollByRange(startDate, endDate, activeEmps, schedules, storeData, overData || []);
 
+      // (이하 기존 override 적용 로직 동일)
       result = result.map((item: any) => {
         const setting = overData ? overData.find((s: any) => s.employee_id === item.empId) : null;
         
@@ -103,7 +174,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
       setPayrollData(result);
     }
     setLoading(false);
-  }, [currentStoreId, year, month, supabase]);
+  }, [currentStoreId, startDate, endDate, supabase]);
 
   useEffect(() => { loadAndCalculate(); }, [loadAndCalculate]);
 
@@ -155,21 +226,19 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => (acc + (curr.totalPay || 0)), 0), [payrollData]);
 
+  // 엑셀 다운로드 (파일명에 기간 표시)
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
 
     const excelRows = payrollData.map(p => {
       const empInfo = employees.find(e => e.id === p.empId);
-      
       const incomeTax = p.taxDetails.incomeTax || 0;
       const localTax = p.taxDetails.localTax || 0;
       const pension = p.taxDetails.pension || 0;
       const health = p.taxDetails.health || 0;
       const employment = p.taxDetails.employment || 0;
       const care = p.taxDetails.care || 0;
-
-      // ✅ [확인 완료] 모든 공제 항목 합산
       const totalDeductions = incomeTax + localTax + pension + health + employment + care;
 
       return {
@@ -178,12 +247,9 @@ export default function PayrollSection({ currentStoreId }: Props) {
         '은행': empInfo?.bank_name || '-', 
         '계좌번호': empInfo?.account_number || '-', 
         '생년월일': empInfo?.birth_date || '-', 
-        
         '총 지급 급여': fmt(p.totalPay), 
         '세후 지급 급여': fmt(p.finalPay), 
-        
         '총 공제액': fmt(totalDeductions), 
-
         '소득세': fmt(incomeTax), 
         '지방소득세': fmt(localTax), 
         '국민연금': fmt(pension), 
@@ -194,22 +260,15 @@ export default function PayrollSection({ currentStoreId }: Props) {
     });
 
     const ws = XLSX.utils.json_to_sheet(excelRows);
-
-    // ✅ [수정 4] 엑셀 가운데 정렬 스타일 적용하기
-    // 시트의 모든 셀(A1, B1 ...)을 돌면서 스타일 객체(.s)를 넣어줍니다.
     const range = XLSX.utils.decode_range(ws['!ref'] || "A1:A1");
     for (let R = range.s.r; R <= range.e.r; ++R) {
       for (let C = range.s.c; C <= range.e.c; ++C) {
         const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
         if (!ws[cell_address]) continue;
-        
-        // 스타일 객체 추가 (가운데 정렬)
         ws[cell_address].s = {
           alignment: { horizontal: "center", vertical: "center" },
-          font: { name: "맑은 고딕" } // 폰트도 깔끔하게
+          font: { name: "맑은 고딕" }
         };
-        
-        // 헤더(첫 줄)는 굵게 처리하고 배경색 넣기 (옵션)
         if (R === 0) {
             ws[cell_address].s = {
                 alignment: { horizontal: "center", vertical: "center" },
@@ -219,18 +278,15 @@ export default function PayrollSection({ currentStoreId }: Props) {
         }
       }
     }
-
-    // 컬럼 너비 설정 (기존 코드)
     ws['!cols'] = [
       { wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 12 }, 
-      { wch: 12 }, { wch: 12 }, 
-      { wch: 12 }, 
+      { wch: 12 }, { wch: 12 }, { wch: 12 }, 
       { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 } 
     ];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "급여대장");
-    XLSX.writeFile(wb, `${year}년_${month}월_급여대장.xlsx`);
+    XLSX.writeFile(wb, `${startDate}~${endDate}_급여대장.xlsx`);
   };
 
   const handleDownloadAllStubs = async () => { 
@@ -246,12 +302,12 @@ export default function PayrollSection({ currentStoreId }: Props) {
         if (element) {
           const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff' });
           const base64Data = canvas.toDataURL('image/png').replace(/^data:image\/(png|jpg);base64,/, "");
-          zip.file(`${p.name}_${month}월_명세서.png`, base64Data, { base64: true });
+          zip.file(`${p.name}_급여명세서.png`, base64Data, { base64: true });
         }
         await new Promise(r => setTimeout(r, 50)); 
       }
       const content = await zip.generateAsync({ type: 'blob' });
-      saveAs(content, `${year}년_${month}월_급여명세서_모음.zip`);
+      saveAs(content, `${startDate}~${endDate}_급여명세서_모음.zip`);
     } catch (e) { console.error(e); alert('오류 발생'); } finally { setIsDownloading(false); }
   };
 
@@ -268,6 +324,11 @@ export default function PayrollSection({ currentStoreId }: Props) {
     <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%' }}>
       <style jsx>{`
         .header-container { display: flex; justify-content: space-between; align-items: center; background-color: #f8f9fa; padding: 16px; border-radius: 12px; border: 1px solid #eee; }
+        .view-tabs { display: flex; gap: 4px; background: #eee; padding: 4px; border-radius: 8px; margin-bottom: 12px; width: fit-content; }
+        .view-tab { padding: 6px 12px; border-radius: 6px; border: none; font-size: 13px; cursor: pointer; color: #555; background: transparent; }
+        .view-tab.active { background: #fff; color: dodgerblue; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .date-picker-input { padding: 4px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; font-weight: bold; color: #333; }
+        
         @media (max-width: 768px) {
           .header-container { flex-direction: column; gap: 12px; text-align: center; padding: 20px 16px; }
           .header-total-area { width: 100%; text-align: right; border-top: 1px dashed #ddd; padding-top: 12px; margin-top: 4px; }
@@ -288,8 +349,8 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
       <div style={cardStyle}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: 20, margin: 0, color: '#333', fontWeight: 'bold' }}>💰 월 급여 대장</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap:'wrap', gap:8 }}>
+            <h2 style={{ fontSize: 20, margin: 0, color: '#333', fontWeight: 'bold' }}>💰 급여 대장</h2>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={handleDownloadExcel} style={{ ...btnStyle, background: '#27ae60', color: '#fff', border: 'none', fontSize: 13 }}>
                 <span className="mobile-text">엑셀</span><span className="desktop-text">엑셀 다운로드</span>
@@ -299,20 +360,47 @@ export default function PayrollSection({ currentStoreId }: Props) {
               </button>
             </div>
           </div>
+
+          {/* 3-Tab 기간 선택 UI */}
           <div className="header-container">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
-              <button onClick={handlePrevMonth} style={navIconBtnStyle}>◀</button>
-              <span style={{ fontSize: 20, fontWeight: '800', color: '#333' }}>{year}년 {month}월</span>
-              <button onClick={handleNextMonth} style={navIconBtnStyle}>▶</button>
+            <div style={{display:'flex', flexDirection:'column', alignItems:'center'}}>
+                <div className="view-tabs">
+                    <button className={`view-tab ${viewMode==='month' ? 'active' : ''}`} onClick={()=>setViewMode('month')}>월별</button>
+                    <button className={`view-tab ${viewMode==='week' ? 'active' : ''}`} onClick={()=>setViewMode('week')}>주별</button>
+                    <button className={`view-tab ${viewMode==='custom' ? 'active' : ''}`} onClick={()=>setViewMode('custom')}>기간지정</button>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                    {viewMode !== 'custom' && (
+                        <button onClick={() => handleRangeMove('prev')} style={navIconBtnStyle}>◀</button>
+                    )}
+                    
+                    {viewMode === 'custom' ? (
+                        <div style={{display:'flex', alignItems:'center', gap:4}}>
+                            <input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="date-picker-input"/>
+                            <span>~</span>
+                            <input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="date-picker-input"/>
+                        </div>
+                    ) : (
+                        <span style={{ fontSize: 18, fontWeight: '800', color: '#333' }}>
+                             {startDate} ~ {endDate}
+                        </span>
+                    )}
+
+                    {viewMode !== 'custom' && (
+                         <button onClick={() => handleRangeMove('next')} style={navIconBtnStyle}>▶</button>
+                    )}
+                </div>
             </div>
+
             <div className="header-total-area">
-              <div style={{ fontSize: 13, color: '#666', marginBottom: 2 }}>이번 달 총 지급액</div>
+              <div style={{ fontSize: 13, color: '#666', marginBottom: 2 }}>조회 기간 총 지급액</div>
               <div style={{ fontSize: 24, fontWeight: 'bold', color: 'dodgerblue', letterSpacing: '-0.5px' }}>{totalMonthlyCost.toLocaleString()}원</div>
             </div>
           </div>
         </div>
 
-        {loading ? <p style={{ color: '#666', textAlign: 'center', padding: 20 }}>로딩 중...</p> : (
+        {loading ? <p style={{ color: '#666', textAlign: 'center', padding: 20 }}>데이터 불러오는 중...</p> : (
           <div className="table-wrapper" style={{ boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)', overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '100%' }}>
               <thead>
@@ -334,7 +422,9 @@ export default function PayrollSection({ currentStoreId }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {payrollData.map(p => (
+                {payrollData.length === 0 ? (
+                    <tr><td colSpan={14} style={{padding:20, textAlign:'center', color:'#999'}}>해당 기간에 근무 기록이 없습니다.</td></tr>
+                ) : payrollData.map(p => (
                   <tr key={p.empId} style={{ borderBottom: '1px solid #eee', fontSize: '13px', backgroundColor: '#fff', height: 48 }}>
                     <td className="col-name" style={{ ...tdStyle, fontWeight: 'bold', position: 'sticky', left: 0, background: '#fff', zIndex: 5 }}>{p.name}</td>
                     <td className="col-total" style={{ ...tdStyle }}>
@@ -387,7 +477,9 @@ export default function PayrollSection({ currentStoreId }: Props) {
       <div style={{ position: 'fixed', top: '-10000px', left: '-10000px' }}>
         {payrollData.map(p => (
           <div key={p.empId} id={`hidden-stub-${p.empId}`}>
-             <PayStubPaper data={p} year={year} month={month} />
+             {/* PayStubPaper에도 날짜 범위를 넘겨줘야 하지만, 기존 컴포넌트가 year/month만 받는다면 일단 시작일의 year/month를 넘겨주거나 컴포넌트 수정 필요. 
+                 여기서는 호환성을 위해 startDate 기준의 연/월을 넘깁니다. */}
+             <PayStubPaper data={p} year={parseInt(startDate.split('-')[0])} month={parseInt(startDate.split('-')[1])} />
           </div>
         ))}
       </div>
@@ -396,7 +488,8 @@ export default function PayrollSection({ currentStoreId }: Props) {
         isOpen={stubModalState.isOpen}
         onClose={() => setStubModalState({ ...stubModalState, isOpen: false })}
         data={stubModalState.data}
-        year={year} month={month}
+        year={parseInt(startDate.split('-')[0])} 
+        month={parseInt(startDate.split('-')[1])}
         onSave={handleSaveStubSettings}
         onReset={handleResetStubSettings} 
         mode={stubModalState.mode}
