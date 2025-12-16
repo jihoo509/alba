@@ -8,8 +8,8 @@ import * as XLSX from 'xlsx-js-style';
 import PayStubModal, { PayStubPaper } from './PayStubModal';
 import PayrollEditModal from './PayrollEditModal';
 import SeveranceCalculator from './SeveranceCalculator';
-import DateSelector from './DateSelector'; // ✅ [추가]
-import { format, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, subWeeks, startOfWeek, endOfWeek, addDays, setDate } from 'date-fns';
+import DateSelector from './DateSelector'; 
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, startOfWeek, endOfWeek, addDays, setDate } from 'date-fns';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -88,7 +88,6 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
             setSavedSettings(data);
             
             // 🔥 [핵심 추가] 저장된 설정에 따라 ViewMode 자동 전환
-            // refreshTrigger가 0보다 클 때(즉, 설정 저장 후) 또는 초기 로딩 시 적용
             let targetMode: ViewMode = viewMode;
             
             // 사용자가 '기간지정(custom)'을 보고 있지 않다면, 설정에 따라 탭 전환
@@ -114,7 +113,7 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
         }
     };
     fetchSettings();
-  }, [currentStoreId, supabase, refreshTrigger]); // refreshTrigger가 변하면 실행됨
+  }, [currentStoreId, supabase, refreshTrigger]);
 
 
   // ✅ 2. 뷰 모드 변경 시 날짜 재계산
@@ -171,6 +170,25 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
       if (newStart > endDate) {
           setEndDate(newStart);
       }
+  };
+
+  // ✅ [신규] 화면에 보여줄 날짜 텍스트를 예쁘게 포맷팅하는 함수
+  const getDateDisplayText = () => {
+    const s = new Date(startDate);
+    const e = new Date(endDate);
+    
+    // 1. 월별 보기: "2025년 12월" 처럼 깔끔하게
+    if (viewMode === 'month') {
+        return format(s, 'yyyy년 MM월');
+    }
+    
+    // 2. 주별 보기 or 기간지정: "2025.12.15 ~ 12.21" (뒤쪽 연도 생략)
+    const startFmt = format(s, 'yyyy.MM.dd');
+    const endFmt = (s.getFullYear() === e.getFullYear()) 
+                   ? format(e, 'MM.dd') // 같은 연도면 뒤에는 월.일만
+                   : format(e, 'yyyy.MM.dd'); // 다른 연도면 전체 표시
+    
+    return `${startFmt} ~ ${endFmt}`;
   };
 
   // ✅ 데이터 계산 로직
@@ -382,12 +400,34 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
     <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%' }}>
       <style jsx>{`
         .header-container { display: flex; justify-content: space-between; align-items: center; background-color: #f8f9fa; padding: 16px; border-radius: 12px; border: 1px solid #eee; }
-        .view-tabs { display: flex; gap: 4px; background: #eee; padding: 4px; border-radius: 8px; margin-bottom: 12px; width: fit-content; }
-        .view-tab { padding: 6px 12px; border-radius: 6px; border: none; font-size: 13px; cursor: pointer; color: #555; background: transparent; }
+        
+        /* ✅ [수정] 탭 버튼 스타일: Grid로 3등분하여 꽉 채우기 */
+        .view-tabs { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr 1fr; 
+            gap: 4px; 
+            background: #eee; 
+            padding: 4px; 
+            border-radius: 8px; 
+            margin-bottom: 16px; 
+            width: 100%; 
+            box-sizing: border-box;
+        }
+        .view-tab { 
+            padding: 8px 0; /* 좌우 패딩 제거하고 중앙정렬 */
+            border-radius: 6px; 
+            border: none; 
+            font-size: 13px; 
+            cursor: pointer; 
+            color: #555; 
+            background: transparent; 
+            width: 100%;
+            text-align: center;
+        }
         .view-tab.active { background: #fff; color: dodgerblue; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         
         @media (max-width: 768px) {
-          .header-container { flex-direction: column; gap: 12px; text-align: center; padding: 20px 16px; }
+          .header-container { flex-direction: column; gap: 16px; text-align: center; padding: 20px 16px; }
           .header-total-area { width: 100%; text-align: right; border-top: 1px dashed #ddd; padding-top: 12px; margin-top: 4px; }
           .desktop-cell { display: none !important; }
           .mobile-cell { display: table-cell !important; }
@@ -420,29 +460,36 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
           </div>
 
           <div className="header-container">
-            <div style={{display:'flex', flexDirection:'column', alignItems:'center'}}>
+            <div style={{display:'flex', flexDirection:'column', alignItems:'center', width:'100%'}}>
+                
+                {/* 1️⃣ 탭 버튼 (Grid 3등분) */}
                 <div className="view-tabs">
                     <button className={`view-tab ${viewMode==='month' ? 'active' : ''}`} onClick={()=>setViewMode('month')}>월별</button>
                     <button className={`view-tab ${viewMode==='week' ? 'active' : ''}`} onClick={()=>setViewMode('week')}>주별</button>
                     <button className={`view-tab ${viewMode==='custom' ? 'active' : ''}`} onClick={()=>setViewMode('custom')}>기간지정</button>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', width:'100%' }}>
                     {viewMode !== 'custom' && (
                         <button onClick={() => handleRangeMove('prev')} style={navIconBtnStyle}>◀</button>
                     )}
                     
-{/* ✅ [수정] DateSelector 적용 */}
+                    {/* 2️⃣ 날짜 표시 영역 */}
                     {viewMode === 'custom' ? (
-                        <div style={{display:'flex', alignItems:'center', gap:4}}>
-                            {/* onChange에 setStartDate 대신 handleCustomStartDateChange 연결 */}
-                            <DateSelector value={startDate} onChange={handleCustomStartDateChange} />
-                            <span>~</span>
-                            <DateSelector value={endDate} onChange={setEndDate} />
+                        // [기간 지정] 모드: DateSelector 두 개 꽉 차게
+                        <div style={{ display:'flex', alignItems:'center', gap: 6, width: '100%' }}>
+                            <div style={{ flex: 1 }}>
+                                <DateSelector value={startDate} onChange={handleCustomStartDateChange} />
+                            </div>
+                            <span style={{ color: '#999', fontSize: 13 }}>~</span>
+                            <div style={{ flex: 1 }}>
+                                <DateSelector value={endDate} onChange={setEndDate} />
+                            </div>
                         </div>
                     ) : (
-                        <span style={{ fontSize: 18, fontWeight: '800', color: '#333' }}>
-                             {startDate} ~ {endDate}
+                        // [월별/주별] 모드: 포맷팅된 텍스트 표시
+                        <span style={{ fontSize: 20, fontWeight: '800', color: '#333', letterSpacing: '-0.5px' }}>
+                             {getDateDisplayText()}
                         </span>
                     )}
 

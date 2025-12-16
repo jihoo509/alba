@@ -3,11 +3,15 @@
 import React, { useState, useEffect } from 'react';
 
 type Props = {
-  value: string; // "YYYY-MM-DD"
+  value: string;
   onChange: (value: string) => void;
+  // ✅ [추가] 스타일 커스텀을 위한 props
+  style?: React.CSSProperties; 
+  className?: string;
 };
 
-export default function DateSelector({ value, onChange }: Props) {
+// ✅ 함수 인자에서 style과 className을 받아야 합니다!
+export default function DateSelector({ value, onChange, style, className }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
   // 날짜 파싱 (유틸리티)
@@ -63,9 +67,9 @@ export default function DateSelector({ value, onChange }: Props) {
     }, 50);
   };
 
-  // ✅ [수정 핵심] 내년(2026) ~ 1950년까지 내림차순(최신순) 생성
+  // ✅ [수정] 내년(2026) ~ 1950년까지 내림차순(최신순) 생성
   const currentYear = new Date().getFullYear();
-  const maxYear = currentYear + 1; // 여기를 +1 해주면 내년까지 선택 가능
+  const maxYear = currentYear + 1; 
   const minYear = 1950;
   
   const years = Array.from(
@@ -81,10 +85,19 @@ export default function DateSelector({ value, onChange }: Props) {
     <>
       <div 
         onClick={() => setIsOpen(true)}
+        className={className} // ✅ 받아온 className 적용
         style={{
-          padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6,
-          backgroundColor: '#fff', cursor: 'pointer', fontSize: 14, minWidth: 120, textAlign: 'center',
-          color: '#333'
+          // ✅ [스타일 수정]
+          // 1. minWidth 제거 (모바일에서 튀어나감 방지)
+          // 2. width: 100% (부모 flex 영역 꽉 채우기)
+          // 3. 텍스트 중앙 정렬
+          padding: '10px 4px', 
+          border: '1px solid #ddd', borderRadius: 6,
+          backgroundColor: '#fff', cursor: 'pointer', fontSize: 13, 
+          textAlign: 'center', color: '#333',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: '100%', 
+          ...style // ✅ 외부에서 들어온 style 덮어쓰기
         }}
       >
         {value || '날짜 선택'}
@@ -163,7 +176,9 @@ const modalContentStyle: React.CSSProperties = {
 };
 
 const columnStyle: React.CSSProperties = {
-  flex: 1, overflowY: 'auto', textAlign: 'center', scrollBehavior: 'smooth'
+  flex: 1, overflowY: 'auto', textAlign: 'center', scrollBehavior: 'smooth',
+  msOverflowStyle: 'none',  // IE, Edge 스크롤바 숨김
+  scrollbarWidth: 'none'    // Firefox 스크롤바 숨김
 };
 
 const itemStyle = (isSelected: boolean): React.CSSProperties => ({
