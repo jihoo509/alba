@@ -8,26 +8,33 @@ import * as XLSX from 'xlsx-js-style';
 import PayStubModal, { PayStubPaper } from './PayStubModal';
 import PayrollEditModal from './PayrollEditModal';
 import SeveranceCalculator from './SeveranceCalculator';
+import DateSelector from './DateSelector'; // ✅ [추가]
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, subWeeks, startOfWeek, endOfWeek, addDays, setDate } from 'date-fns';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
-type Props = { currentStoreId: string; };
+// ✅ Props 확장: refreshTrigger, onSettingsUpdate
+type Props = { 
+    currentStoreId: string; 
+    refreshTrigger?: number; 
+    onSettingsUpdate?: () => void;
+};
 type ViewMode = 'month' | 'week' | 'custom';
 
-export default function PayrollSection({ currentStoreId }: Props) {
+export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onSettingsUpdate }: Props) {
   const supabase = createSupabaseBrowserClient();
   
-  // ✅ [변경] 날짜 상태 관리
-  const [viewMode, setViewMode] = useState<ViewMode>('month'); // 기본값은 month지만 로딩 후 store setting에 따라 변할 수 있음
+  const [viewMode, setViewMode] = useState<ViewMode>('month'); 
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
-  const [storeSettings, setStoreSettings] = useState<any>(null);
-
+  
   const [payrollData, setPayrollData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
+
+  // 설정 저장 상태 (탭 전환 시 재사용)
+  const [savedSettings, setSavedSettings] = useState<any>(null);
 
   const [stubModalState, setStubModalState] = useState<{ isOpen: boolean; data: any; mode: 'full' | 'settings' | 'download' }>({
     isOpen: false, data: null, mode: 'full'
@@ -41,70 +48,89 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // ✅ 초기 설정 로드 및 기간 자동 세팅
+  // ✅ [중요] 날짜 계산 함수 분리 (탭 변경 / 초기화 시 공통 사용)
+  const calculateRangeBySettings = (mode: ViewMode, settings: any, refDate: Date = new Date()) => {
+      let sDate, eDate;
+      const startDay = settings?.pay_rule_start_day || 1;
+
+      if (mode === 'week') {
+          // 주별: 무조건 이번주 월~일
+          sDate = startOfWeek(refDate, { weekStartsOn: 1 });
+          eDate = endOfWeek(refDate, { weekStartsOn: 1 });
+      } else if (mode === 'month') {
+          // 월별: 설정된 시작일 기준
+          if (startDay === 1) {
+              sDate = startOfMonth(refDate);
+              eDate = endOfMonth(refDate);
+          } else {
+              // 예: 25일 시작
+              if (refDate.getDate() >= startDay) {
+                  sDate = setDate(refDate, startDay);
+                  eDate = addDays(setDate(addMonths(refDate, 1), startDay), -1);
+              } else {
+                  sDate = setDate(subMonths(refDate, 1), startDay);
+                  eDate = addDays(setDate(refDate, startDay), -1);
+              }
+          }
+      } else {
+          // 커스텀은 기존 날짜 유지
+          return null; 
+      }
+      return { s: format(sDate, 'yyyy-MM-dd'), e: format(eDate, 'yyyy-MM-dd') };
+  };
+
+  // ✅ 1. 초기 로딩 & refreshTrigger 감지 시 설정 다시 불러오기
   useEffect(() => {
     if(!currentStoreId) return;
     const fetchSettings = async () => {
         const { data } = await supabase.from('stores').select('*').eq('id', currentStoreId).single();
         if(data) {
-            setStoreSettings(data);
-            const today = new Date();
-            let sDate, eDate;
+            setSavedSettings(data);
             
-            // 1. 매장 설정이 '주급'이면 주별 보기 기본
-            if (data.pay_rule_type === 'week') {
-                setViewMode('week');
-                sDate = startOfWeek(today, { weekStartsOn: 1 });
-                eDate = endOfWeek(today, { weekStartsOn: 1 });
-            } 
-            // 2. 월급이면 매장 시작일(pay_rule_start_day) 기준 계산
-            else {
-                setViewMode('month');
-                const startDay = data.pay_rule_start_day || 1;
-                if (startDay === 1) {
-                    sDate = startOfMonth(today);
-                    eDate = endOfMonth(today);
-                } else {
-                    // 예: 오늘 12월 16일, 시작일 25일 -> 11월 25일 ~ 12월 24일이 기본
-                    // 예: 오늘 12월 26일, 시작일 25일 -> 12월 25일 ~ 1월 24일이 기본
-                    if (today.getDate() >= startDay) {
-                        sDate = setDate(today, startDay);
-                        eDate = addDays(setDate(addMonths(today, 1), startDay), -1);
-                    } else {
-                        sDate = setDate(subMonths(today, 1), startDay);
-                        eDate = addDays(setDate(today, startDay), -1);
-                    }
-                }
+            // 최초 로딩이거나 리프레시된 경우, 현재 viewMode에 맞춰 날짜 재설정
+            const range = calculateRangeBySettings(viewMode, data, new Date());
+            if (range) {
+                setStartDate(range.s);
+                setEndDate(range.e);
             }
-            setStartDate(format(sDate, 'yyyy-MM-dd'));
-            setEndDate(format(eDate, 'yyyy-MM-dd'));
         }
     };
     fetchSettings();
-  }, [currentStoreId, supabase]);
+  }, [currentStoreId, supabase, refreshTrigger]); // refreshTrigger가 변하면 실행됨
+
+  // ✅ 2. 뷰 모드 변경 시 날짜 재계산 (ex: 월별 -> 주별 클릭 시 바로 적용)
+  useEffect(() => {
+      if (savedSettings && viewMode !== 'custom') {
+          const range = calculateRangeBySettings(viewMode, savedSettings, new Date(startDate));
+          if (range) {
+              setStartDate(range.s);
+              setEndDate(range.e);
+          }
+      }
+  }, [viewMode, savedSettings]);
 
 
-  // ✅ 기간 이동 핸들러
+  // ✅ 3. 날짜 이동 핸들러 (버그 수정: 단순 addMonths 대신 startOfMonth/endOfMonth 사용)
   const handleRangeMove = (direction: 'prev' | 'next') => {
     const s = new Date(startDate);
-    const e = new Date(endDate);
     
     if (viewMode === 'month') {
-        // 월 단위 이동 (단순 1달 +/- 가 아니라 기간 간격 유지)
-        if (direction === 'prev') {
-            setStartDate(format(addMonths(s, -1), 'yyyy-MM-dd'));
-            setEndDate(format(addMonths(e, -1), 'yyyy-MM-dd'));
-        } else {
-            setStartDate(format(addMonths(s, 1), 'yyyy-MM-dd'));
-            setEndDate(format(addMonths(e, 1), 'yyyy-MM-dd'));
+        const moveAmount = direction === 'prev' ? -1 : 1;
+        const newStart = addMonths(s, moveAmount);
+        
+        // 중요: 끝나는 날짜는 시작 날짜를 기준으로 다시 계산해야 정확함 (28일 -> 31일 등)
+        const range = calculateRangeBySettings('month', savedSettings, newStart);
+        if (range) {
+            setStartDate(range.s);
+            setEndDate(range.e);
         }
     } else if (viewMode === 'week') {
-        if (direction === 'prev') {
-            setStartDate(format(addWeeks(s, -1), 'yyyy-MM-dd'));
-            setEndDate(format(addWeeks(e, -1), 'yyyy-MM-dd'));
-        } else {
-            setStartDate(format(addWeeks(s, 1), 'yyyy-MM-dd'));
-            setEndDate(format(addWeeks(e, 1), 'yyyy-MM-dd'));
+        const moveAmount = direction === 'prev' ? -1 : 1;
+        const newStart = addWeeks(s, moveAmount);
+        const range = calculateRangeBySettings('week', savedSettings, newStart);
+         if (range) {
+            setStartDate(range.s);
+            setEndDate(range.e);
         }
     }
   };
@@ -120,7 +146,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
     
     const { data: overData } = await supabase.from('employee_settings').select('*');
 
-    // 스케줄 가져오기 (범위 넉넉하게 앞뒤로 조금 더 가져와서 필터링은 함수 내부에서 정확히 함)
     const { data: schedules } = await supabase.from('schedules').select('*')
         .eq('store_id', currentStoreId)
         .gte('date', startDate)
@@ -128,16 +153,13 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
     if (empData && schedules && storeData) {
       const activeEmps = empData.filter((emp: any) => {
-        // 퇴사자 필터링: 조회 종료일 이전에 입사했어야 하고, 조회 시작일 이후에 퇴사했어야 함
         const joined = !emp.hire_date || emp.hire_date <= endDate;
         const notLeft = !emp.end_date || emp.end_date >= startDate;
         return joined && notLeft;
       });
 
-      // ✅ [핵심 변경] calculatePayrollByRange 호출
       let result = calculatePayrollByRange(startDate, endDate, activeEmps, schedules, storeData, overData || []);
 
-      // (이하 기존 override 적용 로직 동일)
       result = result.map((item: any) => {
         const setting = overData ? overData.find((s: any) => s.employee_id === item.empId) : null;
         
@@ -218,7 +240,7 @@ export default function PayrollSection({ currentStoreId }: Props) {
     }, { onConflict: 'employee_id' });
 
     if (error) {
-        alert('초기화 실패 (DB권한 확인): ' + error.message);
+        alert('초기화 실패: ' + error.message);
     } else {
         await loadAndCalculate(); 
     }
@@ -226,11 +248,9 @@ export default function PayrollSection({ currentStoreId }: Props) {
 
   const totalMonthlyCost = useMemo(() => payrollData.reduce((acc, curr) => (acc + (curr.totalPay || 0)), 0), [payrollData]);
 
-  // 엑셀 다운로드 (파일명에 기간 표시)
   const handleDownloadExcel = () => {
     if (payrollData.length === 0) return;
     const fmt = (num: number) => num ? num.toLocaleString() : '0';
-
     const excelRows = payrollData.map(p => {
       const empInfo = employees.find(e => e.id === p.empId);
       const incomeTax = p.taxDetails.incomeTax || 0;
@@ -327,7 +347,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
         .view-tabs { display: flex; gap: 4px; background: #eee; padding: 4px; border-radius: 8px; margin-bottom: 12px; width: fit-content; }
         .view-tab { padding: 6px 12px; border-radius: 6px; border: none; font-size: 13px; cursor: pointer; color: #555; background: transparent; }
         .view-tab.active { background: #fff; color: dodgerblue; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .date-picker-input { padding: 4px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; font-weight: bold; color: #333; }
         
         @media (max-width: 768px) {
           .header-container { flex-direction: column; gap: 12px; text-align: center; padding: 20px 16px; }
@@ -343,8 +362,9 @@ export default function PayrollSection({ currentStoreId }: Props) {
         @media (min-width: 769px) { .mobile-cell { display: none !important; } .desktop-cell { display: table-cell !important; } .header-total-area { text-align: right; } }
       `}</style>
 
+      {/* ✅ StoreSettings에 업데이트 콜백 전달 */}
       <div style={cardStyle}>
-        <StoreSettings storeId={currentStoreId} onUpdate={loadAndCalculate} />
+        <StoreSettings storeId={currentStoreId} onUpdate={onSettingsUpdate} />
       </div>
 
       <div style={cardStyle}>
@@ -361,7 +381,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
             </div>
           </div>
 
-          {/* 3-Tab 기간 선택 UI */}
           <div className="header-container">
             <div style={{display:'flex', flexDirection:'column', alignItems:'center'}}>
                 <div className="view-tabs">
@@ -375,11 +394,12 @@ export default function PayrollSection({ currentStoreId }: Props) {
                         <button onClick={() => handleRangeMove('prev')} style={navIconBtnStyle}>◀</button>
                     )}
                     
+                    {/* ✅ [수정] DateSelector 적용 */}
                     {viewMode === 'custom' ? (
                         <div style={{display:'flex', alignItems:'center', gap:4}}>
-                            <input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="date-picker-input"/>
+                            <DateSelector value={startDate} onChange={setStartDate} />
                             <span>~</span>
-                            <input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="date-picker-input"/>
+                            <DateSelector value={endDate} onChange={setEndDate} />
                         </div>
                     ) : (
                         <span style={{ fontSize: 18, fontWeight: '800', color: '#333' }}>
@@ -477,8 +497,6 @@ export default function PayrollSection({ currentStoreId }: Props) {
       <div style={{ position: 'fixed', top: '-10000px', left: '-10000px' }}>
         {payrollData.map(p => (
           <div key={p.empId} id={`hidden-stub-${p.empId}`}>
-             {/* PayStubPaper에도 날짜 범위를 넘겨줘야 하지만, 기존 컴포넌트가 year/month만 받는다면 일단 시작일의 year/month를 넘겨주거나 컴포넌트 수정 필요. 
-                 여기서는 호환성을 위해 startDate 기준의 연/월을 넘깁니다. */}
              <PayStubPaper data={p} year={parseInt(startDate.split('-')[0])} month={parseInt(startDate.split('-')[1])} />
           </div>
         ))}

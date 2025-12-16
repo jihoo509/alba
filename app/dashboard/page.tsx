@@ -8,15 +8,14 @@ import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
 import TemplateSection from '@/components/TemplateSection'; 
 import PayrollSection from '@/components/PayrollSection';
-import { format, startOfMonth, endOfMonth } from 'date-fns'; // ✅ [수정] 날짜 계산 함수 추가
-import { calculatePayrollByRange } from '@/lib/payroll'; // ✅ [수정] 변경된 함수 임포트
+import { format, startOfMonth, endOfMonth } from 'date-fns'; // ✅ 최적화된 날짜 함수
+import { calculatePayrollByRange } from '@/lib/payroll';     // ✅ 변경된 급여 로직
 import TutorialModal from '@/components/TutorialModal';
 import AdditionalInfoModal from '@/components/AdditionalInfoModal';
 import AccountSettingsModal from '@/components/AccountSettingsModal';
 import InitialStoreSetup from '@/components/InitialStoreSetup'; 
 
 type Store = { id: string; name: string; };
-
 type TabKey = 'home' | 'employees' | 'schedules' | 'payroll';
 
 export type Employee = {
@@ -55,10 +54,12 @@ function DashboardContent() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
 
-  // 모달 상태들
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
+
+  // ✅ [추가] PayrollSection 새로고침용 트리거 (설정 변경 시 자동 갱신 위함)
+  const [refreshPayrollTrigger, setRefreshPayrollTrigger] = useState(0);
 
   const [currentTab, setCurrentTab] = useState<TabKey>(
     (searchParams.get('tab') as TabKey) || 'home'
@@ -127,15 +128,12 @@ function DashboardContent() {
         hourly_wage: row.hourly_wage, 
         employment_type: row.employment_type,
         is_active: row.is_active, 
-        
         phone_number: row.phone_number, 
         bank_name: row.bank_name, 
         account_number: row.account_number, 
-        
         hire_date: row.hire_date, 
         birth_date: row.birth_date, 
         end_date: row.end_date,
-        
         pay_type: row.pay_type || 'time',
         daily_wage: row.daily_wage || 0,
         default_daily_pay: row.daily_wage || 0,
@@ -160,11 +158,11 @@ function DashboardContent() {
     if (todayData) setTodayWorkers(todayData);
     else setTodayWorkers([]);
 
-    // 2. 월 급여 예측을 위한 데이터 조회 (이번 달 1일 ~ 말일 기준)
+    // 2. 월 급여 예측 (이번 달 1일 ~ 말일 기준)
     const { data: storeSettings } = await supabase.from('stores').select('*').eq('id', storeId).single();
     const { data: allEmployees } = await supabase.from('employees').select('*').eq('store_id', storeId);
     
-    // ✅ [수정] 이번 달의 시작일과 종료일 계산
+    // ✅ [최적화] 복잡한 날짜 계산을 date-fns로 간소화
     const monthStartStr = format(startOfMonth(today), 'yyyy-MM-dd');
     const monthEndStr = format(endOfMonth(today), 'yyyy-MM-dd');
 
@@ -176,7 +174,6 @@ function DashboardContent() {
       .lte('date', monthEndStr);
 
     if (storeSettings && allEmployees && monthSchedules) {
-      // ✅ [수정] calculatePayrollByRange 호출 (기존 calculateMonthlyPayroll 대체)
       const payrollResult = calculatePayrollByRange(
         monthStartStr, 
         monthEndStr, 
@@ -184,12 +181,10 @@ function DashboardContent() {
         monthSchedules, 
         storeSettings
       );
-      
-      // ✅ [수정] reduce 타입 에러 수정 (acc: number, p: any)
+      // acc 타입 명시로 에러 해결
       const totalEst = payrollResult.reduce((acc: number, p: any) => acc + (p.totalPay || 0), 0);
       setMonthlyEstPay(totalEst);
     }
-
   }, [supabase]);
 
   const handleCreateEmployee = useCallback(async (payload: any) => {
@@ -238,7 +233,6 @@ function DashboardContent() {
         data: { phone: phone } 
       });
       if (error) throw error;
-      
       alert('정보가 성공적으로 등록되었습니다.');
       setShowAdditionalInfo(false);
     } catch (e: any) {
@@ -255,7 +249,6 @@ function DashboardContent() {
       
       const user = session.user;
       setUserId(user.id);
-
       setUserEmail(user.email || '');
       setUserPhone(user.user_metadata?.phone || ''); 
 
@@ -283,53 +276,21 @@ function DashboardContent() {
     }
   };
 
-const renderTabContent = () => {
+  const renderTabContent = () => {
     if (!currentStoreId) return <div style={{textAlign:'center', marginTop: 40, color: '#fff'}}>관리할 매장을 선택해주세요.</div>;
 
     if (currentTab === 'home') {
       const tips = [
-        { 
-          id: 1,
-          icon: "🛑",
-          title: "퇴사하는 주에는 주휴수당 X", 
-          desc: "주휴수당은 '다음 주 근무'를 전제로 합니다. 따라서 마지막 근무 주(퇴사 주)에는 발생하지 않습니다." 
-        },
-        { 
-          id: 2,
-          icon: "📢",
-          title: "해고 예고는 30일 전에", 
-          desc: "30일 전 예고하지 않으면 30일분 통상임금을 줘야 합니다. (단, 근무 기간 3개월 미만 직원은 즉시 해고 가능)" 
-        },
-        { 
-          id: 3,
-          icon: "🚑",
-          title: "대타 근무와 주휴수당", 
-          desc: "갑작스런 '대타' 근무는 소정근로시간에 포함되지 않아 주휴수당 대상이 아닌 경우가 많습니다." 
-        },
-        { 
-          id: 4,
-          icon: "👶",
-          title: "수습기간 90% 급여 조건", 
-          desc: "'1년 이상' 근로 계약을 체결한 경우에만 수습 3개월간 최저임금의 90% 지급이 가능합니다. (단순 노무직 제외)" 
-        },
-        { 
-          id: 5,
-          icon: "☕",
-          title: "휴게시간은 필수입니다", 
-          desc: "4시간 근무 시 30분, 8시간 근무 시 1시간 이상 휴게시간을 '근로시간 도중'에 줘야 합니다." 
-        },
+        { id: 1, icon: "🛑", title: "퇴사하는 주에는 주휴수당 X", desc: "주휴수당은 '다음 주 근무'를 전제로 합니다. 따라서 마지막 근무 주(퇴사 주)에는 발생하지 않습니다." },
+        { id: 2, icon: "📢", title: "해고 예고는 30일 전에", desc: "30일 전 예고하지 않으면 30일분 통상임금을 줘야 합니다. (단, 근무 기간 3개월 미만 직원은 즉시 해고 가능)" },
+        { id: 3, icon: "🚑", title: "대타 근무와 주휴수당", desc: "갑작스런 '대타' 근무는 소정근로시간에 포함되지 않아 주휴수당 대상이 아닌 경우가 많습니다." },
+        { id: 4, icon: "👶", title: "수습기간 90% 급여 조건", desc: "'1년 이상' 근로 계약을 체결한 경우에만 수습 3개월간 최저임금의 90% 지급이 가능합니다. (단순 노무직 제외)" },
+        { id: 5, icon: "☕", title: "휴게시간은 필수입니다", desc: "4시간 근무 시 30분, 8시간 근무 시 1시간 이상 휴게시간을 '근로시간 도중'에 줘야 합니다." },
       ];
 
       return (
         <div style={{ maxWidth: 760, margin: '0 auto', width: '100%' }}>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
-            gap: 20, 
-            alignItems: 'start'
-          }}>
-            
-            {/* 1. [메인] 오늘 근무자 카드 */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, alignItems: 'start' }}>
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 16, borderBottom: '1px solid #eee', paddingBottom: 8, color: '#000' }}>
                 📅 오늘 근무자 <span style={{fontSize:14, color:'dodgerblue'}}>({todayWorkers.length}명)</span>
@@ -352,45 +313,25 @@ const renderTabContent = () => {
                 </ul>
               )}
             </div>
-
-            {/* 2. [메인] 급여 지출 카드 */}
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#555' }}>💰 {new Date().getMonth()+1}월 예상 급여 지출 (세전)</h3>
               <div style={{ fontSize: 32, fontWeight: 'bold', color: '#000' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
             </div>
-
-            {/* 3. [상식] 팁 카드들 */}
             {tips.map((tip) => (
               <div key={tip.id} style={cardStyle}>
-                <h3 style={{ 
-                  marginTop: 0, 
-                  marginBottom: 12, 
-                  fontSize: 14, 
-                  color: '#e67e22', 
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
+                <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 14, color: '#e67e22', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   💡 사장님 필수 상식
                 </h3>
-                
                 <div>
-                  <strong style={{ display:'block', fontSize: '15px', color: '#222', marginBottom:'8px' }}>
-                    {tip.icon} {tip.title}
-                  </strong>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.5', wordBreak: 'keep-all' }}>
-                    {tip.desc}
-                  </p>
+                  <strong style={{ display:'block', fontSize: '15px', color: '#222', marginBottom:'8px' }}>{tip.icon} {tip.title}</strong>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.5', wordBreak: 'keep-all' }}>{tip.desc}</p>
                 </div>
               </div>
             ))}
-
           </div>
         </div>
       );
     }
-
     if (currentTab === 'employees') {
         return (
              <div style={{ maxWidth: 750, margin: '0 auto', width: '100%' }}>
@@ -417,8 +358,15 @@ const renderTabContent = () => {
         </div>
       );
     }
+    // ✅ [핵심] PayrollSection에 onSettingsUpdate 연결 (저장 시 자동 갱신)
     if (currentTab === 'payroll') {
-      return <PayrollSection currentStoreId={currentStoreId} />;
+      return (
+        <PayrollSection 
+            currentStoreId={currentStoreId} 
+            refreshTrigger={refreshPayrollTrigger}
+            onSettingsUpdate={() => setRefreshPayrollTrigger(prev => prev + 1)}
+        />
+      );
     }
   };
 
@@ -426,76 +374,23 @@ const renderTabContent = () => {
 
   return (
     <main style={{ width: '100%', minHeight: '100vh', paddingBottom: 40 }}>
-      
       <div className="header-wrapper">
         <div style={{ width: '100%', maxWidth: '750px', margin: '0 auto', boxSizing: 'border-box' }}>
-          
           <div style={{ padding: '12px 20px 0 20px' }}>
-            <header style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
-              marginBottom: 12,
-              gap: '16px',
-              flexWrap: 'wrap'
-            }}>
-              <h1 className="mobile-logo-text" style={{ 
-                fontSize: 28, 
-                color: '#fff', 
-                fontWeight: '900', 
-                letterSpacing: '-1px', 
-                margin: 0, 
-                fontFamily: 'sans-serif'
-              }}>
-                Easy Alba
-              </h1>
-              <UserBar 
-                email={userEmail} 
-                onOpenSettings={() => setShowAccountSettings(true)} 
-              />
+            <header style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 12, gap: '16px', flexWrap: 'wrap' }}>
+              <h1 className="mobile-logo-text" style={{ fontSize: 28, color: '#fff', fontWeight: '900', letterSpacing: '-1px', margin: 0, fontFamily: 'sans-serif' }}>Easy Alba</h1>
+              <UserBar email={userEmail} onOpenSettings={() => setShowAccountSettings(true)} />
             </header>
-
             {errorMsg && <div style={{ marginBottom: 10, color: 'salmon' }}>{errorMsg}</div>}
-
             {stores.length > 0 && (
-                <StoreSelector
-                stores={stores}
-                currentStoreId={currentStoreId}
-                onChangeStore={handleStoreChange}
-                creatingStore={creatingStore}
-                onCreateStore={handleCreateStore}
-                onDeleteStore={handleDeleteStore}
-                />
+                <StoreSelector stores={stores} currentStoreId={currentStoreId} onChangeStore={handleStoreChange} creatingStore={creatingStore} onCreateStore={handleCreateStore} onDeleteStore={handleDeleteStore} />
             )}
           </div>
-
-          {/* 탭 메뉴 */}
           {stores.length > 0 && currentStoreId && (
             <div className="mobile-sticky-nav">
-              <div className="mobile-tab-container" style={{ 
-                display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 15, 
-                padding: '12px 20px', maxWidth: '750px', margin: '0 auto' 
-              }}>
-                {[
-                  { key: 'home', label: '🏠 홈' },
-                  { key: 'employees', label: '👥 직원' },     
-                  { key: 'schedules', label: '🗓️ 스케줄' },   
-                  { key: 'payroll', label: '💰 급여' }      
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => handleTabChange(tab.key as TabKey)}
-                    className="mobile-tab-btn"
-                    style={{
-                      padding: '8px 16px', border: 'none', background: 'transparent', cursor: 'pointer', 
-                      fontSize: 15, transition: 'all 0.2s', whiteSpace: 'nowrap',
-                      borderBottom: currentTab === tab.key ? '3px solid #fff' : '3px solid transparent',
-                      color: currentTab === tab.key ? '#fff' : 'rgba(255,255,255,0.7)', 
-                      fontWeight: currentTab === tab.key ? 'bold' : 'normal',
-                    }}
-                  >
-                    {tab.label}
-                  </button>
+              <div className="mobile-tab-container" style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 15, padding: '12px 20px', maxWidth: '750px', margin: '0 auto' }}>
+                {[ { key: 'home', label: '🏠 홈' }, { key: 'employees', label: '👥 직원' }, { key: 'schedules', label: '🗓️ 스케줄' }, { key: 'payroll', label: '💰 급여' } ].map((tab) => (
+                  <button key={tab.key} onClick={() => handleTabChange(tab.key as TabKey)} className="mobile-tab-btn" style={{ padding: '8px 16px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 15, transition: 'all 0.2s', whiteSpace: 'nowrap', borderBottom: currentTab === tab.key ? '3px solid #fff' : '3px solid transparent', color: currentTab === tab.key ? '#fff' : 'rgba(255,255,255,0.7)', fontWeight: currentTab === tab.key ? 'bold' : 'normal', }}>{tab.label}</button>
                 ))}
               </div>
             </div>
@@ -503,26 +398,10 @@ const renderTabContent = () => {
         </div>
       </div>
 
-      <div 
-        className="content-spacer"
-        style={{ 
-          width: '100%', maxWidth: '1000px', margin: '0 auto', 
-          paddingLeft: '20px', paddingRight: '20px', 
-          boxSizing: 'border-box' 
-        }}
-      >
-      <div className="mobile-only" style={{ height: '20px' }}></div>
-
-        {/* 매장 없을 때 InitialStoreSetup */}
+      <div className="content-spacer" style={{ width: '100%', maxWidth: '1000px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px', boxSizing: 'border-box' }}>
+        <div className="mobile-only" style={{ height: '20px' }}></div>
         {stores.length === 0 ? (
-           userId ? (
-             <InitialStoreSetup 
-               userId={userId} 
-               onComplete={handleInitialSetupComplete} 
-             />
-           ) : (
-             <div style={{color:'#fff', textAlign:'center', marginTop: 40}}>로딩 중...</div>
-           )
+           userId ? <InitialStoreSetup userId={userId} onComplete={handleInitialSetupComplete} /> : <div style={{color:'#fff', textAlign:'center', marginTop: 40}}>로딩 중...</div>
         ) : (
           currentStoreId && (
             <div style={{ width: '100%' }} className={currentTab === 'schedules' ? 'shrink-on-mobile' : ''}>
@@ -531,50 +410,15 @@ const renderTabContent = () => {
           )
         )}
       </div>
-
-      {showAdditionalInfo && (
-        <AdditionalInfoModal 
-          isOpen={showAdditionalInfo}
-          onUpdate={handleUpdateInfo}
-          loading={updateLoading}
-        />
-      )}
-
-      {showAccountSettings && (
-        <AccountSettingsModal 
-          isOpen={showAccountSettings}
-          onClose={() => setShowAccountSettings(false)}
-          userEmail={userEmail}
-          userPhone={userPhone}
-        />
-      )}
-
-      {stores.length > 0 && (
-        <TutorialModal 
-          tutorialKey="seen_home_tutorial_v1"
-          steps={[
-            { title: "환영합니다, 사장님! 👋", description: "Easy Alba에 오신 것을 환영합니다." },
-            { title: "1. 매장 등록하기", description: "가장 먼저 '매장 추가' 버튼을 눌러 사장님의 매장을 등록해주세요." },
-            { title: "2. 직원 등록하기", description: "'직원' 탭에서 함께 일하는 직원들을 등록하고 시급을 설정해보세요." },
-            { title: "3. 근무 패턴 등록하기", description: "월~수 오픈 등 반복적인 스케줄 생성 후 스케줄 자동 생성이 가능합니다!" },
-            { title: "4. 스케줄 수정하기", description: "배정되어 있는 직원 클릭 시 근무 시간 수정 및 삭제 가능, 스케줄의 빈 칸 클릭 시 새 근무 생성이 가능합니다." },
-            { title: "5. 급여 확인하기", description: "배정된 스케줄에 따라 정확한 급여가 표기됩니다. 이미지, 엑셀로 다운 받아 근무자 또는 세무서에 전달하세요!" },
-            { title: "준비 되셨나요?", description: "이제 복잡한 급여 계산과 스케줄 관리는 저희에게 맡기고, 사업에만 집중하세요!" }
-          ]}
-        />
-      )}
-
+      
+      {showAdditionalInfo && <AdditionalInfoModal isOpen={showAdditionalInfo} onUpdate={handleUpdateInfo} loading={updateLoading} />}
+      {showAccountSettings && <AccountSettingsModal isOpen={showAccountSettings} onClose={() => setShowAccountSettings(false)} userEmail={userEmail} userPhone={userPhone} />}
+      {stores.length > 0 && <TutorialModal tutorialKey="seen_home_tutorial_v1" steps={[ { title: "환영합니다, 사장님! 👋", description: "Easy Alba에 오신 것을 환영합니다." }, { title: "1. 매장 등록하기", description: "가장 먼저 '매장 추가' 버튼을 눌러 사장님의 매장을 등록해주세요." }, { title: "2. 직원 등록하기", description: "'직원' 탭에서 함께 일하는 직원들을 등록하고 시급을 설정해보세요." }, { title: "3. 근무 패턴 등록하기", description: "월~수 오픈 등 반복적인 스케줄 생성 후 스케줄 자동 생성이 가능합니다!" }, { title: "4. 스케줄 수정하기", description: "배정되어 있는 직원 클릭 시 근무 시간 수정 및 삭제 가능, 스케줄의 빈 칸 클릭 시 새 근무 생성이 가능합니다." }, { title: "5. 급여 확인하기", description: "배정된 스케줄에 따라 정확한 급여가 표기됩니다. 이미지, 엑셀로 다운 받아 근무자 또는 세무서에 전달하세요!" }, { title: "준비 되셨나요?", description: "이제 복잡한 급여 계산과 스케줄 관리는 저희에게 맡기고, 사업에만 집중하세요!" } ]} />}
     </main>
   );
 }
 
-const cardStyle = {
-  backgroundColor: '#ffffff',
-  borderRadius: 8,
-  padding: 24,
-  border: '1px solid #ddd',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-};
+const cardStyle = { backgroundColor: '#ffffff', borderRadius: 8, padding: 24, border: '1px solid #ddd', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };
 
 export default function DashboardPage() {
   return (
