@@ -8,8 +8,8 @@ import { StoreSelector } from '@/components/StoreSelector';
 import { EmployeeSection } from '@/components/EmployeeSection';
 import TemplateSection from '@/components/TemplateSection'; 
 import PayrollSection from '@/components/PayrollSection';
-import { format } from 'date-fns';
-import { calculateMonthlyPayroll } from '@/lib/payroll';
+import { format, startOfMonth, endOfMonth } from 'date-fns'; // ✅ [수정] 날짜 계산 함수 추가
+import { calculatePayrollByRange } from '@/lib/payroll'; // ✅ [수정] 변경된 함수 임포트
 import TutorialModal from '@/components/TutorialModal';
 import AdditionalInfoModal from '@/components/AdditionalInfoModal';
 import AccountSettingsModal from '@/components/AccountSettingsModal';
@@ -149,6 +149,7 @@ function DashboardContent() {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
 
+    // 1. 오늘 근무자 조회
     const { data: todayData } = await supabase
       .from('schedules')
       .select('*, employees(name, phone_number)')
@@ -159,24 +160,33 @@ function DashboardContent() {
     if (todayData) setTodayWorkers(todayData);
     else setTodayWorkers([]);
 
+    // 2. 월 급여 예측을 위한 데이터 조회 (이번 달 1일 ~ 말일 기준)
     const { data: storeSettings } = await supabase.from('stores').select('*').eq('id', storeId).single();
     const { data: allEmployees } = await supabase.from('employees').select('*').eq('store_id', storeId);
     
-    const fetchStart = format(new Date(today.getFullYear(), today.getMonth() - 1, 20), 'yyyy-MM-dd');
-    const fetchEnd = format(new Date(today.getFullYear(), today.getMonth() + 1, 10), 'yyyy-MM-dd');
+    // ✅ [수정] 이번 달의 시작일과 종료일 계산
+    const monthStartStr = format(startOfMonth(today), 'yyyy-MM-dd');
+    const monthEndStr = format(endOfMonth(today), 'yyyy-MM-dd');
 
     const { data: monthSchedules } = await supabase
       .from('schedules')
       .select('*')
       .eq('store_id', storeId)
-      .gte('date', fetchStart)
-      .lte('date', fetchEnd);
+      .gte('date', monthStartStr)
+      .lte('date', monthEndStr);
 
     if (storeSettings && allEmployees && monthSchedules) {
-      const payrollResult = calculateMonthlyPayroll(
-        today.getFullYear(), today.getMonth() + 1, allEmployees, monthSchedules, storeSettings
+      // ✅ [수정] calculatePayrollByRange 호출 (기존 calculateMonthlyPayroll 대체)
+      const payrollResult = calculatePayrollByRange(
+        monthStartStr, 
+        monthEndStr, 
+        allEmployees, 
+        monthSchedules, 
+        storeSettings
       );
-      const totalEst = payrollResult.reduce((acc, p) => acc + p.totalPay, 0);
+      
+      // ✅ [수정] reduce 타입 에러 수정 (acc: number, p: any)
+      const totalEst = payrollResult.reduce((acc: number, p: any) => acc + (p.totalPay || 0), 0);
       setMonthlyEstPay(totalEst);
     }
 
@@ -311,13 +321,9 @@ const renderTabContent = () => {
       ];
 
       return (
-        // ✅ [수정 핵심] 전체 너비를 1000px -> 760px로 줄였습니다.
-        // 이러면 공간이 좁아져서 카드가 작더라도 한 줄에 3개가 못 들어가고 2개만 들어갑니다.
         <div style={{ maxWidth: 760, margin: '0 auto', width: '100%' }}>
           <div style={{ 
             display: 'grid', 
-            // ✅ 다시 300px(작은 크기)로 되돌렸습니다. 
-            // 하지만 위에서 폭을 760px로 제한했기 때문에 2줄로 나옵니다.
             gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
             gap: 20, 
             alignItems: 'start'
@@ -349,7 +355,7 @@ const renderTabContent = () => {
 
             {/* 2. [메인] 급여 지출 카드 */}
             <div style={cardStyle}>
-              <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#555' }}>💰 11월 예상 급여 지출 (세전)</h3>
+              <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 16, color: '#555' }}>💰 {new Date().getMonth()+1}월 예상 급여 지출 (세전)</h3>
               <div style={{ fontSize: 32, fontWeight: 'bold', color: '#000' }}>{monthlyEstPay.toLocaleString()} <span style={{ fontSize: 20 }}>원</span></div>
             </div>
 
@@ -385,7 +391,6 @@ const renderTabContent = () => {
       );
     }
 
-    // ... (나머지 탭 코드는 그대로 유지)
     if (currentTab === 'employees') {
         return (
              <div style={{ maxWidth: 750, margin: '0 auto', width: '100%' }}>
@@ -452,7 +457,6 @@ const renderTabContent = () => {
 
             {errorMsg && <div style={{ marginBottom: 10, color: 'salmon' }}>{errorMsg}</div>}
 
-            {/* ✅ [수정] 매장이 하나라도 있을 때만 매장 선택기 표시 */}
             {stores.length > 0 && (
                 <StoreSelector
                 stores={stores}
@@ -513,8 +517,8 @@ const renderTabContent = () => {
         {stores.length === 0 ? (
            userId ? (
              <InitialStoreSetup 
-                userId={userId} 
-                onComplete={handleInitialSetupComplete} 
+               userId={userId} 
+               onComplete={handleInitialSetupComplete} 
              />
            ) : (
              <div style={{color:'#fff', textAlign:'center', marginTop: 40}}>로딩 중...</div>
