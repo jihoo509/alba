@@ -173,7 +173,7 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
     }
 
     // 3. 기간지정 (텍스트 모드일 때) -> 사실상 아래 JSX에서 처리하므로 여긴 fallback
-    return <span>{startDate} ~ {endDate}</span>;
+    return <span>{startDate}  {endDate}</span>;
   };
 
   const loadAndCalculate = useCallback(async () => {
