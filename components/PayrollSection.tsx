@@ -117,13 +117,21 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
   }, [currentStoreId, supabase, refreshTrigger]); // refreshTrigger가 변하면 실행됨
 
 
-  // ✅ 2. 뷰 모드 변경 시 날짜 재계산 (ex: 월별 -> 주별 클릭 시 바로 적용)
+  // ✅ 2. 뷰 모드 변경 시 날짜 재계산
   useEffect(() => {
-      if (savedSettings && viewMode !== 'custom') {
-          const range = calculateRangeBySettings(viewMode, savedSettings, new Date(startDate));
-          if (range) {
-              setStartDate(range.s);
-              setEndDate(range.e);
+      if (savedSettings) {
+          if (viewMode === 'custom') {
+              // 1️⃣ [기간 지정] 탭 클릭 시: 무조건 '오늘' 날짜로 초기화
+              const todayStr = format(new Date(), 'yyyy-MM-dd');
+              setStartDate(todayStr);
+              setEndDate(todayStr);
+          } else {
+              // 2️⃣ 월별/주별 탭 클릭 시: 해당 로직에 맞춰 계산
+              const range = calculateRangeBySettings(viewMode, savedSettings, new Date());
+              if (range) {
+                  setStartDate(range.s);
+                  setEndDate(range.e);
+              }
           }
       }
   }, [viewMode, savedSettings]);
@@ -152,6 +160,17 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
             setEndDate(range.e);
         }
     }
+  };
+
+    // ✅ [신규] 시작일 변경 시 종료일 자동 보정 핸들러
+  const handleCustomStartDateChange = (newStart: string) => {
+      setStartDate(newStart);
+      
+      // 만약 새로 선택한 시작일이 현재 종료일보다 미래라면?
+      // 종료일도 시작일과 똑같이 맞춰줍니다. (최소 1일 간격 유지)
+      if (newStart > endDate) {
+          setEndDate(newStart);
+      }
   };
 
   // ✅ 데이터 계산 로직
@@ -413,10 +432,11 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
                         <button onClick={() => handleRangeMove('prev')} style={navIconBtnStyle}>◀</button>
                     )}
                     
-                    {/* ✅ [수정] DateSelector 적용 */}
+{/* ✅ [수정] DateSelector 적용 */}
                     {viewMode === 'custom' ? (
                         <div style={{display:'flex', alignItems:'center', gap:4}}>
-                            <DateSelector value={startDate} onChange={setStartDate} />
+                            {/* onChange에 setStartDate 대신 handleCustomStartDateChange 연결 */}
+                            <DateSelector value={startDate} onChange={handleCustomStartDateChange} />
                             <span>~</span>
                             <DateSelector value={endDate} onChange={setEndDate} />
                         </div>
