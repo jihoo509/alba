@@ -53,11 +53,45 @@ export default function AdminMembersPage() {
     return userStores.map(s => s.name).join(', ');
   };
 
+  // ✅ [추가 기능] 회원 강제 탈퇴 핸들러
+  const handleDeleteUser = async (userId: string, userEmail: string) => {
+    // 1. 확인 팝업 (실수 방지)
+    const confirmed = window.confirm(
+      `정말 [${userEmail}] 회원을 탈퇴시키겠습니까?\n\n⚠️ 주의: 해당 회원의 매장 및 데이터가 모두 삭제될 수 있습니다.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // 2. API 호출 (DELETE 요청)
+      // *주의: 백엔드 API(/api/admin/users)에서 DELETE 메서드를 처리하도록 구현되어 있어야 합니다.
+      const res = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }), 
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        alert('회원이 성공적으로 탈퇴 처리되었습니다.');
+        // 3. 화면 갱신 (새로고침 없이 리스트에서 제거)
+        setUsers((prev) => prev.filter((u) => u.id !== userId));
+        setStats((prev) => ({ ...prev, userCount: prev.userCount - 1 }));
+      } else {
+        alert(`탈퇴 처리 실패: ${result.error || '알 수 없는 오류'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('오류가 발생했습니다.');
+    }
+  };
+
   // 엑셀 다운로드 (매장 정보 포함)
   const handleDownloadExcel = () => {
     const excelData = users.map((u) => ({
       '이메일': u.email,
-      '보유 매장': getUserStoreNames(u.id), // ✅ 엑셀에도 매장 이름 추가
+      '보유 매장': getUserStoreNames(u.id), 
       '전화번호': u.phone,
       '가입일': format(new Date(u.created_at), 'yyyy-MM-dd HH:mm:ss'),
       '최근접속': u.last_sign_in ? format(new Date(u.last_sign_in), 'yyyy-MM-dd HH:mm:ss') : '-',
@@ -99,24 +133,24 @@ export default function AdminMembersPage() {
       </div>
 
       <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '800px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '900px' }}>
           <thead style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #eee' }}>
             <tr>
               <th style={thStyle}>이메일</th>
-              <th style={thStyle}>운영 중인 매장</th> {/* ✅ 추가된 컬럼 */}
+              <th style={thStyle}>운영 중인 매장</th> 
               <th style={thStyle}>전화번호</th>
               <th style={thStyle}>가입일</th>
               <th style={thStyle}>최근 접속</th>
+              <th style={{...thStyle, textAlign: 'center'}}>관리</th> {/* ✅ 관리 컬럼 추가 */}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: '#888' }}>데이터를 불러오는 중입니다...</td></tr>
+              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#888' }}>데이터를 불러오는 중입니다...</td></tr>
             ) : users.map((user) => (
               <tr key={user.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                 <td style={{ ...tdStyle, fontWeight: 'bold', color: '#333' }}>{user.email}</td>
                 
-                {/* ✅ 매장 이름 표시 영역 */}
                 <td style={tdStyle}>
                   {getUserStoreNames(user.id) === '-' ? (
                     <span style={{ color: '#ccc' }}>-</span>
@@ -128,6 +162,25 @@ export default function AdminMembersPage() {
                 <td style={tdStyle}>{user.phone}</td>
                 <td style={tdStyle}>{format(new Date(user.created_at), 'yyyy-MM-dd')}</td>
                 <td style={tdStyle}>{user.last_sign_in ? format(new Date(user.last_sign_in), 'MM-dd HH:mm') : '-'}</td>
+                
+                {/* ✅ 탈퇴 버튼 영역 */}
+                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                    <button
+                        onClick={() => handleDeleteUser(user.id, user.email)}
+                        style={{
+                            padding: '6px 12px',
+                            backgroundColor: '#ff4d4d', // 붉은색
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        강제 탈퇴
+                    </button>
+                </td>
               </tr>
             ))}
           </tbody>
