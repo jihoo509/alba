@@ -191,22 +191,24 @@ export function calculatePayrollByRange(
         });
 
         // ✅ [주휴수당 지급 판단]
-        // 조건: 해당 주의 마지막 날(일요일)이 조회 기간(2월) 안에 포함되어 있어야 함
         if (weekEndStr <= endDateStr && weekEndStr >= startDateStr) {
             
-            // 퇴직일 체크
-            const isRetiredBeforeSunday = emp.end_date && weekEndStr > emp.end_date;
+            // 🔥 [수정됨] 퇴직일 체크 강화
+            // 기존: weekEndStr > emp.end_date (일요일이 퇴직일보다 미래여야 지급 X)
+            // 수정: weekEndStr >= emp.end_date (일요일이 퇴직일과 같거나 미래면 지급 X)
+            // 이유: 퇴직일(일요일)까지 일하고 그만두면 다음날 출근 안하므로 주휴수당 없음.
+            const isRetiredBeforeOrOnSunday = emp.end_date && weekEndStr >= emp.end_date;
 
             let potentialWeeklyPay = 0; const hourlyWage = Number(emp.hourly_wage || 0);
             
             // 1월 데이터까지 합친 weekMinutes로 15시간 넘는지 체크
-            if (!isEmpDaily && !isEmpMonthly && weekMinutes >= 900 && hourlyWage > 0 && !isRetiredBeforeSunday) { 
+            // 🔥 조건에 !isRetiredBeforeOrOnSunday 사용
+            if (!isEmpDaily && !isEmpMonthly && weekMinutes >= 900 && hourlyWage > 0 && !isRetiredBeforeOrOnSunday) { 
                 const cappedWeekMinutes = Math.min(weekMinutes, 40 * 60); 
                 potentialWeeklyPay = Math.floor((cappedWeekMinutes / 40 / 60) * 8 * hourlyWage);
             }
             const weeklyPay = cfg.pay_weekly ? potentialWeeklyPay : 0;
             
-            // 지급 대상이면 2월 장부에 주휴수당 추가
             if (potentialWeeklyPay > 0) {
                 totalWeeklyPay += weeklyPay;
                 ledger.push({ type: 'WEEKLY', date: weekEndStr, dayLabel: '주휴', timeRange: '-', hours: '-', basePay: 0, nightPay: 0, overtimePay: 0, holidayWorkPay: 0, potentialWeeklyPay, weeklyPay, note: `1주 ${Math.floor(weekMinutes/60)}시간 근무` });
