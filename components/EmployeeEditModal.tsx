@@ -32,6 +32,10 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   const [endDate, setEndDate] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // ✅ [신규] 퇴사 모드 상태 관리
+  const [isRetireMode, setIsRetireMode] = useState(false);
+  const [retireDate, setRetireDate] = useState('');
+
   useEffect(() => {
     if (isOpen && employee) {
       setName(employee.name);
@@ -67,8 +71,13 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
 
       setBankName(employee.bank_name || '');
       setAccountNumber(employee.account_number || '');
+      
       setIsActive(employee.is_active);
       setEndDate(employee.end_date || '');
+      
+      // 모달 열릴 때마다 퇴사 모드 초기화
+      setIsRetireMode(false);
+      setRetireDate(new Date().toISOString().split('T')[0]); // 오늘 날짜 기본값
     }
   }, [isOpen, employee]);
 
@@ -82,26 +91,25 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     if (val.length <= maxLen) setter(val);
   };
 
-const handleSave = async () => {
+  const handleSave = async () => {
     setIsSaving(true);
     try {
       const fullPhone = `${phone1}-${phone2}-${phone3}`;
-      // 전화번호가 너무 짧으면 그냥 빈값으로 저장
       const finalPhone = (phone2.length >= 3 && phone3.length >= 4) ? fullPhone : '';
 
       const finalHourly = payType === 'time' ? Number(hourlyWage.replace(/,/g, '')) : 0;
       const finalDaily = payType === 'day' ? Number(dailyWage.replace(/,/g, '')) : 0;
       const finalMonthly = payType === 'month' ? Number(monthlyWage.replace(/,/g, '')) : 0;
 
-      // 빈 문자열이면 null로 변환 (DB 저장용)
       const safeHireDate = hireDate === '' ? null : hireDate;
       const safeBirthDate = birthDate === '' ? null : birthDate;
-      const safeEndDate = (!isActive && endDate === '') ? null : (isActive ? null : endDate);
+      
+      // 퇴사자가 아니면 endDate는 null 처리
+      const safeEndDate = isActive ? null : (endDate === '' ? null : endDate);
 
       await onUpdate(employee.id, {
         name,
         phone_number: finalPhone,
-        // ✅ [수정] 빨간 줄 해결: as any 추가
         hire_date: safeHireDate as any,   
         birth_date: safeBirthDate as any, 
         employment_type: employmentType as any,
@@ -112,24 +120,35 @@ const handleSave = async () => {
         bank_name: bankName,
         account_number: accountNumber,
         is_active: isActive,
-        // ✅ [수정] 빨간 줄 해결: as any 추가
         end_date: safeEndDate as any,     
       });
       onClose();
     } catch (e: any) {
       console.error(e);
-      // 에러 메시지 상세 출력
       alert('저장 중 오류가 발생했습니다.\n' + e.message);
     } finally {
       setIsSaving(false);
     }
   };
 
+  // ✅ [수정] 퇴사 모드 활성화 핸들러
+  const openRetireMode = () => {
+      setIsRetireMode(true);
+  };
 
-  const handleRetire = () => {
-    if (!confirm('해당 직원을 퇴사 처리하시겠습니까?')) return;
-    setIsActive(false);
-    setEndDate(new Date().toISOString().split('T')[0]); 
+  // ✅ [수정] 퇴사 확정 핸들러 (상태만 변경하고 저장은 '저장하기' 버튼으로)
+  const confirmRetireDate = () => {
+      if (!retireDate) return alert('퇴사일을 선택해주세요.');
+      setIsActive(false);
+      setEndDate(retireDate);
+      setIsRetireMode(false); // 모드 종료
+  };
+
+  // ✅ [수정] 재입사 처리 (퇴사 취소)
+  const handleRehire = () => {
+      if(!confirm('해당 직원을 재직 상태로 변경하시겠습니까?')) return;
+      setIsActive(true);
+      setEndDate('');
   };
 
   if (!isOpen) return null;
@@ -199,23 +218,11 @@ const handleSave = async () => {
           <div className="form-row">
             <div className="form-group" style={{ flex: 1 }}>
               <label>은행명</label>
-              <input 
-                type="text" 
-                value={bankName} 
-                onChange={(e) => setBankName(e.target.value)} 
-                className="input-field" 
-                placeholder="예: 국민"
-              />
+              <input type="text" value={bankName} onChange={(e) => setBankName(e.target.value)} className="input-field" placeholder="예: 국민" />
             </div>
             <div className="form-group" style={{ flex: 2 }}>
               <label>계좌번호</label>
-              <input 
-                type="text" 
-                value={accountNumber} 
-                onChange={(e) => setAccountNumber(e.target.value)} 
-                className="input-field" 
-                placeholder="숫자만 입력"
-              />
+              <input type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className="input-field" placeholder="숫자만 입력" />
             </div>
           </div>
 
@@ -224,17 +231,30 @@ const handleSave = async () => {
             <DateSelector value={birthDate} onChange={setBirthDate} />
           </div>
 
+          {/* ✅ 상태(재직/퇴사) 변경 박스 */}
           <div className="status-box">
-            {isActive ? (
+            {isRetireMode ? (
+                // 🔹 퇴사일 선택 모드
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <label style={{ fontSize: 13, fontWeight: 'bold', color: '#e74c3c' }}>마지막 근무일(퇴사일) 선택</label>
+                    <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                        <div style={{flex:1}}><DateSelector value={retireDate} onChange={setRetireDate} /></div>
+                        <button onClick={() => setIsRetireMode(false)} style={{ padding:'8px 12px', background:'#f0f0f0', border:'none', borderRadius:6, cursor:'pointer' }}>취소</button>
+                        <button onClick={confirmRetireDate} style={{ padding:'8px 12px', background:'crimson', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:'bold' }}>확인</button>
+                    </div>
+                </div>
+            ) : isActive ? (
+              // 🔹 재직 중 상태
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: '#27ae60', fontWeight: 'bold' }}>● 재직 중</span>
-                <button onClick={handleRetire} className="retire-btn">퇴사 처리</button>
+                <button onClick={openRetireMode} className="retire-btn">퇴사 처리</button>
               </div>
             ) : (
+              // 🔹 퇴사 상태
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>● 퇴사함</span>
                 <span style={{ fontSize: '13px', color: '#666' }}>(퇴사일: {endDate})</span>
-                <button onClick={() => setIsActive(true)} style={{ marginLeft: 'auto', fontSize: '12px', padding: '4px 8px', cursor: 'pointer' }}>재입사 처리</button>
+                <button onClick={handleRehire} style={{ marginLeft: 'auto', fontSize: '12px', padding: '4px 8px', cursor: 'pointer', background:'#e6f7ff', border:'1px solid #1890ff', color:'#1890ff', borderRadius:4 }}>재입사 처리</button>
               </div>
             )}
           </div>
