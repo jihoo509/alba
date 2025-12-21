@@ -5,12 +5,10 @@ import React, { useState, useEffect } from 'react';
 type Props = {
   value: string;
   onChange: (value: string) => void;
-  // ✅ [추가] 스타일 커스텀을 위한 props
   style?: React.CSSProperties; 
   className?: string;
 };
 
-// ✅ 함수 인자에서 style과 className을 받아야 합니다!
 export default function DateSelector({ value, onChange, style, className }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -56,18 +54,28 @@ export default function DateSelector({ value, onChange, style, className }: Prop
     setIsOpen(false);
   };
 
-  // ✅ [핵심 기능] 월 클릭 시 1일로 리셋 & 스크롤 이동
+  // ✅ [기존 기능] 월 클릭 시 1일로 리셋 & 스크롤
   const handleMonthClick = (m: number) => {
     setSelectedMonth(m);
-    setSelectedDay(1); // 1일로 강제 변경
-    
-    // 1일 위치로 스크롤 (살짝 딜레이 줘야 DOM 반영 후 이동됨)
+    setSelectedDay(1); 
     setTimeout(() => {
       document.getElementById(`picker-day-1`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 50);
   };
 
-  // ✅ [수정] 내년(2026) ~ 1950년까지 내림차순(최신순) 생성
+  // ✅ [추가 기능] 년 클릭 시 1월 1일로 리셋 & 스크롤
+  const handleYearClick = (y: number) => {
+    setSelectedYear(y);
+    setSelectedMonth(1); // 1월로 리셋
+    setSelectedDay(1);   // 1일로 리셋
+
+    // 월과 일 스크롤도 맨 위(1월, 1일)로 이동
+    setTimeout(() => {
+        document.getElementById(`picker-month-1`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById(`picker-day-1`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  };
+
   const currentYear = new Date().getFullYear();
   const maxYear = currentYear + 1; 
   const minYear = 1950;
@@ -85,19 +93,15 @@ export default function DateSelector({ value, onChange, style, className }: Prop
     <>
       <div 
         onClick={() => setIsOpen(true)}
-        className={className} // ✅ 받아온 className 적용
+        className={className} 
         style={{
-          // ✅ [스타일 수정]
-          // 1. minWidth 제거 (모바일에서 튀어나감 방지)
-          // 2. width: 100% (부모 flex 영역 꽉 채우기)
-          // 3. 텍스트 중앙 정렬
           padding: '10px 4px', 
           border: '1px solid #ddd', borderRadius: 6,
           backgroundColor: '#fff', cursor: 'pointer', fontSize: 13, 
           textAlign: 'center', color: '#333',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           width: '100%', 
-          ...style // ✅ 외부에서 들어온 style 덮어쓰기
+          ...style 
         }}
       >
         {value || '날짜 선택'}
@@ -117,7 +121,7 @@ export default function DateSelector({ value, onChange, style, className }: Prop
                   <div 
                     key={y} 
                     id={`picker-year-${y}`} 
-                    onClick={() => setSelectedYear(y)}
+                    onClick={() => handleYearClick(y)} // ✅ 여기를 handleYearClick으로 교체
                     style={itemStyle(y === selectedYear)}
                   >
                     {y}년
@@ -163,7 +167,7 @@ export default function DateSelector({ value, onChange, style, className }: Prop
   );
 }
 
-// 스타일
+// 스타일 (변경 없음)
 const modalOverlayStyle: React.CSSProperties = {
   position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
   backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999,
@@ -177,8 +181,8 @@ const modalContentStyle: React.CSSProperties = {
 
 const columnStyle: React.CSSProperties = {
   flex: 1, overflowY: 'auto', textAlign: 'center', scrollBehavior: 'smooth',
-  msOverflowStyle: 'none',  // IE, Edge 스크롤바 숨김
-  scrollbarWidth: 'none'    // Firefox 스크롤바 숨김
+  msOverflowStyle: 'none',  
+  scrollbarWidth: 'none'    
 };
 
 const itemStyle = (isSelected: boolean): React.CSSProperties => ({
