@@ -214,7 +214,7 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     }
   };
 
-  const handleAutoGenerate = async () => {
+const handleAutoGenerate = async () => {
     if (!genStartDate || !genEndDate) return alert('시작일과 종료일을 설정해주세요.');
     if (genStartDate > genEndDate) return alert('시작일이 종료일보다 늦을 수 없습니다.');
     if (selectedPatternIds.length === 0) return alert('생성할 패턴을 하나 이상 체크해주세요.');
@@ -225,6 +225,9 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     const start = new Date(genStartDate);
     const end = new Date(genEndDate);
     const newSchedules = [];
+    
+    // ✅ [추가] 퇴직으로 인해 제외된 건수 카운트
+    let skippedByRetireCount = 0;
 
     const { data: existingData } = await supabase
       .from('schedules')
@@ -244,12 +247,11 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
         if (existingSet.has(`${dateStr}_${empId}`)) continue;
 
         const employee = employees.find(e => e.id === empId);
-        
-        // ✅ [안전장치 1] 직원 정보가 없으면 건너뜀
         if (!employee) continue;
 
-        // ✅ [안전장치 2] 퇴사일 체크
+        // ✅ [안전장치 2] 퇴사일 체크 (카운트 추가)
         if (employee.end_date && dateStr > employee.end_date) {
+            skippedByRetireCount++; // 카운트 증가
             continue; 
         }
 
@@ -258,12 +260,8 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
 
         const rule = pattern.weekly_rules[dayOfWeek];
         if (rule) {
-          // ▼▼▼ [수정된 핵심 로직] 일당직 정보 반영 ▼▼▼
-          // 직원 데이터(employee)에서 pay_type과 daily_wage를 확인
-          // (주의: 직원 정보 타입이 확실치 않으면 as any 사용 가능)
           const empAny = employee as any;
           const isDailyPay = empAny.pay_type === 'day' || empAny.pay_type === '일당';
-          // 일당 금액 가져오기 (없으면 0)
           const dailyAmount = isDailyPay ? Number(empAny.daily_wage || empAny.default_daily_pay || 0) : 0;
 
           newSchedules.push({
@@ -274,8 +272,6 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
             end_time: rule.end,
             color: pattern.color || '#4ECDC4',
             memo: pattern.name,
-            
-            // ✅ DB에 일당 정보 함께 저장
             pay_type: isDailyPay ? 'day' : 'time',
             daily_pay_amount: dailyAmount,
           });
@@ -284,7 +280,12 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     }
 
     if (newSchedules.length === 0) {
-      alert('생성할 스케줄이 없거나, 이미 생성되어 있습니다.');
+      // 메시지 개선
+      if (skippedByRetireCount > 0) {
+          alert(`생성할 스케줄이 없습니다.\n(퇴직일 이후 날짜로 인해 ${skippedByRetireCount}건이 제외되었습니다)`);
+      } else {
+          alert('생성할 스케줄이 없거나, 이미 생성되어 있습니다.');
+      }
       setLoading(false);
       return;
     }
@@ -293,7 +294,12 @@ export default function WeeklyScheduleManager({ currentStoreId, employees }: Pro
     setLoading(false);
     if (error) alert('생성 실패: ' + error.message);
     else {
-      alert(`${newSchedules.length}개의 스케줄이 생성되었습니다!`);
+      // ✅ [성공 메시지 개선]
+      let msg = `${newSchedules.length}개의 스케줄이 생성되었습니다!`;
+      if (skippedByRetireCount > 0) {
+          msg += `\n(퇴직 처리된 직원의 스케줄 ${skippedByRetireCount}건은 제외되었습니다)`;
+      }
+      alert(msg);
       window.location.reload();
     }
   };
