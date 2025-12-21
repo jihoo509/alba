@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import AdBanner from '@/components/AdBanner';
 import AdPopup from '@/components/AdPopup';
 import GoogleAd from '@/components/GoogleAd';
+import { createSupabaseBrowserClient } from '@/lib/supabaseBrowser'; // ✅ Supabase 클라이언트 임포트
 
 export default function DashboardLayout({
   children,
@@ -14,14 +15,19 @@ export default function DashboardLayout({
   const MOBILE_BOTTOM_BOX_SLOT_ID = "4218312145"; 
   
   // ✅ [로직 추가] 랜덤 광고 상태 관리
-  // 초기값을 null로 두어 서버/클라이언트 불일치(Hydration) 에러 방지
   const [randomAd, setRandomAd] = useState<{ img: string; link: string } | null>(null);
 
+  // ✅ [로직 추가] 팝업 데이터 상태 관리
+  const [popups, setPopups] = useState<any[]>([]);
+
+  // ✅ Supabase 클라이언트 생성
+  const supabase = createSupabaseBrowserClient();
+
   useEffect(() => {
-    // 광고 데이터 목록
+    // 1. 하단 배너 랜덤 선택 로직
     const adList = [
       {
-        img: '/art-m-1.png', // public 폴더 기준 경로
+        img: '/art-m-1.png', 
         link: 'https://policy-funding.ba-damda.com/'
       },
       {
@@ -29,18 +35,36 @@ export default function DashboardLayout({
         link: 'https://tremendous-sunset-519.notion.site/51ec9464cecd425d91c96f5a8167471d'
       }
     ];
-
-    // 페이지 접속 시 0 또는 1 중 랜덤 선택
     const randomIndex = Math.floor(Math.random() * adList.length);
     setRandomAd(adList[randomIndex]);
-  }, []);
+
+    // 2. 팝업 데이터 가져오기 로직
+    const fetchPopups = async () => {
+      try {
+        // active가 true인 팝업만 가져옴
+        const { data, error } = await supabase
+          .from('popups')
+          .select('*')
+          .eq('is_active', true);
+        
+        if (data && !error) {
+          setPopups(data);
+        }
+      } catch (e) {
+        console.error('팝업 로딩 실패:', e);
+      }
+    };
+
+    fetchPopups();
+  }, [supabase]); // supabase 의존성 추가
 
   return (
     // ✅ 전체 컨테이너
     <div style={{ minHeight: '100vh', backgroundColor: '#fff', color: '#292929' }}>
       
-      {/* 1. 팝업 광고 */}
-      <AdPopup />
+      {/* 1. 팝업 광고 (데이터 전달 필수!) */}
+      {/* popups 데이터가 있을 때만 렌더링하거나, 빈 배열이라도 넘겨줌 */}
+      <AdPopup popups={popups} />
 
       {/* 2. PC 좌우 배너 */}
       <div className="desktop-only responsive-banner" style={{ position: 'fixed', left: 0, top: '0', bottom: '0', height: '100vh', zIndex: 90, display: 'flex', alignItems: 'center' }}>
