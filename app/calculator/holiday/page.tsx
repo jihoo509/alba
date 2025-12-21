@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 
-// ✅ 기능 소개 데이터 (이미지 경로 주의: public 폴더 기준)
+// ✅ 로그인 페이지와 동일한 기능 소개 데이터 적용
 const FEATURES = [
   {
     title: "직원 & 알바 관리, 평생 무료로 시작하세요",
@@ -53,6 +53,7 @@ export default function HolidayCalculatorPage() {
       return;
     }
 
+    // 주 40시간 이상은 40시간으로 계산 (8시간분)
     const calcHours = hours > 40 ? 40 : hours;
     const holidayPay = Math.floor((calcHours / 40) * 8 * wage);
     setResult(holidayPay);
@@ -65,85 +66,162 @@ export default function HolidayCalculatorPage() {
 
   return (
     <div className="page-container">
-      {/* 폰트 적용 */}
+      {/* 폰트 및 글로벌 스타일 적용 */}
       <style jsx global>{`
         @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
         body {
           font-family: "Pretendard Variable", Pretendard, sans-serif;
-          margin: 0; padding: 0; background-color: #f5f6f8; color: #333;
+          margin: 0; 
+          padding: 0; 
+          background-color: #f5f6f8; 
+          color: #333;
+          overflow-x: hidden; /* 가로 스크롤 방지 */
         }
-        /* 모바일 전용 스타일 */
-        @media (max-width: 768px) {
-          .mobile-reverse { flex-direction: column-reverse !important; }
-          .mobile-center { text-align: center !important; }
-          .promo-text-box { padding: 0 !important; }
+        * {
+            box-sizing: border-box;
         }
       `}</style>
 
       <style jsx>{`
         .page-container {
-          min-height: 100vh; display: flex; flexDirection: column; alignItems: center;
-          padding-top: 40px; box-sizing: border-box; overflow-x: hidden;
+          min-height: 100vh; 
+          display: flex; 
+          flex-direction: column; 
+          align-items: center;
+          padding-top: 60px; 
+          overflow-x: hidden;
+          width: 100%;
         }
         
-        /* 계산기 영역 스타일 */
+        /* 1. 계산기 영역 스타일 */
         .calculator-section {
-          width: 100%; display: flex; justify-content: center; padding: 0 20px; box-sizing: border-box; margin-bottom: 80px;
+          width: 100%; 
+          display: flex; 
+          justify-content: center; 
+          padding: 0 20px; 
+          margin-bottom: 80px;
         }
         .card {
-          background-color: #fff; max-width: 480px; width: 100%; padding: 32px 24px;
-          border-radius: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+          background-color: #fff; 
+          max-width: 480px; 
+          width: 100%; 
+          padding: 40px 32px;
+          border-radius: 24px; 
+          box-shadow: 0 10px 30px rgba(0,0,0,0.08);
         }
-        .input-group { margin-bottom: 20px; }
-        .input-label { display: block; font-size: 14px; font-weight: 700; color: #4e5968; margin-bottom: 8px; }
+        .input-group { margin-bottom: 24px; }
+        .input-label { 
+            display: block; 
+            font-size: 15px; 
+            font-weight: 700; 
+            color: #4e5968; 
+            margin-bottom: 10px; 
+        }
         .calc-input {
-          width: 100%; padding: 16px; border: 1px solid #d1d6db; border-radius: 12px;
-          font-size: 17px; font-weight: 600; outline: none; transition: all 0.2s;
-          box-sizing: border-box; text-align: right;
+          width: 100%; 
+          padding: 16px; 
+          border: 1px solid #d1d6db; 
+          border-radius: 12px;
+          font-size: 18px; 
+          font-weight: 600; 
+          outline: none; 
+          transition: all 0.2s;
+          text-align: right;
+          font-family: inherit;
         }
-        .calc-input:focus { border-color: #3182f6; box-shadow: 0 0 0 2px rgba(49, 130, 246, 0.1); }
+        .calc-input:focus { border-color: #3182f6; box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.1); }
+        
         .calc-btn {
-          width: 100%; padding: 18px; background-color: #3182f6; color: #fff; border: none;
-          border-radius: 14px; font-size: 17px; font-weight: 700; cursor: pointer; margin-top: 10px;
+          width: 100%; 
+          padding: 20px; 
+          background-color: #3182f6; 
+          color: #fff; 
+          border: none;
+          border-radius: 16px; 
+          font-size: 18px; 
+          font-weight: 700; 
+          cursor: pointer; 
+          margin-top: 10px;
+          transition: background-color 0.2s;
         }
+        .calc-btn:hover { background-color: #2b72d8; }
+        
         .result-box {
-          margin-top: 30px; padding: 24px; background-color: #f9faff; border-radius: 16px;
-          text-align: center; border: 1px solid #e5e8eb;
+          margin-top: 30px; 
+          padding: 24px; 
+          background-color: #f9faff; 
+          border-radius: 16px;
+          text-align: center; 
+          border: 1px solid #e5e8eb;
         }
-        .tip-box { background-color: #f2f4f6; padding: 20px; border-radius: 16px; margin-top: 24px; }
-        .tip-title { font-size: 14px; font-weight: 800; color: #333; margin-bottom: 10px; }
-        .tip-list { list-style: none; padding: 0; margin: 0; font-size: 13px; color: #555; line-height: 1.6; }
-        .tip-list li::before { content: "•"; padding-right: 6px; color: #888; }
+        .tip-box { 
+            background-color: #f2f4f6; 
+            padding: 24px; 
+            border-radius: 16px; 
+            margin-top: 32px; 
+        }
+        .tip-title { font-size: 15px; font-weight: 800; color: #333; margin-bottom: 12px; }
+        .tip-list { list-style: none; padding: 0; margin: 0; font-size: 14px; color: #555; line-height: 1.6; }
+        .tip-list li { margin-bottom: 6px; position: relative; padding-left: 12px; }
+        .tip-list li::before { content: "•"; position: absolute; left: 0; color: #888; }
 
-        /* 🔥 [로그인 페이지 스타일 적용] 기능 소개 섹션 */
+        /* 2. 기능 소개 섹션 (로그인 페이지 스타일 적용) */
         .features-wrapper {
-          width: 100%; background-color: #fff; padding: 80px 20px; display: flex; justify-content: center;
+          width: 100%; 
+          background-color: #fff; 
+          padding: 80px 0; 
+          display: flex; 
+          justify-content: center;
         }
         .features-container {
-          max-width: 1000px; width: 100%; display: flex; flexDirection: column; gap: 80px;
+          max-width: 1000px; 
+          width: 100%; 
+          padding: 0 20px;
+          display: flex; 
+          flex-direction: column; 
+          align-items: center;
+          gap: 80px;
         }
-        .main-title {
-          font-size: 32px; font-weight: 900; color: #333; textAlign: center; margin-bottom: 20px; line-height: 1.3;
+        .section-title {
+            font-size: 32px;
+            font-weight: 900;
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+            line-height: 1.3;
+            letter-spacing: -1px;
+            word-break: keep-all;
+        }
+
+        /* 개별 기능 카드 (flex-wrap으로 모바일 대응) */
+        .feature-card {
+            display: flex;
+            flex-wrap: wrap; /* 모바일에서 줄바꿈 */
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            width: 100%;
         }
         
-        .feature-row {
-          display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 40px; width: 100%;
+        .feature-text {
+            flex: 1 1 300px;
+            max-width: 100%;
+            padding: 10px;
         }
-        .promo-text-box {
-          flex: 1 1 300px; max-width: 100%;
+        
+        .feature-img-box {
+            flex: 1 1 300px;
+            display: flex;
+            justify-content: center;
+            max-width: 100%;
         }
-        .promo-title {
-          font-size: 24px; font-weight: 800; color: #0052cc; margin-bottom: 16px; line-height: 1.4; word-break: keep-all;
-        }
-        .promo-desc {
-          font-size: 17px; line-height: 1.7; color: #555; margin: 0; word-break: keep-all;
-        }
-        .promo-img-box {
-          flex: 1 1 300px; display: flex; justify-content: center; max-width: 100%;
-        }
-        .promo-img {
-          width: 100%; max-width: 500px; height: auto; border-radius: 16px; 
-          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+
+        .feature-img {
+            width: 100%;
+            max-width: 450px;
+            height: auto;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
         }
 
         /* 하단 고정 CTA */
@@ -157,33 +235,54 @@ export default function HolidayCalculatorPage() {
           box-shadow: 0 8px 20px rgba(39, 174, 96, 0.4); transition: transform 0.1s;
         }
         .start-btn:active { transform: translateX(-50%) scale(0.98); }
+
+        @media (max-width: 768px) {
+            .mobile-hide { display: none; }
+            .section-title { font-size: 26px; }
+            .feature-text { text-align: center; }
+            .feature-card { flex-direction: column-reverse !important; gap: 24px; } /* 모바일은 항상 이미지가 위, 텍스트가 아래 혹은 반대 취향대로 */
+        }
       `}</style>
 
       {/* 1. 계산기 영역 */}
       <div className="calculator-section">
         <div className="card">
-          <h1 style={{ fontSize: '22px', fontWeight: '800', textAlign: 'center', marginBottom: '8px' }}>💰 주휴수당 계산기</h1>
-          <p style={{ textAlign: 'center', color: '#8b95a1', marginBottom: '32px', fontSize: '15px' }}>이번 주 내 알바비, 주휴수당은 얼마?</p>
+          <h1 style={{ fontSize: '26px', fontWeight: '800', textAlign: 'center', marginBottom: '8px', color: '#191f28' }}>💰 주휴수당 계산기</h1>
+          <p style={{ textAlign: 'center', color: '#8b95a1', marginBottom: '40px', fontSize: '16px' }}>이번 주 내 알바비, 주휴수당은 얼마?</p>
 
           <div className="input-group">
             <label className="input-label">시급 (원)</label>
-            <input type="text" value={hourlyWage} onChange={(e) => handleNumberInput(e, setHourlyWage)} className="calc-input" placeholder="예: 10,030" inputMode="numeric" />
+            <input 
+                type="text" 
+                value={hourlyWage} 
+                onChange={(e) => handleNumberInput(e, setHourlyWage)} 
+                className="calc-input" 
+                placeholder="예: 10,030" 
+                inputMode="numeric" 
+            />
           </div>
 
           <div className="input-group">
             <label className="input-label">일주일 총 근무 시간</label>
-            <input type="text" value={hoursPerWeek} onChange={(e) => handleNumberInput(e, setHoursPerWeek)} className="calc-input" placeholder="예: 20" inputMode="numeric" />
-            <p style={{ fontSize: '12px', color: '#8b95a1', marginTop: '6px', textAlign: 'right' }}>* 휴게시간 제외, 실제 근무시간</p>
+            <input 
+                type="text" 
+                value={hoursPerWeek} 
+                onChange={(e) => handleNumberInput(e, setHoursPerWeek)} 
+                className="calc-input" 
+                placeholder="예: 20" 
+                inputMode="numeric" 
+            />
+            <p style={{ fontSize: '13px', color: '#8b95a1', marginTop: '8px', textAlign: 'right' }}>* 휴게시간 제외, 실제 근무시간</p>
           </div>
 
           <button onClick={handleCalculate} className="calc-btn">계산하기</button>
 
           {result !== null && (
             <div className="result-box">
-              <span style={{ fontSize: '14px', color: '#3182f6', fontWeight: '700' }}>예상 주휴수당</span>
-              <div style={{ fontSize: '32px', fontWeight: '800', color: '#333', margin: '8px 0' }}>{result.toLocaleString()}<span style={{ fontSize: '20px', fontWeight: '600' }}>원</span></div>
-              {result === 0 ? <p style={{ fontSize: '13px', color: '#e74c3c' }}>주 15시간 미만은 주휴수당 대상이 아닙니다.</p> : 
-                <p style={{ fontSize: '13px', color: '#6b7684' }}>한 달 기준 약 <strong>{(result * 4.345).toLocaleString().split('.')[0]}원</strong> 더 받아요!</p>}
+              <span style={{ fontSize: '15px', color: '#3182f6', fontWeight: '700' }}>예상 주휴수당</span>
+              <div style={{ fontSize: '36px', fontWeight: '800', color: '#333', margin: '10px 0' }}>{result.toLocaleString()}<span style={{ fontSize: '22px', fontWeight: '600', marginLeft: '4px' }}>원</span></div>
+              {result === 0 ? <p style={{ fontSize: '14px', color: '#e74c3c' }}>주 15시간 미만은 주휴수당 대상이 아닙니다.</p> : 
+                <p style={{ fontSize: '14px', color: '#6b7684' }}>한 달 기준 약 <strong>{(result * 4.345).toLocaleString().split('.')[0]}원</strong> 더 받아요!</p>}
             </div>
           )}
 
@@ -191,32 +290,38 @@ export default function HolidayCalculatorPage() {
             <div className="tip-title">💡 알아두면 좋은 팁</div>
             <ul className="tip-list">
               <li><strong>퇴직하는 주</strong>는 주휴수당이 발생하지 않아요.</li>
-              <li><strong>대타 근무</strong> 시간은 주휴수당 계산에서 제외될 수 있어요.</li>
+              <li><strong>대타로 근무한 시간</strong>은 주휴시간 계산에서 제외될 수 있어요.</li>
               <li><strong>주 40시간 이상</strong> 근무해도 최대 8시간분까지만 인정돼요.</li>
             </ul>
           </div>
         </div>
       </div>
 
-      {/* 2. 기능 소개 (FEATURES) - 로그인 페이지 스타일 */}
+      {/* 2. 기능 소개 (FEATURES) - 로그인 페이지 디자인 적용 */}
       <div className="features-wrapper">
         <div className="features-container">
-          <h2 className="main-title">이지알바,<br className="mobile-only"/> 왜 써야 할까요?</h2>
+          <h2 className="section-title">
+            이지알바,<br className="mobile-only"/> 왜 써야 할까요?
+          </h2>
           
           {FEATURES.map((feature, index) => (
             <div key={index} 
-              className="feature-row" 
+              className="feature-card"
               style={{ flexDirection: index % 2 === 0 ? 'row' : 'row-reverse' }}
             >
               {/* 텍스트 */}
-              <div className="promo-text-box mobile-center">
-                <h3 className="promo-title">{feature.title}</h3>
-                <p className="promo-desc">{feature.desc}</p>
+              <div className="feature-text">
+                <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#0052cc', marginBottom: '16px', wordBreak: 'keep-all', lineHeight: '1.4' }}>
+                    {feature.title}
+                </h3>
+                <p style={{ fontSize: '17px', lineHeight: '1.7', color: '#555', margin: 0, wordBreak: 'keep-all' }}>
+                    {feature.desc}
+                </p>
               </div>
 
               {/* 이미지 */}
-              <div className="promo-img-box">
-                <img src={`/${feature.img}`} alt={feature.title} className="promo-img" />
+              <div className="feature-img-box">
+                <img src={feature.img} alt={feature.title} className="feature-img" />
               </div>
             </div>
           ))}
