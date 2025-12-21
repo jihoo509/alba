@@ -1,16 +1,15 @@
-// ... 상단 import 및 calculateIncomeTax, calculateNightMinutes, calculateTaxAmounts는 기존과 동일 ...
-// ... (생략 없이 위 코드는 유지해주세요) ...
-
-import { startOfWeek, endOfWeek, addDays, format, isSameMonth, parseISO, isAfter } from 'date-fns';
+import { startOfWeek, endOfWeek, addDays, format, isSameMonth, parseISO, isAfter, subDays } from 'date-fns';
 
 export const TAX_RATES = {
   pension: 0.045, health: 0.03545, care: 0.1295, employment: 0.009, incomeTax: 0.03, localTax: 0.1
 };
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+// 1. 소득세 약식 계산
 export const calculateIncomeTax = (monthlyPay: number) => {
   const income = monthlyPay; 
   if (income < 1060000) return { incomeTax: 0, localTax: 0 };
+
   let tax = 0;
   if (income < 1500000) tax = (income - 1060000) * 0.015; 
   else if (income < 2000000) tax = 6600 + (income - 1500000) * 0.03; 
@@ -19,11 +18,13 @@ export const calculateIncomeTax = (monthlyPay: number) => {
   else if (income < 5000000) tax = 141600 + (income - 4000000) * 0.09; 
   else if (income < 7000000) tax = 231600 + (income - 5000000) * 0.12; 
   else tax = 471600 + (income - 7000000) * 0.15;
+
   const incomeTax = Math.floor(tax / 10) * 10;
   const localTax = Math.floor((incomeTax * 0.1) / 10) * 10;
   return { incomeTax, localTax };
 };
 
+// 2. 야간 시간 계산
 function calculateNightMinutes(start: string, end: string) {
   const [sH, sM] = start.split(':').map(Number);
   const [eH, eM] = end.split(':').map(Number);
@@ -38,17 +39,23 @@ function calculateNightMinutes(start: string, end: string) {
   return nightMin;
 }
 
+// 3. 세금 계산
 export function calculateTaxAmounts(totalPay: number, isFourIns: boolean, noTax: boolean) {
   if (noTax || totalPay <= 0) {
     return { pension: 0, health: 0, care: 0, employment: 0, incomeTax: 0, localTax: 0, total: 0 };
   }
+  
   if (isFourIns) {
     const pension = Math.floor(totalPay * TAX_RATES.pension / 10) * 10;
     const health = Math.floor(totalPay * TAX_RATES.health / 10) * 10;
     const care = Math.floor(health * TAX_RATES.care / 10) * 10;
     const employment = Math.floor(totalPay * TAX_RATES.employment / 10) * 10;
     const { incomeTax, localTax } = calculateIncomeTax(totalPay);
-    return { pension, health, care, employment, incomeTax, localTax, total: pension + health + care + employment + incomeTax + localTax };
+
+    return { 
+        pension, health, care, employment, incomeTax, localTax, 
+        total: pension + health + care + employment + incomeTax + localTax 
+    };
   } else {
     const incomeTax = Math.floor(totalPay * TAX_RATES.incomeTax / 10) * 10;
     const localTax = Math.floor(incomeTax * TAX_RATES.localTax / 10) * 10;
@@ -56,6 +63,7 @@ export function calculateTaxAmounts(totalPay: number, isFourIns: boolean, noTax:
   }
 }
 
+// ✅ [핵심 수정] calculatePayrollByRange
 export function calculatePayrollByRange(
   startDateStr: string, 
   endDateStr: string, 
@@ -64,9 +72,15 @@ export function calculatePayrollByRange(
   storeSettings: any, 
   overrides: any[] = []
 ) {
+  // 1. 조회 기간의 시작일이 포함된 '월요일'을 계산 (1월 26일 같은 날짜 확보용)
+  const rangeStart = parseISO(startDateStr);
+  const contextStart = startOfWeek(rangeStart, { weekStartsOn: 1 }); // 월요일 기준
+  const contextStartStr = format(contextStart, 'yyyy-MM-dd');
+
   return employees.map(emp => {
+    // 2. 스케줄 필터링: '조회 시작일'이 아니라 '그 주의 월요일(contextStartStr)'부터 가져옴
     const empSchedules = schedules.filter(s => 
-      s.employee_id === emp.id && s.date >= startDateStr && s.date <= endDateStr
+      s.employee_id === emp.id && s.date >= contextStartStr && s.date <= endDateStr
     );
     const override = overrides.find(o => o.employee_id === emp.id);
 
@@ -107,11 +121,9 @@ export function calculatePayrollByRange(
     let totalBasePay = 0; let totalNightPay = 0; let totalOvertimePay = 0; let totalHolidayWorkPay = 0; let totalWeeklyPay = 0; let totalWorkMinutes = 0; 
     let ledger: any[] = []; 
 
-    const rangeStart = parseISO(startDateStr);
-    const rangeEnd = parseISO(endDateStr);
-    
-    let current = startOfWeek(rangeStart, { weekStartsOn: 1 }); 
-    const endLoop = endOfWeek(rangeEnd, { weekStartsOn: 1 });
+    // 루프 시작점: 조회 시작일이 아닌 '그 주의 월요일'부터
+    let current = contextStart; 
+    const endLoop = endOfWeek(parseISO(endDateStr), { weekStartsOn: 1 });
     const processedWeeks = new Set();
 
     while (current <= endLoop) {
@@ -122,6 +134,7 @@ export function calculatePayrollByRange(
         if (processedWeeks.has(weekStartStr)) { current = addDays(current, 7); continue; }
         processedWeeks.add(weekStartStr);
 
+        // 해당 주차의 스케줄 (1월 데이터 포함)
         const weekSchedules = empSchedules.filter((s: any) => {
              return s.date >= weekStartStr && s.date <= weekEndStr;
         }).sort((a: any, b: any) => a.date.localeCompare(b.date));
@@ -159,6 +172,7 @@ export function calculatePayrollByRange(
             const overtimePay = cfg.pay_overtime ? potentialOvertimePay : 0;
             const holidayWorkPay = cfg.pay_holiday ? potentialHolidayWorkPay : 0;
 
+            // ✅ [장부 기록 조건] 날짜가 실제 조회 기간(2월) 내에 있을 때만 장부에 찍고 돈을 더함
             if (s.date >= startDateStr && s.date <= endDateStr) {
                 ledger.push({
                     type: 'WORK', date: s.date, dayLabel: DAYS[scheduleDate.getDay()],
@@ -171,23 +185,28 @@ export function calculatePayrollByRange(
                 });
                 totalBasePay += activeBasePay; totalNightPay += nightPay; totalOvertimePay += overtimePay; totalHolidayWorkPay += holidayWorkPay; totalWorkMinutes += activeMins;
             }
+
+            // ✅ [주휴 계산 조건] 날짜와 상관없이 '이번 주' 근무시간은 무조건 합산 (그래야 15시간 넘는지 앎)
             if (!s.exclude_holiday_pay) { weekMinutes += activeMins; }
         });
 
-        // ✅ [핵심 수정] 주휴수당 가드: 퇴직일이 있다면, 주휴일(일요일)이 퇴직일 이후인 경우 주휴수당 미지급
-        // 예: 금요일(12일) 퇴직 -> 일요일(14일) > 퇴직일(12일) => 지급 X
-        const isRetiredBeforeSunday = emp.end_date && weekEndStr > emp.end_date;
-
+        // ✅ [주휴수당 지급 판단]
+        // 조건: 해당 주의 마지막 날(일요일)이 조회 기간(2월) 안에 포함되어 있어야 함
         if (weekEndStr <= endDateStr && weekEndStr >= startDateStr) {
+            
+            // 퇴직일 체크
+            const isRetiredBeforeSunday = emp.end_date && weekEndStr > emp.end_date;
+
             let potentialWeeklyPay = 0; const hourlyWage = Number(emp.hourly_wage || 0);
             
-            // ✅ [가드] 퇴직 전이라면 계산, 퇴직 후라면 0
+            // 1월 데이터까지 합친 weekMinutes로 15시간 넘는지 체크
             if (!isEmpDaily && !isEmpMonthly && weekMinutes >= 900 && hourlyWage > 0 && !isRetiredBeforeSunday) { 
                 const cappedWeekMinutes = Math.min(weekMinutes, 40 * 60); 
                 potentialWeeklyPay = Math.floor((cappedWeekMinutes / 40 / 60) * 8 * hourlyWage);
             }
             const weeklyPay = cfg.pay_weekly ? potentialWeeklyPay : 0;
             
+            // 지급 대상이면 2월 장부에 주휴수당 추가
             if (potentialWeeklyPay > 0) {
                 totalWeeklyPay += weeklyPay;
                 ledger.push({ type: 'WEEKLY', date: weekEndStr, dayLabel: '주휴', timeRange: '-', hours: '-', basePay: 0, nightPay: 0, overtimePay: 0, holidayWorkPay: 0, potentialWeeklyPay, weeklyPay, note: `1주 ${Math.floor(weekMinutes/60)}시간 근무` });
@@ -209,14 +228,12 @@ export function calculatePayrollByRange(
       totalHours: (totalWorkMinutes / 60).toFixed(1), basePay: totalBasePay, nightPay: totalNightPay, overtimePay: totalOvertimePay, holidayWorkPay: totalHolidayWorkPay, weeklyHolidayPay: totalWeeklyPay,
       totalPay: totalPay, taxDetails: taxDetails, finalPay: totalPay - taxDetails.total,
       details: { bank: emp.bank_name, account: emp.account_number }, birthDate: emp.birth_date, phoneNumber: emp.phone_number,
-      
       ledger: ledger.sort((a, b) => {
         if (a.date !== b.date) { return a.date > b.date ? 1 : -1; }
         if (a.type === 'WEEKLY') return 1;
         if (b.type === 'WEEKLY') return -1;
         return 0;
       }), 
-
       storeSettingsSnapshot: { ...storeSettings, ...cfg },
       isOverrideApplied: isOverrideApplied 
     };

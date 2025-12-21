@@ -9,7 +9,7 @@ import PayStubModal, { PayStubPaper } from './PayStubModal';
 import PayrollEditModal from './PayrollEditModal';
 import SeveranceCalculator from './SeveranceCalculator';
 import DateSelector from './DateSelector'; 
-import { format, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, startOfWeek, endOfWeek, addDays, setDate, getWeekOfMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, addWeeks, startOfWeek, endOfWeek, addDays, setDate, getWeekOfMonth, parseISO } from 'date-fns';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -46,7 +46,6 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
 
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // 날짜 계산 함수
   const calculateRangeBySettings = (mode: ViewMode, settings: any, refDate: Date = new Date()) => {
       let sDate, eDate;
       const startDay = settings?.pay_rule_start_day || 1;
@@ -73,7 +72,6 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
       return { s: format(sDate, 'yyyy-MM-dd'), e: format(eDate, 'yyyy-MM-dd') };
   };
 
-  // 1. 초기 로딩 & 설정 변경 감지
   useEffect(() => {
     if(!currentStoreId) return;
     const fetchSettings = async () => {
@@ -103,7 +101,6 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
     fetchSettings();
   }, [currentStoreId, supabase, refreshTrigger]);
 
-  // 2. 뷰 모드 변경 시 날짜 재계산
   useEffect(() => {
       if (savedSettings) {
           if (viewMode === 'custom') {
@@ -120,7 +117,6 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
       }
   }, [viewMode, savedSettings]);
 
-  // 3. 날짜 이동 핸들러
   const handleRangeMove = (direction: 'prev' | 'next') => {
     const s = new Date(startDate);
     if (viewMode === 'month') {
@@ -141,12 +137,10 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
       if (newStart > endDate) setEndDate(newStart);
   };
 
-  // ✅ [수정] 날짜 표시 UI 렌더링 함수 (JSX 리턴)
   const renderDateDisplay = () => {
     const s = new Date(startDate);
     const e = new Date(endDate);
 
-    // 1. 월별
     if (viewMode === 'month') {
         return (
             <span style={{ fontSize: 20, fontWeight: '800', color: '#333', letterSpacing: '-0.5px' }}>
@@ -155,9 +149,8 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
         );
     }
 
-    // 2. 주별 (디자인 개선: 몇월 몇주차 + 날짜)
     if (viewMode === 'week') {
-        const weekNum = getWeekOfMonth(s, { weekStartsOn: 1 }); // 월요일 시작 기준 주차
+        const weekNum = getWeekOfMonth(s, { weekStartsOn: 1 });
         const startFmt = format(s, 'MM.dd');
         const endFmt = format(e, 'MM.dd');
         return (
@@ -171,9 +164,7 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
             </div>
         );
     }
-
-    // 3. 기간지정 (텍스트 모드일 때) -> 사실상 아래 JSX에서 처리하므로 여긴 fallback
-    return <span>{startDate}  {endDate}</span>;
+    return <span>{startDate} ~ {endDate}</span>;
   };
 
   const loadAndCalculate = useCallback(async () => {
@@ -185,8 +176,17 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
     if (empData) setEmployees(empData);
     
     const { data: overData } = await supabase.from('employee_settings').select('*');
+
+    // ✅ [핵심 수정] DB 조회 시 날짜 범위를 '조회 시작일이 포함된 주의 월요일'까지 넓힘
+    // 예: 2월 1일 조회 시 -> 1월 26일(월)부터 데이터를 가져옴
+    const searchStart = parseISO(startDate);
+    const contextStart = startOfWeek(searchStart, { weekStartsOn: 1 });
+    const contextStartStr = format(contextStart, 'yyyy-MM-dd');
+
     const { data: schedules } = await supabase.from('schedules').select('*')
-        .eq('store_id', currentStoreId).gte('date', startDate).lte('date', endDate);
+        .eq('store_id', currentStoreId)
+        .gte('date', contextStartStr) // ✅ startDate가 아닌 contextStartStr 사용
+        .lte('date', endDate);
 
     if (empData && schedules && storeData) {
       const activeEmps = empData.filter((emp: any) => {
@@ -195,6 +195,7 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
         return joined && notLeft;
       });
 
+      // 여기선 startDate 그대로 넘김 (lib/payroll.ts 내부에서 알아서 처리)
       let result = calculatePayrollByRange(startDate, endDate, activeEmps, schedules, storeData, overData || []);
 
       result = result.map((item: any) => {
@@ -265,7 +266,16 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
       };
     });
     const ws = XLSX.utils.json_to_sheet(excelRows);
-    // ... (엑셀 스타일링 코드는 길이상 생략, 기존 로직 유지) ...
+    const range = XLSX.utils.decode_range(ws['!ref'] || "A1:A1");
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[cell_address]) continue;
+        ws[cell_address].s = { alignment: { horizontal: "center", vertical: "center" }, font: { name: "맑은 고딕" } };
+        if (R === 0) { ws[cell_address].s = { alignment: { horizontal: "center", vertical: "center" }, font: { name: "맑은 고딕", bold: true }, fill: { fgColor: { rgb: "EEEEEE" } } }; }
+      }
+    }
+    ws['!cols'] = [ { wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 } ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "급여대장");
     XLSX.writeFile(wb, `${startDate}~${endDate}_급여대장.xlsx`);
@@ -304,93 +314,21 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%' }}>
       <style jsx>{`
-        /* ✅ [PC 레이아웃] 컨트롤 영역과 총계 영역 분리 */
-        .header-container { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            background-color: #f8f9fa; 
-            padding: 16px 24px; 
-            border-radius: 12px; 
-            border: 1px solid #eee; 
-            gap: 20px;
-        }
-        
-        .controls-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            /* PC에서 너무 넓어지지 않게 제한 */
-            max-width: 450px; 
-        }
-
-        .header-total-area { 
-            /* ✅ [PC] 총계 영역 고정 너비 확보 (짤림 방지) */
-            min-width: 200px;
-            text-align: right;
-            flex-shrink: 0; /* 절대 줄어들지 않음 */
-            white-space: nowrap; /* 줄바꿈 방지 */
-        }
-
-        .view-tabs { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr 1fr; 
-            gap: 4px; 
-            background: #eee; 
-            padding: 4px; 
-            border-radius: 8px; 
-            margin-bottom: 12px; 
-            width: 100%; 
-            /* ✅ [PC] 탭 버튼 너비 적당히 제한 */
-            max-width: 320px; 
-        }
-        
-        .view-tab { 
-            padding: 8px 0; 
-            border-radius: 6px; border: none; font-size: 13px; cursor: pointer; color: #555; background: transparent; width: 100%; text-align: center;
-        }
+        .header-container { display: flex; justify-content: space-between; align-items: center; background-color: #f8f9fa; padding: 16px 24px; border-radius: 12px; border: 1px solid #eee; gap: 20px; }
+        .controls-area { flex: 1; display: flex; flexDirection: column; alignItems: center; max-width: 450px; }
+        .header-total-area { min-width: 200px; text-align: right; flex-shrink: 0; white-space: nowrap; }
+        .view-tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; background: #eee; padding: 4px; border-radius: 8px; margin-bottom: 12px; width: 100%; max-width: 320px; }
+        .view-tab { padding: 8px 0; border-radius: 6px; border: none; font-size: 13px; cursor: pointer; color: #555; background: transparent; width: 100%; text-align: center; }
         .view-tab.active { background: #fff; color: dodgerblue; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        
-        .nav-btn-group {
-            display: flex; alignItems: center; gap: 12px; justify-content: center; width: 100%;
-        }
-
-        /* ✅ [모바일] tilde(~) 숨기기 클래스 */
-        .tilde-separator {
-            margin: 0 6px; color: #999; font-size: 13px;
-        }
-
+        .nav-btn-group { display: flex; alignItems: center; gap: 12px; justify-content: center; width: 100%; }
+        .tilde-separator { margin: 0 6px; color: #999; font-size: 13px; }
         @media (max-width: 768px) {
-          .header-container { 
-              flex-direction: column; 
-              gap: 16px; 
-              text-align: center; 
-              padding: 20px 16px; 
-          }
-          .controls-area {
-              max-width: 100%;
-              width: 100%;
-          }
-          .view-tabs {
-              max-width: 100%; /* 모바일은 꽉 채우기 */
-          }
-          .header-total-area { 
-              width: 100%; 
-              text-align: right; 
-              border-top: 1px dashed #ddd; 
-              padding-top: 12px; 
-              margin-top: 4px; 
-          }
-          /* ✅ [모바일] ~ 표시 숨기기 */
-          .tilde-separator {
-              display: none;
-          }
-          /* ✅ [모바일] DateSelector 간격 조정 (딱 붙이기) */
-          .custom-date-group {
-              gap: 2px !important;
-          }
-
+          .header-container { flexDirection: column; gap: 16px; text-align: center; padding: 20px 16px; }
+          .controls-area { max-width: 100%; width: 100%; }
+          .view-tabs { max-width: 100%; }
+          .header-total-area { width: 100%; text-align: right; border-top: 1px dashed #ddd; padding-top: 12px; margin-top: 4px; }
+          .tilde-separator { display: none; }
+          .custom-date-group { gap: 2px !important; }
           .desktop-cell { display: none !important; }
           .mobile-cell { display: table-cell !important; }
           .col-name { width: 25% !important; }
@@ -421,7 +359,6 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
           </div>
 
           <div className="header-container">
-            {/* 좌측 컨트롤 영역 (탭 + 날짜선택) */}
             <div className="controls-area">
                 <div className="view-tabs">
                     <button className={`view-tab ${viewMode==='month' ? 'active' : ''}`} onClick={()=>setViewMode('month')}>월별</button>
@@ -430,37 +367,28 @@ export default function PayrollSection({ currentStoreId, refreshTrigger = 0, onS
                 </div>
 
                 <div className="nav-btn-group">
-                    {/* 왼쪽 화살표 */}
                     {viewMode !== 'custom' && (
                         <button onClick={() => handleRangeMove('prev')} style={navIconBtnStyle}>◀</button>
                     )}
                     
-                    {/* 날짜 표시 영역 */}
                     {viewMode === 'custom' ? (
-                        // ✅ [모바일 최적화] gap 줄이고 tilde 클래스 적용
                         <div className="custom-date-group" style={{ display:'flex', alignItems:'center', gap: 8, width: '100%' }}>
                             <div style={{ flex: 1 }}>
                                 <DateSelector value={startDate} onChange={handleCustomStartDateChange} />
                             </div>
-                            {/* 모바일에서 display:none 됨 */}
                             <span className="tilde-separator">~</span>
                             <div style={{ flex: 1 }}>
                                 <DateSelector value={endDate} onChange={setEndDate} />
                             </div>
                         </div>
-                    ) : (
-                        // 월별/주별 렌더링
-                        renderDateDisplay()
-                    )}
+                    ) : ( renderDateDisplay() )}
 
-                    {/* 오른쪽 화살표 */}
                     {viewMode !== 'custom' && (
                          <button onClick={() => handleRangeMove('next')} style={navIconBtnStyle}>▶</button>
                     )}
                 </div>
             </div>
 
-            {/* 우측 총계 영역 */}
             <div className="header-total-area">
               <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>조회 기간 총 지급액</div>
               <div style={{ fontSize: 26, fontWeight: 'bold', color: 'dodgerblue', letterSpacing: '-0.5px' }}>
