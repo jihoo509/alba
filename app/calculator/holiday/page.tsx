@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 
-// ✅ 사장님이 주신 기능 소개 데이터 (이미지 경로 / 추가)
+// ✅ 기능 소개 데이터 (이미지 경로 주의: public 폴더 기준)
 const FEATURES = [
   {
     title: "직원 & 알바 관리, 평생 무료로 시작하세요",
