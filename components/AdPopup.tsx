@@ -49,7 +49,7 @@ export default function AdPopup() {
         {/* 이미지를 클릭하면 링크로 이동하게 하려면 Link 태그 사용 (필요 없으면 div만 사용) */}
         <div style={{ flex: 1, position: 'relative', cursor: 'pointer' }}>
            {/* 예시 링크: 정책자금 사이트 (필요 시 수정하세요) */}
-           <Link href="https://policy-funding.ba-damda.com/" target="_blank">
+           <Link href="" target="_blank">
              <img 
                src="/pop-1.png" 
                alt="메인 광고" 
