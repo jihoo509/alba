@@ -248,7 +248,7 @@ export default function HolidayCalculatorPage() {
       <div className="calculator-section">
         <div className="card">
           <h1 style={{ fontSize: '26px', fontWeight: '800', textAlign: 'center', marginBottom: '8px', color: '#191f28' }}>💰 주휴수당 계산기</h1>
-          <p style={{ textAlign: 'center', color: '#8b95a1', marginBottom: '40px', fontSize: '16px' }}>이번 주 내 알바비, 주휴수당은 얼마?</p>
+          <p style={{ textAlign: 'center', color: '#8b95a1', marginBottom: '40px', fontSize: '16px' }}>복잡한 주휴수당, 쉽게 계산해요!</p>
 
           <div className="input-group">
             <label className="input-label">시급 (원)</label>
@@ -290,8 +290,8 @@ export default function HolidayCalculatorPage() {
             <div className="tip-title">💡 알아두면 좋은 팁</div>
             <ul className="tip-list">
               <li><strong>퇴직하는 주</strong>는 주휴수당이 발생하지 않아요.</li>
-              <li><strong>대타로 근무한 시간</strong>은 주휴시간 계산에서 제외될 수 있어요.</li>
-              <li><strong>주 40시간 이상</strong> 근무해도 최대 8시간분까지만 인정돼요.</li>
+              <li><strong>대타로 근무한 시간</strong>은 주휴시간 계산에서 제외할 수 있어요.</li>
+              <li><strong>주 40시간 초과</strong> 근무는 주휴수당에 포함되지 않습니다.</li>
             </ul>
           </div>
         </div>
