@@ -28,13 +28,10 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
   const [monthlyWage, setMonthlyWage] = useState('');
   const [bankName, setBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [endDate, setEndDate] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // 퇴사 모드 상태
-  const [isRetireMode, setIsRetireMode] = useState(false);
-  const [retireDate, setRetireDate] = useState('');
+  // 퇴사 관련 상태 (단일 변수로 관리)
+  const [retireDate, setRetireDate] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && employee) {
@@ -72,12 +69,8 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
       setBankName(employee.bank_name || '');
       setAccountNumber(employee.account_number || '');
       
-      setIsActive(employee.is_active);
-      setEndDate(employee.end_date || '');
-      
-      setIsRetireMode(false);
-      // 기본 퇴사일은 오늘 날짜로 세팅
-      setRetireDate(new Date().toISOString().split('T')[0]); 
+      // 퇴사일 설정 (DB에 end_date가 있으면 가져옴, 없으면 null)
+      setRetireDate(employee.end_date || null);
     }
   }, [isOpen, employee]);
 
@@ -91,7 +84,19 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     if (val.length <= maxLen) setter(val);
   };
 
-  // 일반 정보 저장 (이름, 급여 등)
+  // 헬퍼: 현재 퇴사 상태 텍스트 및 스타일 반환
+  const getRetireStatus = () => {
+    if (!retireDate) return { label: '재직 중', color: '#27ae60', type: 'active' };
+    
+    const today = new Date().toISOString().split('T')[0];
+    if (retireDate < today) {
+        return { label: '퇴사함', color: '#e74c3c', type: 'retired' };
+    } else {
+        return { label: '퇴사 예정', color: '#e67e22', type: 'scheduled' };
+    }
+  };
+
+  // 통합 저장 (정보 수정 + 퇴사 처리 모두 포함)
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -105,8 +110,11 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
       const safeHireDate = hireDate === '' ? null : hireDate;
       const safeBirthDate = birthDate === '' ? null : birthDate;
       
-      // 여기서는 endDate를 건드리지 않고 현재 상태(isActive)에 따라 유지
-      const safeEndDate = isActive ? null : (endDate === '' ? null : endDate);
+      // 퇴사일이 설정되어 있으면 is_active는 false로 간주 (또는 로직에 따라 미래 날짜면 true로 둘 수도 있음)
+      // 여기서는 기존 로직대로 '퇴사일이 존재하면 active 아님'으로 처리하되,
+      // 만약 '퇴사 예정'인 사람을 목록에 남기고 싶다면 로직 조정 필요.
+      // 일단은 퇴사일이 있으면 active: false로 처리합니다. (기존 코드 흐름 유지)
+      const finalIsActive = !retireDate; 
 
       await onUpdate(employee.id, {
         name,
@@ -120,8 +128,10 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         monthly_wage: finalMonthly,
         bank_name: bankName,
         account_number: accountNumber,
-        is_active: isActive,
-        end_date: safeEndDate as any,     
+        
+        // 퇴사 정보 업데이트
+        is_active: finalIsActive,
+        end_date: retireDate as any,     
       });
       onClose();
     } catch (e: any) {
@@ -132,53 +142,19 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
     }
   };
 
-  const openRetireMode = () => {
-      setIsRetireMode(true);
+  // 퇴사 처리 시작 (오늘 날짜로 기본 설정)
+  const startRetireProcess = () => {
+      setRetireDate(new Date().toISOString().split('T')[0]);
   };
 
-  // ✅ [수정] 퇴사 즉시 저장 로직
-  const confirmRetireDate = async () => {
-      if (!retireDate) return alert('퇴사일을 선택해주세요.');
-      
-      try {
-          // 1. DB에 즉시 업데이트 요청
-          await onUpdate(employee.id, {
-              is_active: false,
-              end_date: retireDate
-          });
-
-          // 2. 성공 시 로컬 상태 업데이트
-          setIsActive(false);
-          setEndDate(retireDate);
-          setIsRetireMode(false);
-          
-          alert('퇴사 처리가 저장되었습니다.');
-      } catch (e: any) {
-          alert('퇴사 처리 저장 실패: ' + e.message);
-      }
-  };
-
-  // ✅ [수정] 재입사 즉시 저장 로직
-  const handleRehire = async () => {
-      if(!confirm('해당 직원을 재직 상태로 변경하시겠습니까?')) return;
-      
-      try {
-          // 1. DB 업데이트 (퇴사일 제거)
-          await onUpdate(employee.id, {
-              is_active: true,
-              end_date: null as any // null을 보내서 날짜 삭제
-          });
-
-          // 2. 상태 업데이트
-          setIsActive(true);
-          setEndDate('');
-          alert('재직 상태로 변경되었습니다.');
-      } catch (e: any) {
-          alert('변경 실패: ' + e.message);
-      }
+  // 퇴사 철회 (재입사)
+  const cancelRetire = () => {
+      setRetireDate(null);
   };
 
   if (!isOpen) return null;
+
+  const statusInfo = getRetireStatus();
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -258,28 +234,37 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
             <DateSelector value={birthDate} onChange={setBirthDate} />
           </div>
 
-          {/* 상태 변경 박스 (재직/퇴사) */}
+          {/* 상태 변경 박스 (재직/퇴사 통합) */}
           <div className="status-box">
-            {isRetireMode ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <label style={{ fontSize: 13, fontWeight: 'bold', color: '#e74c3c' }}>마지막 근무일(퇴사일) 선택</label>
-                    <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                        <div style={{flex:1}}><DateSelector value={retireDate} onChange={setRetireDate} /></div>
-                        <button onClick={() => setIsRetireMode(false)} style={{ padding:'8px 12px', background:'#f0f0f0', border:'none', borderRadius:6, cursor:'pointer' }}>취소</button>
-                        <button onClick={confirmRetireDate} style={{ padding:'8px 12px', background:'crimson', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:'bold' }}>확인</button>
-                    </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: retireDate ? 10 : 0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ color: statusInfo.color, fontWeight: 'bold' }}>● {statusInfo.label}</span>
                 </div>
-            ) : isActive ? (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#27ae60', fontWeight: 'bold' }}>● 재직 중</span>
-                <button onClick={openRetireMode} className="retire-btn">퇴사 처리</button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>● 퇴사함</span>
-                <span style={{ fontSize: '13px', color: '#666' }}>(퇴사일: {endDate})</span>
-                <button onClick={handleRehire} style={{ marginLeft: 'auto', fontSize: '12px', padding: '4px 8px', cursor: 'pointer', background:'#e6f7ff', border:'1px solid #1890ff', color:'#1890ff', borderRadius:4 }}>재입사 처리</button>
-              </div>
+                
+                {/* 재직 중일 때 -> 퇴사 처리 버튼 노출 */}
+                {statusInfo.type === 'active' && (
+                    <button onClick={startRetireProcess} className="retire-btn">퇴사 설정</button>
+                )}
+
+                {/* 퇴사 상태(예정/완료)일 때 -> 퇴사 철회 버튼 노출 */}
+                {statusInfo.type !== 'active' && (
+                    <button onClick={cancelRetire} className="rehire-btn">퇴사 철회 (재직 처리)</button>
+                )}
+            </div>
+
+            {/* 퇴사일이 설정되었을 때 날짜 선택기 노출 */}
+            {retireDate && (
+                <div style={{ background: '#f9f9f9', padding: '10px', borderRadius: '6px', border: '1px solid #eee' }}>
+                    <label style={{ display:'block', fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 6 }}>
+                        마지막 근무일(퇴사일)
+                    </label>
+                    <div style={{ display:'flex', gap:8 }}>
+                         <div style={{ flex: 1 }}><DateSelector value={retireDate} onChange={setRetireDate} /></div>
+                    </div>
+                    <p style={{ fontSize: 11, color: '#888', margin: '6px 0 0 0' }}>
+                        * 아래 [정보 수정 저장] 버튼을 눌러야 최종 반영됩니다.
+                    </p>
+                </div>
             )}
           </div>
 
@@ -340,11 +325,16 @@ export default function EmployeeEditModal({ isOpen, onClose, employee, onUpdate 
         .unit { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #888; font-size: 13px; }
 
         .status-box {
-          background: #fdfdfd; border: 1px solid #eee; padding: 12px; border-radius: 8px; margin-top: 10px;
+          background: #fff; border: 1px solid #eee; padding: 16px; border-radius: 10px; margin-top: 10px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
         }
         .retire-btn {
           border: 1px solid #ffcccc; background: #fff5f5; color: #e74c3c;
-          padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+          padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold;
+        }
+        .rehire-btn {
+           border: 1px solid #d9d9d9; background: #f5f5f5; color: #555;
+           padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
         }
 
         .modal-footer {

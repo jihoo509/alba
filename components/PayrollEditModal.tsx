@@ -12,66 +12,50 @@ type Props = {
   onSave: (override: number | null, adjustment: number) => Promise<void>;
 };
 
-export default function PayrollEditModal({ 
-  isOpen, 
-  onClose, 
-  employeeName, 
-  originalPay, 
-  currentOverride, 
-  currentAdjustment, 
-  onSave 
-}: Props) {
+export default function PayrollEditModal({ isOpen, onClose, employeeName, originalPay, currentOverride, currentAdjustment, onSave }: Props) {
   const [override, setOverride] = useState<string>('');
   const [adjustment, setAdjustment] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      // 값이 있으면 쉼표가 들어간 문자열로 변환, 없으면 빈 문자열
-      setOverride(currentOverride !== null ? Number(currentOverride).toLocaleString() : '');
-      setAdjustment(currentAdjustment !== 0 ? Number(currentAdjustment).toLocaleString() : '');
+      // 값이 있으면 문자열로 변환, 없으면 빈 문자열
+      setOverride(currentOverride !== null ? String(currentOverride).toLocaleString() : '');
+      setAdjustment(currentAdjustment !== 0 ? String(currentAdjustment).toLocaleString() : '');
     }
   }, [isOpen, currentOverride, currentAdjustment]);
 
-  // 닫혀있으면 렌더링 안 함
   if (!isOpen) return null;
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // 쉼표 제거 후 숫자로 변환
       const numOverride = override.trim() === '' ? null : Number(override.replace(/,/g, ''));
-      const numAdjustment = adjustment.trim() === '' || adjustment === '-' ? 0 : Number(adjustment.replace(/,/g, ''));
+      const numAdjustment = adjustment.trim() === '' ? 0 : Number(adjustment.replace(/,/g, ''));
       
       if (numOverride !== null && isNaN(numOverride)) return alert('기본급에 유효한 숫자를 입력하세요.');
       if (isNaN(numAdjustment)) return alert('조정액에 유효한 숫자를 입력하세요.');
 
       await onSave(numOverride, numAdjustment);
     } catch (e) {
-      console.error(e);
       alert('저장 실패');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // 숫자 및 쉼표 처리, 마이너스 처리 핸들러
-  const handleCurrencyInput = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
+  const handleCurrencyInput = (e: React.ChangeEvent<HTMLInputElement>, setter: any) => {
     const raw = e.target.value.replace(/,/g, '');
-    
     if (raw === '') {
         setter('');
         return;
     }
-    
-    if (raw === '-') {
-        setter('-');
-        return;
-    }
-
     const val = Number(raw);
     if (!isNaN(val)) {
       setter(val.toLocaleString());
+    } else if (raw === '-') {
+        // 음수 입력 시작 허용 (조정액용)
+        setter('-'); 
     }
   };
 
@@ -105,7 +89,12 @@ export default function PayrollEditModal({
           <input 
             type="text" 
             value={adjustment} 
-            onChange={(e) => handleCurrencyInput(e, setAdjustment)}
+            onChange={(e) => {
+                 // 조정액은 마이너스 입력이 가능해야 하므로 별도 처리
+                 const raw = e.target.value.replace(/,/g, '');
+                 if (raw === '-') setAdjustment('-');
+                 else handleCurrencyInput(e, setAdjustment);
+            }}
             placeholder="0"
             style={inputStyle} 
           />
