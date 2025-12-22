@@ -42,37 +42,32 @@ export default function HolidayCalculatorPage() {
   const [weeklyHours, setWeeklyHours] = useState('');
   const [weeklyMinutes, setWeeklyMinutes] = useState('');
   
-  // 결과 상태 (초기값 0)
   const [result, setResult] = useState<number>(0);
 
-  // ✅ [핵심] 실시간 자동 계산 (버튼 클릭 없이 작동)
+  // ✅ 실시간 자동 계산
   useEffect(() => {
     const wage = Number(hourlyWage.replace(/,/g, ''));
     const h = Number(weeklyHours.replace(/,/g, ''));
     const m = Number(weeklyMinutes.replace(/,/g, ''));
 
-    // 시급이 없거나 시간이 아예 없으면 0원 처리
     if (!wage || (h === 0 && m === 0)) {
         setResult(0);
         return;
     }
 
-    // 분을 시간으로 환산
     const totalHours = h + (m / 60);
 
-    // 주 15시간 미만은 주휴수당 없음
     if (totalHours < 15) {
       setResult(0);
       return;
     }
 
-    // 주 40시간 이상은 40시간으로 계산 (최대 8시간분)
     const calcHours = totalHours > 40 ? 40 : totalHours;
     const holidayPay = Math.floor((calcHours / 40) * 8 * wage);
     
     setResult(holidayPay);
 
-  }, [hourlyWage, weeklyHours, weeklyMinutes]); // 이 값들이 변할 때마다 실행됨
+  }, [hourlyWage, weeklyHours, weeklyMinutes]);
 
   const handleNumberInput = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
     const val = e.target.value.replace(/[^0-9]/g, '');
@@ -92,8 +87,6 @@ export default function HolidayCalculatorPage() {
           overflow-x: hidden;
         }
         * { box-sizing: border-box; }
-        
-        /* Footer 강제 여백 (가림 방지) */
         footer { padding-bottom: 120px !important; }
       `}</style>
 
@@ -108,164 +101,35 @@ export default function HolidayCalculatorPage() {
           width: 100%;
           padding-bottom: 100px; 
         }
-        
-        .calculator-section {
-          width: 100%; 
-          display: flex; 
-          justify-content: center; 
-          padding: 0 20px; 
-          margin-bottom: 80px;
-        }
-        .card {
-          background-color: #fff; 
-          max-width: 480px; 
-          width: 100%; 
-          padding: 40px 32px; 
-          border-radius: 24px; 
-          box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-          transition: padding 0.3s;
-        }
+        .calculator-section { width: 100%; display: flex; justify-content: center; padding: 0 20px; margin-bottom: 80px; }
+        .card { background-color: #fff; max-width: 480px; width: 100%; padding: 40px 32px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: padding 0.3s; }
         .input-group { margin-bottom: 24px; }
-        .input-label { 
-            display: block; 
-            font-size: 15px; 
-            font-weight: 700; 
-            color: #4e5968; 
-            margin-bottom: 10px; 
-        }
-        .calc-input {
-          width: 100%; 
-          padding: 16px; 
-          border: 1px solid #d1d6db; 
-          border-radius: 12px;
-          font-size: 18px; 
-          font-weight: 600; 
-          outline: none; 
-          transition: all 0.2s;
-          text-align: right;
-          font-family: inherit;
-        }
+        .input-label { display: block; font-size: 15px; font-weight: 700; color: #4e5968; margin-bottom: 10px; }
+        .calc-input { width: 100%; padding: 16px; border: 1px solid #d1d6db; border-radius: 12px; font-size: 18px; font-weight: 600; outline: none; transition: all 0.2s; text-align: right; font-family: inherit; }
         .calc-input:focus { border-color: #3182f6; box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.1); }
-        
-        .time-input-row {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-        .time-input-wrap {
-            flex: 1;
-            position: relative;
-        }
-        .unit-text {
-            position: absolute;
-            right: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 15px;
-            color: #8b95a1;
-            font-weight: 500;
-        }
+        .time-input-row { display: flex; gap: 12px; align-items: center; }
+        .time-input-wrap { flex: 1; position: relative; }
+        .unit-text { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 15px; color: #8b95a1; font-weight: 500; }
         .calc-input-time { padding-right: 50px; }
-
-        .result-box {
-          margin-top: 30px; 
-          padding: 24px; 
-          background-color: #f9faff; 
-          border-radius: 16px;
-          text-align: center; 
-          border: 1px solid #e5e8eb;
-        }
-        
-        .tip-box { 
-            background-color: #f2f4f6; 
-            padding: 24px; 
-            border-radius: 16px; 
-            margin-top: 32px; 
-        }
+        .result-box { margin-top: 30px; padding: 24px; background-color: #f9faff; border-radius: 16px; text-align: center; border: 1px solid #e5e8eb; }
+        .tip-box { background-color: #f2f4f6; padding: 24px; border-radius: 16px; margin-top: 32px; }
         .tip-title { font-size: 15px; font-weight: 800; color: #333; margin-bottom: 12px; }
         .tip-list { list-style: none; padding: 0; margin: 0; font-size: 14px; color: #555; line-height: 1.6; }
         .tip-list li { margin-bottom: 6px; position: relative; padding-left: 12px; word-break: keep-all; }
         .tip-list li::before { content: "•"; position: absolute; left: 0; color: #888; }
-
-        .features-wrapper {
-          width: 100%; 
-          background-color: #fff; 
-          padding: 80px 0; 
-          display: flex; 
-          justify-content: center;
-        }
-        .features-container {
-          max-width: 1000px; 
-          width: 100%; 
-          padding: 0 20px;
-          display: flex; 
-          flex-direction: column; 
-          align-items: center;
-          gap: 80px;
-        }
-        .section-title {
-            font-size: 32px;
-            font-weight: 900;
-            color: #333;
-            text-align: center;
-            margin-bottom: 20px;
-            line-height: 1.3;
-            letter-spacing: -1px;
-            word-break: keep-all;
-        }
-
-        .feature-card {
-            display: flex;
-            flex-wrap: wrap; 
-            align-items: center;
-            justify-content: center;
-            gap: 40px;
-            width: 100%;
-        }
+        .features-wrapper { width: 100%; background-color: #fff; padding: 80px 0; display: flex; justify-content: center; }
+        .features-container { max-width: 1000px; width: 100%; padding: 0 20px; display: flex; flex-direction: column; align-items: center; gap: 80px; }
+        .section-title { font-size: 32px; font-weight: 900; color: #333; text-align: center; margin-bottom: 20px; line-height: 1.3; letter-spacing: -1px; word-break: keep-all; }
+        .feature-card { display: flex; flex-wrap: wrap; alignItems: center; justify-content: center; gap: 40px; width: 100%; }
         .feature-text { flex: 1 1 300px; max-width: 100%; padding: 10px; }
         .feature-img-box { flex: 1 1 300px; display: flex; justify-content: center; max-width: 100%; }
         .feature-img { width: 100%; max-width: 450px; height: auto; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
-
-        .bottom-cta {
-          position: fixed; 
-          bottom: 0; 
-          left: 0; 
-          width: 100%;
-          background-color: #fff;
-          padding: 16px 20px;
-          box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-          z-index: 100;
-          display: flex;
-          justify-content: center;
-        }
-        .start-btn {
-          display: block; 
-          width: 100%; 
-          max-width: 400px;
-          padding: 18px; 
-          background-color: #27ae60; 
-          color: #fff;
-          border-radius: 50px; 
-          text-decoration: none; 
-          font-weight: 800; 
-          font-size: 20px;
-          text-align: center;
-          box-shadow: 0 8px 20px rgba(39, 174, 96, 0.4); 
-          transition: transform 0.1s;
-        }
+        .bottom-cta { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #fff; padding: 16px 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); z-index: 100; display: flex; justify-content: center; }
+        .start-btn { display: block; width: 100%; max-width: 400px; padding: 18px; background-color: #27ae60; color: #fff; border-radius: 50px; text-decoration: none; font-weight: 800; font-size: 20px; text-align: center; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.4); transition: transform 0.1s; }
         .start-btn:active { transform: scale(0.98); }
-
-        @media (max-width: 768px) {
-            .mobile-hide { display: none; }
-            .page-container { padding-top: 30px; }
-            .card { padding: 24px 20px; }
-            .section-title { font-size: 26px; }
-            .feature-text { text-align: center; }
-            .feature-card { flex-direction: column-reverse !important; gap: 24px; }
-        }
+        @media (max-width: 768px) { .mobile-hide { display: none; } .page-container { padding-top: 30px; } .card { padding: 24px 20px; } .section-title { font-size: 26px; } .feature-text { text-align: center; } .feature-card { flex-direction: column-reverse !important; gap: 24px; } }
       `}</style>
 
-      {/* 1. 계산기 영역 */}
       <div className="calculator-section">
         <div className="card">
           <h1 style={{ fontSize: '26px', fontWeight: '800', textAlign: 'center', marginBottom: '8px', color: '#191f28' }}>💰 주휴수당 계산기</h1>
@@ -276,7 +140,10 @@ export default function HolidayCalculatorPage() {
             <input 
                 type="text" 
                 value={hourlyWage} 
-                onChange={(e) => handleNumberInput(e, setHourlyWage)} 
+                onChange={(e) => handleNumberInput(e, setHourlyWage)}
+                // ✅ 클릭 시 초기화, 나가면 복구
+                onFocus={() => { if(hourlyWage === '10,030') setHourlyWage(''); }}
+                onBlur={() => { if(hourlyWage === '') setHourlyWage('10,030'); }}
                 className="calc-input" 
                 placeholder="예: 10,030" 
                 inputMode="numeric" 
@@ -312,15 +179,12 @@ export default function HolidayCalculatorPage() {
             <p style={{ fontSize: '13px', color: '#8b95a1', marginTop: '8px', textAlign: 'right' }}>* 휴게시간 제외, 실제 근무시간</p>
           </div>
 
-          {/* 버튼 제거됨 -> 바로 결과 박스 */}
-
           <div className="result-box">
             <span style={{ fontSize: '15px', color: '#3182f6', fontWeight: '700' }}>예상 주휴수당 (주급)</span>
             <div style={{ fontSize: '36px', fontWeight: '800', color: '#333', margin: '10px 0' }}>
               {result.toLocaleString()}<span style={{ fontSize: '22px', fontWeight: '600', marginLeft: '4px' }}>원</span>
             </div>
             
-            {/* 조건부 안내 메시지 */}
             {(!weeklyHours && !weeklyMinutes) ? (
                  <p style={{ fontSize: '14px', color: '#8b95a1' }}>시간을 입력하면 자동으로 계산됩니다.</p>
             ) : result === 0 ? (
@@ -341,39 +205,24 @@ export default function HolidayCalculatorPage() {
         </div>
       </div>
 
-      {/* 2. 기능 소개 (FEATURES) */}
       <div className="features-wrapper">
         <div className="features-container">
-          <h2 className="section-title">
-            이지알바,<br className="mobile-only"/> 왜 써야 할까요?
-          </h2>
-          
+          <h2 className="section-title">이지알바,<br className="mobile-only"/> 왜 써야 할까요?</h2>
           {FEATURES.map((feature, index) => (
-            <div key={index} 
-              className="feature-card"
-              style={{ flexDirection: index % 2 === 0 ? 'row' : 'row-reverse' }}
-            >
+            <div key={index} className="feature-card" style={{ flexDirection: index % 2 === 0 ? 'row' : 'row-reverse' }}>
               <div className="feature-text">
-                <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#0052cc', marginBottom: '16px', wordBreak: 'keep-all', lineHeight: '1.4' }}>
-                    {feature.title}
-                </h3>
-                <p style={{ fontSize: '17px', lineHeight: '1.7', color: '#555', margin: 0, wordBreak: 'keep-all' }}>
-                    {feature.desc}
-                </p>
+                <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#0052cc', marginBottom: '16px', wordBreak: 'keep-all', lineHeight: '1.4' }}>{feature.title}</h3>
+                <p style={{ fontSize: '17px', lineHeight: '1.7', color: '#555', margin: 0, wordBreak: 'keep-all' }}>{feature.desc}</p>
               </div>
-              <div className="feature-img-box">
-                <img src={feature.img} alt={feature.title} className="feature-img" />
-              </div>
+              <div className="feature-img-box"><img src={feature.img} alt={feature.title} className="feature-img" /></div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* 하단 고정 CTA 버튼 */}
       <div className="bottom-cta">
         <Link href="/dashboard" className="start-btn">🚀 이지알바 무료로 시작하기</Link>
       </div>
-
     </div>
   );
 }
