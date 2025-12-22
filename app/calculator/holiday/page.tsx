@@ -91,6 +91,14 @@ export default function HolidayCalculatorPage() {
         * {
             box-sizing: border-box;
         }
+
+        /* ✅ [핵심 수정 1] Footer 강제 여백 추가 
+         다른 페이지는 영향 없이, 이 페이지에서만 footer 태그에 하단 여백을 줍니다.
+         만약 footer 태그가 아니라 <div class="footer"> 라면 아래 footer를 .footer로 바꿔주세요.
+        */
+        footer {
+            padding-bottom: 120px !important;
+        }
       `}</style>
 
       <style jsx>{`
@@ -102,7 +110,8 @@ export default function HolidayCalculatorPage() {
           padding-top: 60px; /* PC 기본 상단 여백 */
           overflow-x: hidden;
           width: 100%;
-          padding-bottom: 100px; /* 하단 바 가림 방지 */
+          /* 페이지 자체 패딩도 유지 (컨텐츠와 버튼 사이 간격) */
+          padding-bottom: 100px; 
         }
         
         /* 1. 계산기 영역 스타일 */
@@ -198,7 +207,14 @@ export default function HolidayCalculatorPage() {
         }
         .tip-title { font-size: 15px; font-weight: 800; color: #333; margin-bottom: 12px; }
         .tip-list { list-style: none; padding: 0; margin: 0; font-size: 14px; color: #555; line-height: 1.6; }
-        .tip-list li { margin-bottom: 6px; position: relative; padding-left: 12px; }
+        
+        /* ✅ [핵심 수정 2] 줄바꿈 자연스럽게 (break-keep) */
+        .tip-list li { 
+            margin-bottom: 6px; 
+            position: relative; 
+            padding-left: 12px; 
+            word-break: keep-all; /* 단어 단위 줄바꿈 */
+        }
         .tip-list li::before { content: "•"; position: absolute; left: 0; color: #888; }
 
         /* 2. 기능 소개 섹션 */
