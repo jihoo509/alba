@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 
-// ✅ 로그인 페이지와 동일한 기능 소개 데이터 적용
+// ✅ 기능 소개 데이터
 const FEATURES = [
   {
     title: "직원 & 알바 관리, 평생 무료로 시작하세요",
@@ -39,22 +39,33 @@ const FEATURES = [
 
 export default function HolidayCalculatorPage() {
   const [hourlyWage, setHourlyWage] = useState('10,030'); 
-  const [hoursPerWeek, setHoursPerWeek] = useState('');
+  
+  // ✅ 시간과 분을 분리하여 상태 관리
+  const [weeklyHours, setWeeklyHours] = useState('');
+  const [weeklyMinutes, setWeeklyMinutes] = useState('');
+  
   const [result, setResult] = useState<number | null>(null);
 
   const handleCalculate = () => {
     const wage = Number(hourlyWage.replace(/,/g, ''));
-    const hours = Number(hoursPerWeek.replace(/,/g, ''));
+    const h = Number(weeklyHours.replace(/,/g, ''));
+    const m = Number(weeklyMinutes.replace(/,/g, ''));
 
-    if (!wage || !hours) return alert('시급과 근무시간을 입력해주세요.');
+    // 시간이나 시급이 없으면 경고
+    if (!wage || (weeklyHours === '' && weeklyMinutes === '')) {
+        return alert('시급과 근무시간을 입력해주세요.');
+    }
 
-    if (hours < 15) {
+    // ✅ 분을 시간으로 환산 (예: 30분 -> 0.5시간)
+    const totalHours = h + (m / 60);
+
+    if (totalHours < 15) {
       setResult(0);
       return;
     }
 
     // 주 40시간 이상은 40시간으로 계산 (8시간분)
-    const calcHours = hours > 40 ? 40 : hours;
+    const calcHours = totalHours > 40 ? 40 : totalHours;
     const holidayPay = Math.floor((calcHours / 40) * 8 * wage);
     setResult(holidayPay);
   };
@@ -75,7 +86,7 @@ export default function HolidayCalculatorPage() {
           padding: 0; 
           background-color: #f5f6f8; 
           color: #333;
-          overflow-x: hidden; /* 가로 스크롤 방지 */
+          overflow-x: hidden;
         }
         * {
             box-sizing: border-box;
@@ -88,9 +99,10 @@ export default function HolidayCalculatorPage() {
           display: flex; 
           flex-direction: column; 
           align-items: center;
-          padding-top: 60px; 
+          padding-top: 60px; /* PC 기본 상단 여백 */
           overflow-x: hidden;
           width: 100%;
+          padding-bottom: 100px; /* 하단 바 가림 방지 */
         }
         
         /* 1. 계산기 영역 스타일 */
@@ -105,9 +117,10 @@ export default function HolidayCalculatorPage() {
           background-color: #fff; 
           max-width: 480px; 
           width: 100%; 
-          padding: 40px 32px;
+          padding: 40px 32px; /* PC 패딩 */
           border-radius: 24px; 
           box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+          transition: padding 0.3s;
         }
         .input-group { margin-bottom: 24px; }
         .input-label { 
@@ -131,6 +144,29 @@ export default function HolidayCalculatorPage() {
         }
         .calc-input:focus { border-color: #3182f6; box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.1); }
         
+        /* ✅ 시간/분 입력을 위한 Flex 스타일 */
+        .time-input-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .time-input-wrap {
+            flex: 1;
+            position: relative;
+        }
+        .unit-text {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 15px;
+            color: #8b95a1;
+            font-weight: 500;
+        }
+        .calc-input-time {
+            padding-right: 50px; /* 단위 텍스트 공간 확보 */
+        }
+
         .calc-btn {
           width: 100%; 
           padding: 20px; 
@@ -165,7 +201,7 @@ export default function HolidayCalculatorPage() {
         .tip-list li { margin-bottom: 6px; position: relative; padding-left: 12px; }
         .tip-list li::before { content: "•"; position: absolute; left: 0; color: #888; }
 
-        /* 2. 기능 소개 섹션 (로그인 페이지 스타일 적용) */
+        /* 2. 기능 소개 섹션 */
         .features-wrapper {
           width: 100%; 
           background-color: #fff; 
@@ -193,10 +229,9 @@ export default function HolidayCalculatorPage() {
             word-break: keep-all;
         }
 
-        /* 개별 기능 카드 (flex-wrap으로 모바일 대응) */
         .feature-card {
             display: flex;
-            flex-wrap: wrap; /* 모바일에서 줄바꿈 */
+            flex-wrap: wrap; 
             align-items: center;
             justify-content: center;
             gap: 40px;
@@ -224,23 +259,49 @@ export default function HolidayCalculatorPage() {
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
         }
 
-        /* 하단 고정 CTA */
+        /* ✅ 하단 고정 CTA 바 (디자인 변경됨) */
         .bottom-cta {
-          position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-          width: 90%; max-width: 400px; z-index: 100;
+          position: fixed; 
+          bottom: 0; 
+          left: 0; 
+          width: 100%;
+          background-color: #fff; /* 흰색 배경 추가 */
+          padding: 16px 20px; /* 내부 여백 */
+          box-shadow: 0 -4px 20px rgba(0,0,0,0.1); /* 그림자 추가 */
+          z-index: 100;
+          display: flex;
+          justify-content: center;
         }
         .start-btn {
-          display: block; width: 100%; padding: 18px; background-color: #27ae60; color: #fff;
-          border-radius: 50px; text-decoration: none; font-weight: 800; font-size: 17px; text-align: center;
-          box-shadow: 0 8px 20px rgba(39, 174, 96, 0.4); transition: transform 0.1s;
+          display: block; 
+          width: 100%; 
+          max-width: 400px;
+          padding: 18px; 
+          background-color: #27ae60; 
+          color: #fff;
+          border-radius: 50px; 
+          text-decoration: none; 
+          font-weight: 800; 
+          font-size: 20px; /* ✅ 폰트 크기 증가 (17px -> 20px) */
+          text-align: center;
+          box-shadow: 0 8px 20px rgba(39, 174, 96, 0.4); 
+          transition: transform 0.1s;
         }
-        .start-btn:active { transform: translateX(-50%) scale(0.98); }
+        .start-btn:active { transform: scale(0.98); }
 
+        /* ✅ 모바일 대응 미디어 쿼리 */
         @media (max-width: 768px) {
             .mobile-hide { display: none; }
+            
+            /* 모바일에서 상단 여백 줄임 (너무 딱 붙진 않게 30px) */
+            .page-container { padding-top: 30px; }
+            
+            /* 모바일에서 카드 내부 여백 줄임 (타이트하지 않게 조정) */
+            .card { padding: 24px 20px; }
+            
             .section-title { font-size: 26px; }
             .feature-text { text-align: center; }
-            .feature-card { flex-direction: column-reverse !important; gap: 24px; } /* 모바일은 항상 이미지가 위, 텍스트가 아래 혹은 반대 취향대로 */
+            .feature-card { flex-direction: column-reverse !important; gap: 24px; }
         }
       `}</style>
 
@@ -264,14 +325,31 @@ export default function HolidayCalculatorPage() {
 
           <div className="input-group">
             <label className="input-label">일주일 총 근무 시간</label>
-            <input 
-                type="text" 
-                value={hoursPerWeek} 
-                onChange={(e) => handleNumberInput(e, setHoursPerWeek)} 
-                className="calc-input" 
-                placeholder="예: 20" 
-                inputMode="numeric" 
-            />
+            {/* ✅ 시간 / 분 입력 분리 */}
+            <div className="time-input-row">
+                <div className="time-input-wrap">
+                    <input 
+                        type="text" 
+                        value={weeklyHours} 
+                        onChange={(e) => handleNumberInput(e, setWeeklyHours)} 
+                        className="calc-input calc-input-time" 
+                        placeholder="20" 
+                        inputMode="numeric" 
+                    />
+                    <span className="unit-text">시간</span>
+                </div>
+                <div className="time-input-wrap">
+                    <input 
+                        type="text" 
+                        value={weeklyMinutes} 
+                        onChange={(e) => handleNumberInput(e, setWeeklyMinutes)} 
+                        className="calc-input calc-input-time" 
+                        placeholder="0" 
+                        inputMode="numeric" 
+                    />
+                    <span className="unit-text">분</span>
+                </div>
+            </div>
             <p style={{ fontSize: '13px', color: '#8b95a1', marginTop: '8px', textAlign: 'right' }}>* 휴게시간 제외, 실제 근무시간</p>
           </div>
 
@@ -297,7 +375,7 @@ export default function HolidayCalculatorPage() {
         </div>
       </div>
 
-      {/* 2. 기능 소개 (FEATURES) - 로그인 페이지 디자인 적용 */}
+      {/* 2. 기능 소개 (FEATURES) */}
       <div className="features-wrapper">
         <div className="features-container">
           <h2 className="section-title">
@@ -328,12 +406,11 @@ export default function HolidayCalculatorPage() {
         </div>
       </div>
 
-      {/* 하단 고정 CTA 버튼 */}
+      {/* 하단 고정 CTA 버튼 (배경 흰색 + 폰트 키움) */}
       <div className="bottom-cta">
         <Link href="/dashboard" className="start-btn">🚀 이지알바 무료로 시작하기</Link>
       </div>
 
-      <div style={{ height: '80px' }}></div>
     </div>
   );
 }
