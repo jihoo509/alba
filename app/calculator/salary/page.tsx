@@ -3,6 +3,40 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+// ✅ 기능 소개 데이터 (주휴수당 페이지와 동일)
+const FEATURES = [
+  {
+    title: "직원 & 알바 관리, 평생 무료로 시작하세요",
+    desc: "복잡한 직원 관리, 아직도 엑셀로 하시나요? 이지알바는 직원 등록부터 급여 명세서 생성까지 모든 기능을 무료로 제공합니다. PC와 모바일 어디서든 사장님의 매장을 효율적으로 관리해보세요.",
+    img: "/1.png"
+  },
+  {
+    title: "이메일 & 카카오로 3초 간편 가입",
+    desc: "복잡한 절차 없이 구글, 카카오 계정으로 3초 만에 시작할 수 있습니다. 별도의 설치가 필요 없는 웹 기반 서비스로, 언제 어디서나 즉시 접속하여 매장 현황을 파악할 수 있습니다.",
+    img: "/2.png"
+  },
+  {
+    title: "복잡한 직원 정보, 한 페이지에서 끝",
+    desc: "이름, 연락처, 시급, 입사일 등 흩어져 있는 직원 정보를 한눈에 관리하세요. 근로계약서 작성에 필요한 필수 정보들을 체계적으로 정리하여 보관할 수 있습니다.",
+    img: "/3.png"
+  },
+  {
+    title: "근무 패턴 생성으로 스케줄 자동화",
+    desc: "오픈조, 미들조, 마감조 등 매장의 고정된 근무 패턴을 미리 만들어두세요. 매번 새로 짤 필요 없이, 만들어둔 패턴을 직원에 할당하기만 하면 시간표가 완성됩니다.",
+    img: "/4.png"
+  },
+  {
+    title: "클릭 한 번으로 월별 스케줄 완성",
+    desc: "설정해둔 근무 패턴과 직원 데이터를 바탕으로 달력에 스케줄을 자동으로 생성합니다. 급하게 대타가 필요하거나 근무가 변경되어도 드래그 앤 드롭으로 손쉽게 수정할 수 있습니다.",
+    img: "/5.png"
+  },
+  {
+    title: "급여 명세서 자동 생성 및 발송",
+    desc: "가장 골치 아픈 급여 계산, 이제 자동으로 해결하세요. 주휴수당, 야간수당, 연장수당 등 복잡한 가산 수당이 법 기준에 맞춰 자동으로 계산되며, 급여 명세서까지 원클릭으로 생성됩니다.",
+    img: "/6.png"
+  }
+];
+
 type WeekItem = {
   id: number;
   hours: string;
@@ -10,13 +44,17 @@ type WeekItem = {
 
 export default function SalaryCalculatorPage() {
   // 1. 기본 설정
-  const [hourlyWage, setHourlyWage] = useState('10030'); // 2025년 최저시급
-  const [totalWorkHours, setTotalWorkHours] = useState(''); // 월 총 근무시간
+  const [hourlyWage, setHourlyWage] = useState('10,030'); // 2025년 최저시급
 
-  // 2. 주휴수당 (주단위 추가 방식)
+  // 2. 근무 시간 (시간/분 분리)
+  const [totalHours, setTotalHours] = useState('160');
+  const [totalMinutes, setTotalMinutes] = useState('');
+
+  // 3. 주휴수당 (접기/펼치기 및 데이터)
+  const [showJuhyu, setShowJuhyu] = useState(false); // 접어두기 상태
   const [weeks, setWeeks] = useState<WeekItem[]>([]); 
 
-  // 3. 추가 수당 (토글 방식)
+  // 4. 추가 수당 (토글 방식)
   const [showNight, setShowNight] = useState(false);
   const [nightHours, setNightHours] = useState('');
 
@@ -26,10 +64,10 @@ export default function SalaryCalculatorPage() {
   const [showHoliday, setShowHoliday] = useState(false);
   const [holidayHours, setHolidayHours] = useState('');
 
-  // 4. 세금 설정
+  // 5. 세금 설정 (기본값: 미적용)
   const [taxType, setTaxType] = useState<'none' | '3.3' | '4'>('none');
 
-  // 5. 결과값
+  // 6. 결과값
   const [result, setResult] = useState({
     basePay: 0,
     weeklyPay: 0,
@@ -63,11 +101,14 @@ export default function SalaryCalculatorPage() {
     if (!wage) return;
 
     // 1. 기본급 (총 시간 * 시급)
-    const baseH = Number(totalWorkHours.replace(/,/g, '')) || 0;
-    const basePay = baseH * wage;
+    // 시간 + (분/60)
+    const tH = Number(totalHours.replace(/,/g, '')) || 0;
+    const tM = Number(totalMinutes.replace(/,/g, '')) || 0;
+    const totalTime = tH + (tM / 60);
+    
+    const basePay = Math.floor(totalTime * wage);
 
-    // 2. 주휴수당 계산 (각 주별로 계산해서 합산)
-    // 조건: 15시간 이상이면 (시간/40)*8*시급, 40시간 초과면 8시간 고정
+    // 2. 주휴수당 계산
     let weeklyPayTotal = 0;
     weeks.forEach(w => {
       const h = Number(w.hours.replace(/,/g, '')) || 0;
@@ -79,8 +120,6 @@ export default function SalaryCalculatorPage() {
     weeklyPayTotal = Math.floor(weeklyPayTotal);
 
     // 3. 추가 수당 (0.5배 가산)
-    // 보통 기본급에 1배가 포함되어 있다고 가정하고, 여기선 0.5배만 추가 계산
-    // (사용자가 '총 근무시간'에 야간/연장 시간을 포함했다고 가정)
     const nH = Number(nightHours.replace(/,/g, '')) || 0;
     const oH = Number(overtimeHours.replace(/,/g, '')) || 0;
     const hH = Number(holidayHours.replace(/,/g, '')) || 0;
@@ -94,7 +133,7 @@ export default function SalaryCalculatorPage() {
     if (taxType === '3.3') {
       deduction = Math.floor(totalGross * 0.033);
     } else if (taxType === '4') {
-      // 4대보험 대략 9.4% (국민4.5+건강3.545+요양0.46+고용0.9)
+      // 4대보험 대략 9.4%
       deduction = Math.floor(totalGross * 0.094); 
     }
     // 원단위 절사
@@ -109,158 +148,374 @@ export default function SalaryCalculatorPage() {
       finalPay: totalGross - deduction
     });
 
-  }, [hourlyWage, totalWorkHours, weeks, nightHours, overtimeHours, holidayHours, taxType]);
-
+  }, [hourlyWage, totalHours, totalMinutes, weeks, nightHours, overtimeHours, holidayHours, taxType]);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 10px' }}>
-      
-      <div style={{ backgroundColor: '#fff', maxWidth: '500px', width: '100%', padding: '30px 20px', borderRadius: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#333', marginBottom: '24px', textAlign: 'center' }}>
-          🧮 2026 알바비·급여 계산기
-        </h1>
-
-        <div className="input-group">
-          <label>시급 (원)</label>
-          <input type="text" value={hourlyWage} onChange={(e) => handleNumberInput(e.target.value, setHourlyWage)} className="calc-input" />
-        </div>
-
-        <div className="input-group">
-          <label>이번 달 총 근무 시간</label>
-          <input type="text" value={totalWorkHours} onChange={(e) => handleNumberInput(e.target.value, setTotalWorkHours)} className="calc-input" placeholder="예: 160" />
-          <p className="hint">* 기본급 계산용 (야간/휴일 시간도 포함해서 입력하세요)</p>
-        </div>
-
-        {/* 주휴수당 섹션 */}
-        <div className="section-box">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <label style={{ margin: 0 }}>주휴수당 계산</label>
-            <button onClick={addWeek} style={btnSmall}>+ 1주 추가</button>
-          </div>
-          
-          {weeks.length === 0 && <p className="hint">버튼을 눌러 주별 근무시간을 입력하면 자동 계산됩니다.</p>}
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {weeks.map((week, idx) => (
-              <div key={week.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '14px', color: '#555', width: '40px' }}>{idx + 1}주차</span>
-                <input 
-                  type="text" 
-                  value={week.hours} 
-                  onChange={(e) => handleNumberInput(e.target.value, (v) => updateWeek(week.id, v))}
-                  className="calc-input-small" 
-                  placeholder="시간" 
-                />
-                <span style={{ fontSize: '14px' }}>시간</span>
-                <button onClick={() => removeWeek(week.id)} style={{ marginLeft: 'auto', color: '#e74c3c', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 추가 수당 버튼 섹션 */}
-        <div className="section-box">
-          <label style={{ marginBottom: '10px', display: 'block' }}>추가 수당 (0.5배 가산)</label>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <button onClick={() => setShowNight(!showNight)} style={showNight ? btnActive : btnInactive}>🌙 야간</button>
-            <button onClick={() => setShowOvertime(!showOvertime)} style={showOvertime ? btnActive : btnInactive}>⏰ 연장</button>
-            <button onClick={() => setShowHoliday(!showHoliday)} style={showHoliday ? btnActive : btnInactive}>🎉 휴일</button>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {showNight && (
-              <div className="allowance-row">
-                <span>야간 시간</span>
-                <input type="text" value={nightHours} onChange={(e) => handleNumberInput(e.target.value, setNightHours)} className="calc-input-small" placeholder="0" />
-              </div>
-            )}
-            {showOvertime && (
-              <div className="allowance-row">
-                <span>연장 시간</span>
-                <input type="text" value={overtimeHours} onChange={(e) => handleNumberInput(e.target.value, setOvertimeHours)} className="calc-input-small" placeholder="0" />
-              </div>
-            )}
-            {showHoliday && (
-              <div className="allowance-row">
-                <span>휴일 시간</span>
-                <input type="text" value={holidayHours} onChange={(e) => handleNumberInput(e.target.value, setHolidayHours)} className="calc-input-small" placeholder="0" />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 세금 섹션 */}
-        <div className="input-group">
-          <label>세금 공제</label>
-          <div style={{ display: 'flex', gap: '4px', background: '#f0f0f0', padding: '4px', borderRadius: '8px' }}>
-            <button onClick={() => setTaxType('none')} style={taxType === 'none' ? tabActive : tabInactive}>미적용</button>
-            <button onClick={() => setTaxType('3.3')} style={taxType === '3.3' ? tabActive : tabInactive}>3.3%</button>
-            <button onClick={() => setTaxType('4')} style={taxType === '4' ? tabActive : tabInactive}>4대보험</button>
-          </div>
-        </div>
-
-        <div className="divider"></div>
-
-        {/* 결과 표시 */}
-        <div style={{ textAlign: 'right' }}>
-          <div style={resultRow}><span>기본급</span> <span>{result.basePay.toLocaleString()}원</span></div>
-          {result.weeklyPay > 0 && <div style={{...resultRow, color: '#2980b9'}}><span>+ 주휴수당</span> <span>{result.weeklyPay.toLocaleString()}원</span></div>}
-          {result.allowancePay > 0 && <div style={{...resultRow, color: '#e67e22'}}><span>+ 추가수당</span> <span>{result.allowancePay.toLocaleString()}원</span></div>}
-          {result.deduction > 0 && <div style={{...resultRow, color: '#c0392b'}}><span>- 세금공제</span> <span>{result.deduction.toLocaleString()}원</span></div>}
-          
-          <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px dashed #eee' }}>
-            <span style={{ fontSize: '14px', color: '#666', marginRight: '10px' }}>예상 실수령액</span>
-            <span style={{ fontSize: '28px', fontWeight: '900', color: '#0052cc' }}>{result.finalPay.toLocaleString()}원</span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* 🔥 [HOOK] 이지알바 유입 배너 */}
-      <div style={{ marginTop: '30px', textAlign: 'center', maxWidth: '500px' }}>
-        <p style={{ fontSize: '15px', color: '#555', marginBottom: '16px', lineHeight: '1.6' }}>
-          이걸 매달 엑셀로 계산하시나요?<br/>
-          <strong>이지알바</strong>는 근무표만 짜면 <span style={{color:'crimson', fontWeight:'bold'}}>1초 만에 자동 계산</span>됩니다.
-        </p>
-        <Link href="/dashboard" style={{ 
-          display: 'inline-block', width: '100%', padding: '16px 0', backgroundColor: '#27ae60', color: '#fff', 
-          borderRadius: '12px', textDecoration: 'none', fontWeight: 'bold', fontSize: '16px', boxShadow: '0 4px 12px rgba(39, 174, 96, 0.3)'
-        }}>
-          🚀 이지알바 무료로 시작하기
-        </Link>
-      </div>
+    <div className="page-container">
+      {/* 폰트 및 글로벌 스타일 */}
+      <style jsx global>{`
+        @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+        body {
+          font-family: "Pretendard Variable", Pretendard, sans-serif;
+          margin: 0; 
+          padding: 0; 
+          background-color: #f5f6f8; 
+          color: #333;
+          overflow-x: hidden;
+        }
+        * { box-sizing: border-box; }
+        footer { padding-bottom: 120px !important; }
+      `}</style>
 
       <style jsx>{`
-        .input-group { margin-bottom: 20px; }
-        .input-group label { display: block; font-size: 14px; fontWeight: bold; color: #555; margin-bottom: 8px; }
-        .calc-input { width: 100%; padding: 14px; border: 1px solid #ddd; borderRadius: 8px; font-size: 16px; outline: none; box-sizing: border-box; text-align: right; }
-        .calc-input:focus { border-color: #0052cc; }
-        .hint { font-size: 12px; color: #888; margin-top: 6px; }
+        .page-container {
+          min-height: 100vh; 
+          display: flex; 
+          flex-direction: column; 
+          align-items: center;
+          padding-top: 60px; 
+          overflow-x: hidden;
+          width: 100%;
+          padding-bottom: 100px; 
+        }
+
+        /* 계산기 카드 스타일 */
+        .calculator-section {
+          width: 100%; 
+          display: flex; 
+          justify-content: center; 
+          padding: 0 20px; 
+          margin-bottom: 80px;
+        }
+        .card {
+          background-color: #fff; 
+          max-width: 480px; 
+          width: 100%; 
+          padding: 40px 32px; 
+          border-radius: 24px; 
+          box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+
+        /* 입력 그룹 공통 */
+        .input-group { margin-bottom: 24px; }
+        .input-label { 
+            display: block; 
+            font-size: 15px; 
+            font-weight: 700; 
+            color: #4e5968; 
+            margin-bottom: 10px; 
+        }
+        .calc-input {
+          width: 100%; 
+          padding: 16px; 
+          border: 1px solid #d1d6db; 
+          border-radius: 12px;
+          font-size: 18px; 
+          font-weight: 600; 
+          outline: none; 
+          transition: all 0.2s;
+          text-align: right;
+          font-family: inherit;
+        }
+        .calc-input:focus { border-color: #3182f6; box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.1); }
+        .hint { font-size: 13px; color: #8b95a1; margin-top: 8px; text-align: right; }
+
+        /* 시간/분 분리 입력 */
+        .time-input-row { display: flex; gap: 12px; align-items: center; }
+        .time-input-wrap { flex: 1; position: relative; }
+        .unit-text { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 15px; color: #8b95a1; font-weight: 500; }
+        .calc-input-time { padding-right: 50px; }
+
+        /* 섹션 박스 (주휴수당, 추가수당) */
+        .section-box { 
+            background: #f9faff; 
+            padding: 20px; 
+            border-radius: 16px; 
+            margin-bottom: 24px; 
+            border: 1px solid #e5e8eb; 
+        }
         
-        .section-box { background: #f8f9fa; padding: 16px; borderRadius: 12px; margin-bottom: 20px; border: 1px solid #eee; }
-        .calc-input-small { flex: 1; padding: 10px; border: 1px solid #ddd; borderRadius: 6px; font-size: 14px; text-align: right; outline: none; }
-        
-        .allowance-row { display: flex; justify-content: space-between; alignItems: center; gap: 10px; font-size: 14px; color: #555; }
-        
-        .divider { height: 1px; background: #eee; margin: 30px 0; }
+        /* 토글 버튼 그룹 */
+        .toggle-group { display: flex; gap: 8px; margin-bottom: 12px; }
+        .toggle-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #d1d6db;
+            background: #fff;
+            color: #6b7684;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .toggle-btn.active {
+            border-color: #3182f6;
+            background-color: #e8f3ff;
+            color: #3182f6;
+        }
+
+        /* 작은 인풋 (추가수당 시간) */
+        .allowance-row { display: flex; justify-content: space-between; alignItems: center; gap: 10px; font-size: 15px; color: #333; margin-top: 10px; font-weight: 500; }
+        .calc-input-small { 
+            width: 100px; 
+            padding: 10px; 
+            border: 1px solid #d1d6db; 
+            border-radius: 8px; 
+            font-size: 15px; 
+            text-align: right; 
+            outline: none; 
+            font-weight: 600;
+        }
+        .calc-input-small:focus { border-color: #3182f6; }
+
+        /* 결과 박스 */
+        .result-box {
+          margin-top: 30px; 
+          padding: 24px; 
+          background-color: #f2f4f6; 
+          border-radius: 16px;
+        }
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 15px; color: #4e5968; font-weight: 500; }
+        .result-row.highlight { color: #333; font-weight: 700; }
+        .final-row { 
+            margin-top: 20px; 
+            padding-top: 20px; 
+            border-top: 1px dashed #d1d6db; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .final-label { font-size: 16px; font-weight: 700; color: #333; }
+        .final-value { font-size: 28px; font-weight: 800; color: #3182f6; }
+
+        /* 홍보 섹션 스타일 (주휴수당 페이지와 동일) */
+        .features-wrapper { width: 100%; background-color: #fff; padding: 80px 0; display: flex; justify-content: center; }
+        .features-container { max-width: 1000px; width: 100%; padding: 0 20px; display: flex; flex-direction: column; align-items: center; gap: 80px; }
+        .section-title { font-size: 32px; font-weight: 900; color: #333; text-align: center; margin-bottom: 20px; line-height: 1.3; letter-spacing: -1px; word-break: keep-all; }
+        .feature-card { display: flex; flex-wrap: wrap; alignItems: center; justify-content: center; gap: 40px; width: 100%; }
+        .feature-text { flex: 1 1 300px; max-width: 100%; padding: 10px; }
+        .feature-img-box { flex: 1 1 300px; display: flex; justify-content: center; max-width: 100%; }
+        .feature-img { width: 100%; max-width: 450px; height: auto; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+
+        /* 하단 CTA */
+        .bottom-cta { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #fff; padding: 16px 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); z-index: 100; display: flex; justify-content: center; }
+        .start-btn { display: block; width: 100%; max-width: 400px; padding: 18px; background-color: #27ae60; color: #fff; border-radius: 50px; text-decoration: none; font-weight: 800; font-size: 20px; text-align: center; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.4); transition: transform 0.1s; }
+        .start-btn:active { transform: scale(0.98); }
+
+        @media (max-width: 768px) {
+            .page-container { padding-top: 30px; }
+            .card { padding: 24px 20px; }
+            .section-title { font-size: 26px; }
+            .feature-card { flexDirection: column-reverse !important; gap: 24px; }
+        }
       `}</style>
+
+      {/* 1. 계산기 영역 */}
+      <div className="calculator-section">
+        <div className="card">
+          <h1 style={{ fontSize: '26px', fontWeight: '800', textAlign: 'center', marginBottom: '8px', color: '#191f28' }}>💰 2026 급여 계산기</h1>
+          <p style={{ textAlign: 'center', color: '#8b95a1', marginBottom: '40px', fontSize: '16px' }}>시급과 시간만 입력하면 월급이 짠!</p>
+
+          {/* 시급 입력 */}
+          <div className="input-group">
+            <label className="input-label">시급 (원)</label>
+            <input 
+                type="text" 
+                value={hourlyWage} 
+                onChange={(e) => handleNumberInput(e.target.value, setHourlyWage)} 
+                className="calc-input" 
+                inputMode="numeric"
+            />
+          </div>
+
+          {/* 총 근무시간 (분리형) */}
+          <div className="input-group">
+            <label className="input-label">이번 달 총 근무 시간</label>
+            <div className="time-input-row">
+                <div className="time-input-wrap">
+                    <input 
+                        type="text" 
+                        value={totalHours} 
+                        onChange={(e) => handleNumberInput(e.target.value, setTotalHours)} 
+                        className="calc-input calc-input-time" 
+                        placeholder="0" 
+                        inputMode="numeric" 
+                    />
+                    <span className="unit-text">시간</span>
+                </div>
+                <div className="time-input-wrap">
+                    <input 
+                        type="text" 
+                        value={totalMinutes} 
+                        onChange={(e) => handleNumberInput(e.target.value, setTotalMinutes)} 
+                        className="calc-input calc-input-time" 
+                        placeholder="0" 
+                        inputMode="numeric" 
+                    />
+                    <span className="unit-text">분</span>
+                </div>
+            </div>
+            <p className="hint">* 기본급 계산용 (야간/휴일 시간도 포함)</p>
+          </div>
+
+          {/* 주휴수당 (접기/펼치기) */}
+          <div className="input-group">
+            <button 
+                onClick={() => setShowJuhyu(!showJuhyu)}
+                style={{
+                    width: '100%', padding: '12px', border: '1px solid #d1d6db', borderRadius: '12px', 
+                    background: '#fff', color: '#333', fontWeight: 'bold', cursor: 'pointer',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px'
+                }}
+            >
+                {showJuhyu ? '▲ 주휴수당 접기' : '▼ 주휴수당 더하기 (선택)'}
+            </button>
+            
+            {showJuhyu && (
+                <div className="section-box" style={{ marginTop: '12px', marginBottom: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{ fontWeight: '700', fontSize: '15px' }}>주별 근무시간 입력</span>
+                        <button onClick={addWeek} style={{ fontSize: '13px', padding: '6px 12px', borderRadius: '6px', backgroundColor: '#3182f6', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>+ 1주 추가</button>
+                    </div>
+                    
+                    {weeks.length === 0 && <p style={{ fontSize: '14px', color: '#888', textAlign: 'center', padding: '10px 0' }}>'+ 1주 추가' 버튼을 눌러 입력해주세요.</p>}
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {weeks.map((week, idx) => (
+                        <div key={week.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '14px', color: '#555', width: '40px', flexShrink: 0 }}>{idx + 1}주차</span>
+                            <div className="time-input-wrap">
+                                <input 
+                                    type="text" 
+                                    value={week.hours} 
+                                    onChange={(e) => handleNumberInput(e.target.value, (v) => updateWeek(week.id, v))}
+                                    className="calc-input-small" 
+                                    style={{ width: '100%' }}
+                                    placeholder="시간" 
+                                    inputMode="numeric"
+                                />
+                            </div>
+                            <span style={{ fontSize: '14px' }}>시간</span>
+                            <button onClick={() => removeWeek(week.id)} style={{ marginLeft: 'auto', color: '#e74c3c', background: 'none', border: 'none', cursor: 'pointer', padding: '5px' }}>✕</button>
+                        </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+          </div>
+
+          {/* 추가 수당 */}
+          <div className="section-box">
+             <label className="input-label" style={{marginBottom: '12px'}}>추가 수당 (0.5배 가산)</label>
+             <div className="toggle-group">
+                <button onClick={() => setShowNight(!showNight)} className={`toggle-btn ${showNight ? 'active' : ''}`}>🌙 야간</button>
+                <button onClick={() => setShowOvertime(!showOvertime)} className={`toggle-btn ${showOvertime ? 'active' : ''}`}>⏰ 연장</button>
+                <button onClick={() => setShowHoliday(!showHoliday)} className={`toggle-btn ${showHoliday ? 'active' : ''}`}>🎉 휴일</button>
+             </div>
+
+             {showNight && (
+                <div className="allowance-row">
+                    <span>야간 근무 시간</span>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                        <input type="text" value={nightHours} onChange={(e) => handleNumberInput(e.target.value, setNightHours)} className="calc-input-small" placeholder="0" inputMode="numeric"/>
+                        <span style={{fontSize:'14px', color:'#666'}}>시간</span>
+                    </div>
+                </div>
+             )}
+             {showOvertime && (
+                <div className="allowance-row">
+                    <span>연장 근무 시간</span>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                        <input type="text" value={overtimeHours} onChange={(e) => handleNumberInput(e.target.value, setOvertimeHours)} className="calc-input-small" placeholder="0" inputMode="numeric"/>
+                        <span style={{fontSize:'14px', color:'#666'}}>시간</span>
+                    </div>
+                </div>
+             )}
+             {showHoliday && (
+                <div className="allowance-row">
+                    <span>휴일 근무 시간</span>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                        <input type="text" value={holidayHours} onChange={(e) => handleNumberInput(e.target.value, setHolidayHours)} className="calc-input-small" placeholder="0" inputMode="numeric"/>
+                        <span style={{fontSize:'14px', color:'#666'}}>시간</span>
+                    </div>
+                </div>
+             )}
+          </div>
+
+          {/* 세금 공제 (순서 변경: 4대보험 -> 3.3 -> 미적용) */}
+          <div className="input-group">
+            <label className="input-label">세금 공제</label>
+            <div className="toggle-group">
+                <button onClick={() => setTaxType('4')} className={`toggle-btn ${taxType === '4' ? 'active' : ''}`}>4대보험</button>
+                <button onClick={() => setTaxType('3.3')} className={`toggle-btn ${taxType === '3.3' ? 'active' : ''}`}>3.3%</button>
+                <button onClick={() => setTaxType('none')} className={`toggle-btn ${taxType === 'none' ? 'active' : ''}`}>미적용</button>
+            </div>
+          </div>
+
+          {/* 결과 표시 */}
+          <div className="result-box">
+            <div className="result-row highlight">
+                <span>기본급</span> <span>{result.basePay.toLocaleString()}원</span>
+            </div>
+            {result.weeklyPay > 0 && (
+                <div className="result-row" style={{ color: '#3182f6' }}>
+                    <span>+ 주휴수당</span> <span>{result.weeklyPay.toLocaleString()}원</span>
+                </div>
+            )}
+            {result.allowancePay > 0 && (
+                <div className="result-row" style={{ color: '#ff9f0a' }}>
+                    <span>+ 추가수당</span> <span>{result.allowancePay.toLocaleString()}원</span>
+                </div>
+            )}
+            {result.deduction > 0 && (
+                <div className="result-row" style={{ color: '#e74c3c' }}>
+                    <span>- 세금공제</span> <span>{result.deduction.toLocaleString()}원</span>
+                </div>
+            )}
+            
+            <div className="final-row">
+                <span className="final-label">예상 실수령액</span>
+                <span className="final-value">{result.finalPay.toLocaleString()}<span style={{fontSize:'20px', fontWeight:600, color:'#333', marginLeft:'4px'}}>원</span></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* 2. 기능 소개 (FEATURES) */}
+      <div className="features-wrapper">
+        <div className="features-container">
+          <h2 className="section-title">
+            이지알바,<br className="mobile-only"/> 왜 써야 할까요?
+          </h2>
+          
+          {FEATURES.map((feature, index) => (
+            <div key={index} 
+              className="feature-card"
+              style={{ flexDirection: index % 2 === 0 ? 'row' : 'row-reverse' }}
+            >
+              <div className="feature-text">
+                <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#0052cc', marginBottom: '16px', wordBreak: 'keep-all', lineHeight: '1.4' }}>
+                    {feature.title}
+                </h3>
+                <p style={{ fontSize: '17px', lineHeight: '1.7', color: '#555', margin: 0, wordBreak: 'keep-all' }}>
+                    {feature.desc}
+                </p>
+              </div>
+              <div className="feature-img-box">
+                <img src={feature.img} alt={feature.title} className="feature-img" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 하단 고정 CTA 버튼 */}
+      <div className="bottom-cta">
+        <Link href="/dashboard" className="start-btn">🚀 이지알바 무료로 시작하기</Link>
+      </div>
+
     </div>
   );
 }
-
-// 스타일 객체
-const btnSmall = { fontSize: '12px', padding: '4px 8px', borderRadius: '4px', border: '1px solid #0052cc', color: '#0052cc', background: '#fff', cursor: 'pointer', fontWeight: 'bold' };
-const btnActive = { 
-  flex: 1, 
-  padding: '8px', 
-  borderRadius: '6px', 
-  background: '#e6f7ff', 
-  color: '#0052cc', 
-  fontWeight: 'bold', 
-  cursor: 'pointer', 
-  border: '1px solid #0052cc' // ✅ 이거 하나만 남기세요
-};
-const btnInactive = { flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ddd', background: '#fff', color: '#666', cursor: 'pointer' };
-const tabActive = { flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: '#fff', color: '#333', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', cursor: 'pointer' };
-const tabInactive = { flex: 1, padding: '10px', borderRadius: '6px', border: 'none', background: 'transparent', color: '#888', cursor: 'pointer' };
-const resultRow = { display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '15px', fontWeight: 'bold', color: '#333' } as const;
