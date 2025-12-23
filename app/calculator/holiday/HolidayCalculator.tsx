@@ -78,62 +78,61 @@ export default function HolidayCalculatorPage() {
     <div className="page-container">
       <style jsx global>{`
         @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
-        body {
-          font-family: "Pretendard Variable", Pretendard, sans-serif;
-          margin: 0; 
-          padding: 0; 
-          background-color: #f5f6f8; 
-          color: #333;
-          overflow-x: hidden;
-        }
+        body { font-family: "Pretendard Variable", Pretendard, sans-serif; margin: 0; padding: 0; background-color: #f5f6f8; color: #333; overflow-x: hidden; }
         * { box-sizing: border-box; }
         footer { padding-bottom: 120px !important; }
       `}</style>
 
       <style jsx>{`
-        .page-container {
-          min-height: 100vh; 
-          display: flex; 
-          flex-direction: column; 
-          align-items: center;
-          padding-top: 60px; 
-          overflow-x: hidden;
-          width: 100%;
-          padding-bottom: 100px; 
-        }
-        .calculator-section { width: 100%; display: flex; justify-content: center; padding: 0 20px; margin-bottom: 80px; }
-        .card { background-color: #fff; max-width: 480px; width: 100%; padding: 40px 32px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: padding 0.3s; }
-        .input-group { margin-bottom: 24px; }
-        .input-label { display: block; font-size: 15px; font-weight: 700; color: #4e5968; margin-bottom: 10px; }
-        .calc-input { width: 100%; padding: 16px; border: 1px solid #d1d6db; border-radius: 12px; font-size: 18px; font-weight: 600; outline: none; transition: all 0.2s; text-align: right; font-family: inherit; }
+        /* ✅ [수정] Compact Mode: 전체적인 여백 및 비율 축소 */
+        .page-container { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding-top: 40px; overflow-x: hidden; width: 100%; padding-bottom: 80px; }
+        .calculator-section { width: 100%; display: flex; justify-content: center; padding: 0 16px; margin-bottom: 60px; }
+        
+        /* 카드 패딩 축소 */
+        .card { background-color: #fff; max-width: 480px; width: 100%; padding: 28px 24px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); transition: padding 0.3s; }
+        
+        /* 입력 그룹 간격 축소 */
+        .input-group { margin-bottom: 16px; }
+        .input-label { display: block; font-size: 14px; font-weight: 700; color: #4e5968; margin-bottom: 6px; }
+        
+        /* 입력창 높이 축소 */
+        .calc-input { width: 100%; padding: 12px; border: 1px solid #d1d6db; border-radius: 10px; font-size: 16px; font-weight: 600; outline: none; transition: all 0.2s; text-align: right; font-family: inherit; }
         .calc-input:focus { border-color: #3182f6; box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.1); }
-        .time-input-row { display: flex; gap: 12px; align-items: center; }
+        
+        .time-input-row { display: flex; gap: 8px; align-items: center; }
         .time-input-wrap { flex: 1; position: relative; }
-        .unit-text { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 15px; color: #8b95a1; font-weight: 500; }
-        .calc-input-time { padding-right: 50px; }
-        .result-box { margin-top: 30px; padding: 24px; background-color: #f9faff; border-radius: 16px; text-align: center; border: 1px solid #e5e8eb; }
-        .tip-box { background-color: #f2f4f6; padding: 24px; border-radius: 16px; margin-top: 32px; }
-        .tip-title { font-size: 15px; font-weight: 800; color: #333; margin-bottom: 12px; }
-        .tip-list { list-style: none; padding: 0; margin: 0; font-size: 14px; color: #555; line-height: 1.6; }
-        .tip-list li { margin-bottom: 6px; position: relative; padding-left: 12px; word-break: keep-all; }
+        .unit-text { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; color: #8b95a1; font-weight: 500; }
+        .calc-input-time { padding-right: 42px; }
+
+        /* 결과 박스 여백 축소 */
+        .result-box { margin-top: 20px; padding: 20px; background-color: #f9faff; border-radius: 14px; text-align: center; border: 1px solid #e5e8eb; }
+        
+        /* 팁 박스 여백 축소 */
+        .tip-box { background-color: #f2f4f6; padding: 20px; border-radius: 14px; margin-top: 20px; }
+        .tip-title { font-size: 14px; font-weight: 800; color: #333; margin-bottom: 10px; }
+        .tip-list { list-style: none; padding: 0; margin: 0; font-size: 13px; color: #555; line-height: 1.6; }
+        .tip-list li { margin-bottom: 4px; position: relative; padding-left: 10px; word-break: keep-all; }
         .tip-list li::before { content: "•"; position: absolute; left: 0; color: #888; }
-        .features-wrapper { width: 100%; background-color: #fff; padding: 80px 0; display: flex; justify-content: center; }
-        .features-container { max-width: 1000px; width: 100%; padding: 0 20px; display: flex; flex-direction: column; align-items: center; gap: 80px; }
-        .section-title { font-size: 32px; font-weight: 900; color: #333; text-align: center; margin-bottom: 20px; line-height: 1.3; letter-spacing: -1px; word-break: keep-all; }
-        .feature-card { display: flex; flex-wrap: wrap; alignItems: center; justify-content: center; gap: 40px; width: 100%; }
+        
+        .features-wrapper { width: 100%; background-color: #fff; padding: 60px 0; display: flex; justify-content: center; }
+        .features-container { max-width: 1000px; width: 100%; padding: 0 20px; display: flex; flex-direction: column; align-items: center; gap: 60px; }
+        .section-title { font-size: 28px; font-weight: 900; color: #333; text-align: center; margin-bottom: 10px; line-height: 1.3; letter-spacing: -1px; word-break: keep-all; }
+        .feature-card { display: flex; flex-wrap: wrap; alignItems: center; justify-content: center; gap: 30px; width: 100%; }
         .feature-text { flex: 1 1 300px; max-width: 100%; padding: 10px; }
         .feature-img-box { flex: 1 1 300px; display: flex; justify-content: center; max-width: 100%; }
-        .feature-img { width: 100%; max-width: 450px; height: auto; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
-        .bottom-cta { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #fff; padding: 16px 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); z-index: 100; display: flex; justify-content: center; }
-        .start-btn { display: block; width: 100%; max-width: 400px; padding: 18px; background-color: #27ae60; color: #fff; border-radius: 50px; text-decoration: none; font-weight: 800; font-size: 20px; text-align: center; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.4); transition: transform 0.1s; }
+        .feature-img { width: 100%; max-width: 400px; height: auto; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+        
+        .bottom-cta { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #fff; padding: 12px 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); z-index: 100; display: flex; justify-content: center; }
+        .start-btn { display: block; width: 100%; max-width: 400px; padding: 16px; background-color: #27ae60; color: #fff; border-radius: 50px; text-decoration: none; font-weight: 800; font-size: 18px; text-align: center; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.4); transition: transform 0.1s; }
         .start-btn:active { transform: scale(0.98); }
-        @media (max-width: 768px) { .mobile-hide { display: none; } .page-container { padding-top: 30px; } .card { padding: 24px 20px; } .section-title { font-size: 26px; } .feature-text { text-align: center; } .feature-card { flex-direction: column-reverse !important; gap: 24px; } }
+        
+        @media (max-width: 768px) { .mobile-hide { display: none; } .page-container { padding-top: 20px; } .card { padding: 20px 16px; } .section-title { font-size: 24px; } .feature-text { text-align: center; } .feature-card { flex-direction: column-reverse !important; gap: 20px; } }
       `}</style>
 
       <div className="calculator-section">
         <div className="card">
-          <h1 style={{ fontSize: '26px', fontWeight: '800', textAlign: 'center', marginBottom: '8px', color: '#191f28' }}>💰 주휴수당 계산기</h1>
-          <p style={{ textAlign: 'center', color: '#8b95a1', marginBottom: '40px', fontSize: '16px' }}>복잡한 주휴수당, 바로 확인해보세요!</p>
+          <h1 style={{ fontSize: '24px', fontWeight: '800', textAlign: 'center', marginBottom: '6px', color: '#191f28' }}>💰 주휴수당 계산기</h1>
+          <p style={{ textAlign: 'center', color: '#8b95a1', marginBottom: '24px', fontSize: '14px' }}>복잡한 주휴수당, 바로 확인해보세요!</p>
 
           <div className="input-group">
             <label className="input-label">시급 (원)</label>
@@ -176,21 +175,21 @@ export default function HolidayCalculatorPage() {
                     <span className="unit-text">분</span>
                 </div>
             </div>
-            <p style={{ fontSize: '13px', color: '#8b95a1', marginTop: '8px', textAlign: 'right' }}>* 휴게시간 제외, 실제 근무시간</p>
+            <p style={{ fontSize: '12px', color: '#8b95a1', marginTop: '6px', textAlign: 'right' }}>* 휴게시간 제외, 실제 근무시간</p>
           </div>
 
           <div className="result-box">
-            <span style={{ fontSize: '15px', color: '#3182f6', fontWeight: '700' }}>예상 주휴수당 (주급)</span>
-            <div style={{ fontSize: '36px', fontWeight: '800', color: '#333', margin: '10px 0' }}>
-              {result.toLocaleString()}<span style={{ fontSize: '22px', fontWeight: '600', marginLeft: '4px' }}>원</span>
+            <span style={{ fontSize: '14px', color: '#3182f6', fontWeight: '700' }}>예상 주휴수당 (주급)</span>
+            <div style={{ fontSize: '32px', fontWeight: '800', color: '#333', margin: '8px 0' }}>
+              {result.toLocaleString()}<span style={{ fontSize: '20px', fontWeight: '600', marginLeft: '4px' }}>원</span>
             </div>
             
             {(!weeklyHours && !weeklyMinutes) ? (
-                 <p style={{ fontSize: '14px', color: '#8b95a1' }}>시간을 입력하면 자동으로 계산됩니다.</p>
+                 <p style={{ fontSize: '13px', color: '#8b95a1' }}>시간을 입력하면 자동으로 계산됩니다.</p>
             ) : result === 0 ? (
-                <p style={{ fontSize: '14px', color: '#e74c3c' }}>주 15시간 미만은 주휴수당 대상이 아닙니다.</p>
+                <p style={{ fontSize: '13px', color: '#e74c3c' }}>주 15시간 미만은 주휴수당 대상이 아닙니다.</p>
             ) : (
-                <p style={{ fontSize: '14px', color: '#6b7684' }}>한 달 기준 약 <strong>{(result * 4.345).toLocaleString().split('.')[0]}원</strong> 더 받아요!</p>
+                <p style={{ fontSize: '13px', color: '#6b7684' }}>한 달 기준 약 <strong>{(result * 4.345).toLocaleString().split('.')[0]}원</strong> 더 받아요!</p>
             )}
           </div>
 
@@ -211,8 +210,8 @@ export default function HolidayCalculatorPage() {
           {FEATURES.map((feature, index) => (
             <div key={index} className="feature-card" style={{ flexDirection: index % 2 === 0 ? 'row' : 'row-reverse' }}>
               <div className="feature-text">
-                <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#0052cc', marginBottom: '16px', wordBreak: 'keep-all', lineHeight: '1.4' }}>{feature.title}</h3>
-                <p style={{ fontSize: '17px', lineHeight: '1.7', color: '#555', margin: 0, wordBreak: 'keep-all' }}>{feature.desc}</p>
+                <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#0052cc', marginBottom: '14px', wordBreak: 'keep-all', lineHeight: '1.4' }}>{feature.title}</h3>
+                <p style={{ fontSize: '16px', lineHeight: '1.7', color: '#555', margin: 0, wordBreak: 'keep-all' }}>{feature.desc}</p>
               </div>
               <div className="feature-img-box"><img src={feature.img} alt={feature.title} className="feature-img" /></div>
             </div>
