@@ -39,8 +39,10 @@ const FEATURES = [
 
 export default function HolidayCalculatorPage() {
   const [hourlyWage, setHourlyWage] = useState('10,030'); 
-  const [weeklyHours, setWeeklyHours] = useState('');
-  const [weeklyMinutes, setWeeklyMinutes] = useState('');
+  
+  // ✅ [수정] 기본값을 15시간 0분으로 설정 (주휴수당 최소 기준)
+  const [weeklyHours, setWeeklyHours] = useState('15');
+  const [weeklyMinutes, setWeeklyMinutes] = useState('0');
   
   const [result, setResult] = useState<number>(0);
 
@@ -84,36 +86,24 @@ export default function HolidayCalculatorPage() {
       `}</style>
 
       <style jsx>{`
-        /* ✅ [수정] Compact Mode: 전체적인 여백 및 비율 축소 */
+        /* Compact Mode 적용 */
         .page-container { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding-top: 40px; overflow-x: hidden; width: 100%; padding-bottom: 80px; }
         .calculator-section { width: 100%; display: flex; justify-content: center; padding: 0 16px; margin-bottom: 60px; }
-        
-        /* 카드 패딩 축소 */
         .card { background-color: #fff; max-width: 480px; width: 100%; padding: 28px 24px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); transition: padding 0.3s; }
-        
-        /* 입력 그룹 간격 축소 */
         .input-group { margin-bottom: 16px; }
         .input-label { display: block; font-size: 14px; font-weight: 700; color: #4e5968; margin-bottom: 6px; }
-        
-        /* 입력창 높이 축소 */
         .calc-input { width: 100%; padding: 12px; border: 1px solid #d1d6db; border-radius: 10px; font-size: 16px; font-weight: 600; outline: none; transition: all 0.2s; text-align: right; font-family: inherit; }
         .calc-input:focus { border-color: #3182f6; box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.1); }
-        
         .time-input-row { display: flex; gap: 8px; align-items: center; }
         .time-input-wrap { flex: 1; position: relative; }
         .unit-text { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; color: #8b95a1; font-weight: 500; }
         .calc-input-time { padding-right: 42px; }
-
-        /* 결과 박스 여백 축소 */
         .result-box { margin-top: 20px; padding: 20px; background-color: #f9faff; border-radius: 14px; text-align: center; border: 1px solid #e5e8eb; }
-        
-        /* 팁 박스 여백 축소 */
         .tip-box { background-color: #f2f4f6; padding: 20px; border-radius: 14px; margin-top: 20px; }
         .tip-title { font-size: 14px; font-weight: 800; color: #333; margin-bottom: 10px; }
         .tip-list { list-style: none; padding: 0; margin: 0; font-size: 13px; color: #555; line-height: 1.6; }
         .tip-list li { margin-bottom: 4px; position: relative; padding-left: 10px; word-break: keep-all; }
         .tip-list li::before { content: "•"; position: absolute; left: 0; color: #888; }
-        
         .features-wrapper { width: 100%; background-color: #fff; padding: 60px 0; display: flex; justify-content: center; }
         .features-container { max-width: 1000px; width: 100%; padding: 0 20px; display: flex; flex-direction: column; align-items: center; gap: 60px; }
         .section-title { font-size: 28px; font-weight: 900; color: #333; text-align: center; margin-bottom: 10px; line-height: 1.3; letter-spacing: -1px; word-break: keep-all; }
@@ -121,11 +111,9 @@ export default function HolidayCalculatorPage() {
         .feature-text { flex: 1 1 300px; max-width: 100%; padding: 10px; }
         .feature-img-box { flex: 1 1 300px; display: flex; justify-content: center; max-width: 100%; }
         .feature-img { width: 100%; max-width: 400px; height: auto; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-        
         .bottom-cta { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #fff; padding: 12px 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); z-index: 100; display: flex; justify-content: center; }
         .start-btn { display: block; width: 100%; max-width: 400px; padding: 16px; background-color: #27ae60; color: #fff; border-radius: 50px; text-decoration: none; font-weight: 800; font-size: 18px; text-align: center; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.4); transition: transform 0.1s; }
         .start-btn:active { transform: scale(0.98); }
-        
         @media (max-width: 768px) { .mobile-hide { display: none; } .page-container { padding-top: 20px; } .card { padding: 20px 16px; } .section-title { font-size: 24px; } .feature-text { text-align: center; } .feature-card { flex-direction: column-reverse !important; gap: 20px; } }
       `}</style>
 
@@ -140,7 +128,6 @@ export default function HolidayCalculatorPage() {
                 type="text" 
                 value={hourlyWage} 
                 onChange={(e) => handleNumberInput(e, setHourlyWage)}
-                // ✅ 클릭 시 초기화, 나가면 복구
                 onFocus={() => { if(hourlyWage === '10,030') setHourlyWage(''); }}
                 onBlur={() => { if(hourlyWage === '') setHourlyWage('10,030'); }}
                 className="calc-input" 
@@ -149,6 +136,7 @@ export default function HolidayCalculatorPage() {
             />
           </div>
 
+          {/* ✅ [수정] 클릭 시 값 초기화 기능 적용 (15 -> 빈값, 0 -> 빈값) */}
           <div className="input-group">
             <label className="input-label">일주일 총 근무 시간</label>
             <div className="time-input-row">
@@ -157,8 +145,11 @@ export default function HolidayCalculatorPage() {
                         type="text" 
                         value={weeklyHours} 
                         onChange={(e) => handleNumberInput(e, setWeeklyHours)} 
+                        // 클릭 시 15면 비우고, 비어있으면 15 복구
+                        onFocus={() => { if(weeklyHours === '15') setWeeklyHours(''); }}
+                        onBlur={() => { if(weeklyHours === '') setWeeklyHours('15'); }}
                         className="calc-input calc-input-time" 
-                        placeholder="20" 
+                        placeholder="0" 
                         inputMode="numeric" 
                     />
                     <span className="unit-text">시간</span>
@@ -168,6 +159,9 @@ export default function HolidayCalculatorPage() {
                         type="text" 
                         value={weeklyMinutes} 
                         onChange={(e) => handleNumberInput(e, setWeeklyMinutes)} 
+                        // 클릭 시 0이면 비우고, 비어있으면 0 복구
+                        onFocus={() => { if(weeklyMinutes === '0') setWeeklyMinutes(''); }}
+                        onBlur={() => { if(weeklyMinutes === '') setWeeklyMinutes('0'); }}
                         className="calc-input calc-input-time" 
                         placeholder="0" 
                         inputMode="numeric" 

@@ -6,12 +6,22 @@ import VisitTracker from '@/components/VisitTracker';
 // ✅ [추가] 푸터 컴포넌트 불러오기
 import BusinessFooter from '@/components/BusinessFooter'; 
 
-// ✅ [수정] 메타데이터에 구글 애드센스 소유권 확인 코드 추가
+// ✅ [수정] 메타데이터: 구글 애드센스 + 검색엔진 소유권 확인 코드 추가
 export const metadata = {
   title: "Alba Manager",
   description: "매장과 직원을 효율적으로 관리하세요.",
+  
+  // 1. 구글 애드센스 (기존)
   other: {
     "google-adsense-account": "ca-pub-7536814024124909",
+  },
+
+  // 2. 검색엔진 소유권 확인 (네이버, 구글)
+  verification: {
+    google: "Y-e6TlFoVraNFiHICXDpphsZVRhxgre8N1Hqd0uv_xk", // 구글 코드
+    other: {
+      "naver-site-verification": "1224469959ad4122f9082d200a1ffb4ee1fedd45", // 네이버 코드
+    },
   },
 };
 
