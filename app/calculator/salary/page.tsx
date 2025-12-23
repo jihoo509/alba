@@ -48,12 +48,12 @@ export default function SalaryCalculatorPage() {
   // 1. 기본 설정
   const [hourlyWage, setHourlyWage] = useState('10,030'); // 2025년 최저시급
 
-  // 2. 총 근무 시간 (시간/분)
+  // 2. 총 근무 시간 (시간/분) - 초기값 설정
   const [totalHours, setTotalHours] = useState('160');
-  const [totalMinutes, setTotalMinutes] = useState('');
+  const [totalMinutes, setTotalMinutes] = useState('0');
 
   // 3. 주휴수당 (펼쳐둠, 시간/분)
-  const [weeks, setWeeks] = useState<WeekItem[]>([]); 
+  const [weeks, setWeeks] = useState<WeekItem[]>([]);
 
   // 4. 추가 수당 (시간/분)
   const [showNight, setShowNight] = useState(false);
@@ -110,7 +110,7 @@ export default function SalaryCalculatorPage() {
     const tH = Number(totalHours.replace(/,/g, '')) || 0;
     const tM = Number(totalMinutes.replace(/,/g, '')) || 0;
     const totalTime = tH + (tM / 60);
-    
+
     const basePay = Math.floor(totalTime * wage);
 
     // 2. 주휴수당 계산
@@ -139,18 +139,18 @@ export default function SalaryCalculatorPage() {
     const hH = Number(holidayHours.replace(/,/g, '')) || 0;
     const hM = Number(holidayMinutes.replace(/,/g, '')) || 0;
     const hTime = hH + (hM / 60);
-    
+
     const allowancePay = Math.floor((nTime + oTime + hTime) * wage * 0.5);
 
     // 4. 총액 및 세금
     const totalGross = basePay + weeklyPayTotal + allowancePay;
-    
+
     let deduction = 0;
     if (taxType === '3.3') {
       deduction = Math.floor(totalGross * 0.033);
     } else if (taxType === '4') {
       // 4대보험 대략 9.4%
-      deduction = Math.floor(totalGross * 0.094); 
+      deduction = Math.floor(totalGross * 0.094);
     }
     // 원단위 절사
     deduction = Math.floor(deduction / 10) * 10;
@@ -184,12 +184,11 @@ export default function SalaryCalculatorPage() {
         .calc-input:focus { border-color: #3182f6; box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.1); }
         .hint { font-size: 13px; color: #8b95a1; margin-top: 8px; text-align: right; }
         
-        /* 시간/분 분리 입력 */
-        .time-input-row { display: flex; gap: 8px; align-items: center; width: 100%; }
+        /* ✅ [수정] 시간/분 분리 입력 스타일 (주휴수당 계산기와 통일) */
+        .time-input-row { display: flex; gap: 12px; align-items: center; }
         .time-input-wrap { flex: 1; position: relative; }
-        .unit-text { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; color: #8b95a1; font-weight: 500; }
-        .calc-input-time { padding-right: 40px; width: 100%; padding: 12px; border: 1px solid #d1d6db; border-radius: 10px; font-size: 16px; text-align: right; font-weight: 600; outline: none; }
-        .calc-input-time:focus { border-color: #3182f6; }
+        .unit-text { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 15px; color: #8b95a1; font-weight: 500; }
+        .calc-input-time { padding-right: 50px; }
 
         .section-box { background: #f9faff; padding: 20px; border-radius: 16px; margin-bottom: 24px; border: 1px solid #e5e8eb; }
         .toggle-group { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -226,26 +225,47 @@ export default function SalaryCalculatorPage() {
 
           <div className="input-group">
             <label className="input-label">시급 (원)</label>
-            <input 
-                type="text" 
-                value={hourlyWage} 
+            <input
+                type="text"
+                value={hourlyWage}
                 onChange={(e) => handleNumberInput(e.target.value, setHourlyWage)}
                 onFocus={() => { if(hourlyWage === '10,030') setHourlyWage(''); }}
                 onBlur={() => { if(hourlyWage === '') setHourlyWage('10,030'); }}
-                className="calc-input" 
+                className="calc-input"
                 inputMode="numeric"
             />
           </div>
 
+          {/* ✅ [수정] 총 근무시간 입력 (주휴수당 계산기와 동일한 디자인 & 클릭 시 초기화 적용) */}
           <div className="input-group">
             <label className="input-label">이번 달 총 근무 시간</label>
             <div className="time-input-row">
                 <div className="time-input-wrap">
-                    <input type="text" value={totalHours} onChange={(e) => handleNumberInput(e.target.value, setTotalHours)} className="calc-input-time" placeholder="0" inputMode="numeric" />
+                    <input
+                        type="text"
+                        value={totalHours}
+                        onChange={(e) => handleNumberInput(e.target.value, setTotalHours)}
+                        // 클릭 시 '160'이면 비우고, 비어있으면 '160'으로 복구
+                        onFocus={() => { if(totalHours === '160') setTotalHours(''); }}
+                        onBlur={() => { if(totalHours === '') setTotalHours('160'); }}
+                        className="calc-input calc-input-time"
+                        placeholder="0"
+                        inputMode="numeric"
+                    />
                     <span className="unit-text">시간</span>
                 </div>
                 <div className="time-input-wrap">
-                    <input type="text" value={totalMinutes} onChange={(e) => handleNumberInput(e.target.value, setTotalMinutes)} className="calc-input-time" placeholder="0" inputMode="numeric" />
+                    <input
+                        type="text"
+                        value={totalMinutes}
+                        onChange={(e) => handleNumberInput(e.target.value, setTotalMinutes)}
+                        // 클릭 시 '0'이면 비우고, 비어있으면 '0'으로 복구
+                        onFocus={() => { if(totalMinutes === '0') setTotalMinutes(''); }}
+                        onBlur={() => { if(totalMinutes === '') setTotalMinutes('0'); }}
+                        className="calc-input calc-input-time"
+                        placeholder="0"
+                        inputMode="numeric"
+                    />
                     <span className="unit-text">분</span>
                 </div>
             </div>
@@ -258,9 +278,9 @@ export default function SalaryCalculatorPage() {
                 <span style={{ fontWeight: '700', fontSize: '15px', color:'#333' }}>주휴수당 계산 (주별 입력)</span>
                 <button onClick={addWeek} style={{ fontSize: '13px', padding: '6px 12px', borderRadius: '6px', backgroundColor: '#3182f6', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>+ 1주 추가</button>
              </div>
-             
+
              {weeks.length === 0 && <p style={{ fontSize: '14px', color: '#888', textAlign: 'center', padding: '10px 0' }}>'+ 1주 추가' 버튼을 눌러 입력해주세요.</p>}
-             
+
              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {weeks.map((week, idx) => (
                 <div key={week.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -268,11 +288,11 @@ export default function SalaryCalculatorPage() {
                     {/* 시간/분 분리 */}
                     <div className="time-input-row" style={{ flex: 1 }}>
                         <div className="time-input-wrap">
-                            <input type="text" value={week.hours} onChange={(e) => handleNumberInput(e.target.value, (v) => updateWeekHours(week.id, v))} className="calc-input-time" placeholder="0" inputMode="numeric" />
+                            <input type="text" value={week.hours} onChange={(e) => handleNumberInput(e.target.value, (v) => updateWeekHours(week.id, v))} className="calc-input calc-input-time" placeholder="0" inputMode="numeric" />
                             <span className="unit-text">시간</span>
                         </div>
                         <div className="time-input-wrap">
-                            <input type="text" value={week.minutes} onChange={(e) => handleNumberInput(e.target.value, (v) => updateWeekMinutes(week.id, v))} className="calc-input-time" placeholder="0" inputMode="numeric" />
+                            <input type="text" value={week.minutes} onChange={(e) => handleNumberInput(e.target.value, (v) => updateWeekMinutes(week.id, v))} className="calc-input calc-input-time" placeholder="0" inputMode="numeric" />
                             <span className="unit-text">분</span>
                         </div>
                     </div>
@@ -296,11 +316,11 @@ export default function SalaryCalculatorPage() {
                     <span className="allowance-label">야간 근무 시간</span>
                     <div className="time-input-row">
                         <div className="time-input-wrap">
-                            <input type="text" value={nightHours} onChange={(e) => handleNumberInput(e.target.value, setNightHours)} className="calc-input-time" placeholder="0" inputMode="numeric" />
+                            <input type="text" value={nightHours} onChange={(e) => handleNumberInput(e.target.value, setNightHours)} className="calc-input calc-input-time" placeholder="0" inputMode="numeric" />
                             <span className="unit-text">시간</span>
                         </div>
                         <div className="time-input-wrap">
-                            <input type="text" value={nightMinutes} onChange={(e) => handleNumberInput(e.target.value, setNightMinutes)} className="calc-input-time" placeholder="0" inputMode="numeric" />
+                            <input type="text" value={nightMinutes} onChange={(e) => handleNumberInput(e.target.value, setNightMinutes)} className="calc-input calc-input-time" placeholder="0" inputMode="numeric" />
                             <span className="unit-text">분</span>
                         </div>
                     </div>
@@ -311,11 +331,11 @@ export default function SalaryCalculatorPage() {
                     <span className="allowance-label">연장 근무 시간</span>
                     <div className="time-input-row">
                         <div className="time-input-wrap">
-                            <input type="text" value={overtimeHours} onChange={(e) => handleNumberInput(e.target.value, setOvertimeHours)} className="calc-input-time" placeholder="0" inputMode="numeric" />
+                            <input type="text" value={overtimeHours} onChange={(e) => handleNumberInput(e.target.value, setOvertimeHours)} className="calc-input calc-input-time" placeholder="0" inputMode="numeric" />
                             <span className="unit-text">시간</span>
                         </div>
                         <div className="time-input-wrap">
-                            <input type="text" value={overtimeMinutes} onChange={(e) => handleNumberInput(e.target.value, setOvertimeMinutes)} className="calc-input-time" placeholder="0" inputMode="numeric" />
+                            <input type="text" value={overtimeMinutes} onChange={(e) => handleNumberInput(e.target.value, setOvertimeMinutes)} className="calc-input calc-input-time" placeholder="0" inputMode="numeric" />
                             <span className="unit-text">분</span>
                         </div>
                     </div>
@@ -326,11 +346,11 @@ export default function SalaryCalculatorPage() {
                     <span className="allowance-label">휴일 근무 시간</span>
                     <div className="time-input-row">
                         <div className="time-input-wrap">
-                            <input type="text" value={holidayHours} onChange={(e) => handleNumberInput(e.target.value, setHolidayHours)} className="calc-input-time" placeholder="0" inputMode="numeric" />
+                            <input type="text" value={holidayHours} onChange={(e) => handleNumberInput(e.target.value, setHolidayHours)} className="calc-input calc-input-time" placeholder="0" inputMode="numeric" />
                             <span className="unit-text">시간</span>
                         </div>
                         <div className="time-input-wrap">
-                            <input type="text" value={holidayMinutes} onChange={(e) => handleNumberInput(e.target.value, setHolidayMinutes)} className="calc-input-time" placeholder="0" inputMode="numeric" />
+                            <input type="text" value={holidayMinutes} onChange={(e) => handleNumberInput(e.target.value, setHolidayMinutes)} className="calc-input calc-input-time" placeholder="0" inputMode="numeric" />
                             <span className="unit-text">분</span>
                         </div>
                     </div>
