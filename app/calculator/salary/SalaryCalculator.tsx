@@ -55,7 +55,7 @@ type TaxDetail = {
 
 export default function SalaryCalculatorPage() {
   // 1. 기본 설정
-  const [hourlyWage, setHourlyWage] = useState('10,030');
+  const [hourlyWage, setHourlyWage] = useState('10,320');
 
   // 2. 총 근무 시간
   const [totalHours, setTotalHours] = useState('160');
@@ -252,8 +252,8 @@ export default function SalaryCalculatorPage() {
                 type="text"
                 value={hourlyWage}
                 onChange={(e) => handleNumberInput(e.target.value, setHourlyWage)}
-                onFocus={() => { if(hourlyWage === '10,030') setHourlyWage(''); }}
-                onBlur={() => { if(hourlyWage === '') setHourlyWage('10,030'); }}
+                onFocus={() => { if(hourlyWage === '10,320') setHourlyWage(''); }}
+                onBlur={() => { if(hourlyWage === '') setHourlyWage('10,320'); }}
                 className="calc-input"
                 inputMode="numeric"
             />

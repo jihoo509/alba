@@ -38,7 +38,7 @@ const FEATURES = [
 ];
 
 export default function HolidayCalculatorPage() {
-  const [hourlyWage, setHourlyWage] = useState('10,030'); 
+  const [hourlyWage, setHourlyWage] = useState('10,320'); 
   
   // ✅ [수정] 기본값을 15시간 0분으로 설정 (주휴수당 최소 기준)
   const [weeklyHours, setWeeklyHours] = useState('15');
@@ -128,10 +128,10 @@ export default function HolidayCalculatorPage() {
                 type="text" 
                 value={hourlyWage} 
                 onChange={(e) => handleNumberInput(e, setHourlyWage)}
-                onFocus={() => { if(hourlyWage === '10,030') setHourlyWage(''); }}
-                onBlur={() => { if(hourlyWage === '') setHourlyWage('10,030'); }}
+                onFocus={() => { if(hourlyWage === '10,320') setHourlyWage(''); }}
+                onBlur={() => { if(hourlyWage === '') setHourlyWage('10,320'); }}
                 className="calc-input" 
-                placeholder="예: 10,030" 
+                placeholder="예: 10,320" 
                 inputMode="numeric" 
             />
           </div>
