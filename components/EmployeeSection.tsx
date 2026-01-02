@@ -28,7 +28,7 @@ export function EmployeeSection({
   const [newEmpName, setNewEmpName] = useState('');
   const [newEmpHireDate, setNewEmpHireDate] = useState(todayStr); 
   const [payType, setPayType] = useState<'time' | 'day' | 'month'>('time');
-  const [newEmpWage, setNewEmpWage] = useState(''); 
+  const [newEmpWage, setNewEmpWage] = useState('10,320'); 
   const [newDailyWage, setNewDailyWage] = useState(''); 
   const [newEmpMonthly, setNewEmpMonthly] = useState(''); 
   const [newEmpType, setNewEmpType] = useState<'freelancer_33' | 'four_insurance'>('four_insurance');
