@@ -8,18 +8,30 @@ export async function GET() {
   );
 
   try {
-    // 1. 총 회원 수 (auth.users 테이블은 admin API로만 접근 가능)
+    // 1. 총 회원 수
     const { data: { users }, error: userError } = await supabaseAdmin.auth.admin.listUsers();
     
-    // 2. 총 매장 수 (count 옵션 사용)
+    // 2. 총 매장 수
     const { count: storeCount, error: storeError } = await supabaseAdmin
       .from('stores')
-      .select('*', { count: 'exact', head: true }); // head: true는 데이터 없이 숫자만 가져옴 (빠름)
+      .select('*', { count: 'exact', head: true });
 
-    // 3. 총 방문자 수 (조회수)
+    // 3. 총 방문자 수 (전체)
     const { count: visitCount, error: visitError } = await supabaseAdmin
       .from('site_visits')
       .select('*', { count: 'exact', head: true });
+
+    // 4. 급여 계산기 방문자 수 (주소: '/calculator/salary')
+    const { count: salaryVisitCount } = await supabaseAdmin
+      .from('site_visits')
+      .select('*', { count: 'exact', head: true })
+      .eq('path', '/calculator/salary'); 
+
+    // 5. 주휴수당 계산기 방문자 수 (주소: '/calculator/holiday')
+    const { count: holidayVisitCount } = await supabaseAdmin
+      .from('site_visits')
+      .select('*', { count: 'exact', head: true })
+      .eq('path', '/calculator/holiday');
 
     if (userError || storeError || visitError) throw new Error('데이터 집계 실패');
 
@@ -27,6 +39,8 @@ export async function GET() {
       userCount: users?.length || 0,
       storeCount: storeCount || 0,
       visitCount: visitCount || 0,
+      salaryVisitCount: salaryVisitCount || 0,
+      holidayVisitCount: holidayVisitCount || 0,
     });
 
   } catch (e: any) {

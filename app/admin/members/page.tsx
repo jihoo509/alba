@@ -7,7 +7,14 @@ import { format } from 'date-fns';
 export default function AdminMembersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
-  const [stats, setStats] = useState({ userCount: 0, storeCount: 0, visitCount: 0 });
+  // ✅ [수정] 계산기별 방문자 수 상태 추가
+  const [stats, setStats] = useState({ 
+    userCount: 0, 
+    storeCount: 0, 
+    visitCount: 0, 
+    salaryVisitCount: 0, 
+    holidayVisitCount: 0 
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -37,7 +44,14 @@ export default function AdminMembersPage() {
       // 3. 통계 가져오기
       const resStats = await fetch('/api/admin/stats');
       const dataStats = await resStats.json();
-      if (dataStats.userCount !== undefined) setStats(dataStats);
+      // ✅ [수정] 가져온 통계 데이터 적용 (없으면 0 처리)
+      setStats({
+        userCount: dataStats.userCount || 0,
+        storeCount: dataStats.storeCount || 0,
+        visitCount: dataStats.visitCount || 0,
+        salaryVisitCount: dataStats.salaryVisitCount || 0,
+        holidayVisitCount: dataStats.holidayVisitCount || 0
+      });
 
     } catch (e) {
       alert('데이터 로딩 실패');
@@ -46,16 +60,13 @@ export default function AdminMembersPage() {
     }
   };
 
-  // ✅ [핵심 기능] 특정 유저가 가진 매장 이름들을 콤마로 연결해서 반환
   const getUserStoreNames = (userId: string) => {
     const userStores = stores.filter(store => store.owner_id === userId);
     if (userStores.length === 0) return '-';
     return userStores.map(s => s.name).join(', ');
   };
 
-  // ✅ [추가 기능] 회원 강제 탈퇴 핸들러
   const handleDeleteUser = async (userId: string, userEmail: string) => {
-    // 1. 확인 팝업 (실수 방지)
     const confirmed = window.confirm(
       `정말 [${userEmail}] 회원을 탈퇴시키겠습니까?\n\n⚠️ 주의: 해당 회원의 매장 및 데이터가 모두 삭제될 수 있습니다.`
     );
@@ -63,8 +74,6 @@ export default function AdminMembersPage() {
     if (!confirmed) return;
 
     try {
-      // 2. API 호출 (DELETE 요청)
-      // *주의: 백엔드 API(/api/admin/users)에서 DELETE 메서드를 처리하도록 구현되어 있어야 합니다.
       const res = await fetch('/api/admin/users', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -75,7 +84,6 @@ export default function AdminMembersPage() {
 
       if (res.ok) {
         alert('회원이 성공적으로 탈퇴 처리되었습니다.');
-        // 3. 화면 갱신 (새로고침 없이 리스트에서 제거)
         setUsers((prev) => prev.filter((u) => u.id !== userId));
         setStats((prev) => ({ ...prev, userCount: prev.userCount - 1 }));
       } else {
@@ -87,7 +95,6 @@ export default function AdminMembersPage() {
     }
   };
 
-  // 엑셀 다운로드 (매장 정보 포함)
   const handleDownloadExcel = () => {
     const excelData = users.map((u) => ({
       '이메일': u.email,
@@ -105,20 +112,30 @@ export default function AdminMembersPage() {
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+    <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif', paddingBottom: '100px' }}>
       <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '30px', color: '#333' }}>
         관리자 대시보드 🛠️
       </h1>
 
-      {/* 통계 카드 */}
+      {/* 1. 전체 현황 카드 */}
+      <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#666', marginBottom: '15px' }}>📌 전체 현황</h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
-        <StatCard title="총 방문 수" count={stats.visitCount} color="#3498db" icon="👀" />
-        <StatCard title="생성된 매장 수" count={stats.storeCount} color="#e67e22" icon="🏪" />
-        <StatCard title="가입 회원 수" count={stats.userCount} color="#2ecc71" icon="👥" />
+        <StatCard title="총 누적 방문" count={stats.visitCount} color="#3498db" icon="👀" />
+        <StatCard title="생성된 매장" count={stats.storeCount} color="#e67e22" icon="🏪" />
+        <StatCard title="가입 회원" count={stats.userCount} color="#2ecc71" icon="👥" />
       </div>
 
-      {/* 회원 목록 테이블 (매장 정보 통합) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      {/* ✅ [추가] 2. 계산기 트래픽 상세 카드 */}
+      <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#666', marginBottom: '15px' }}>📊 계산기별 트래픽 상세</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '50px' }}>
+        <StatCard title="💰 급여 계산기 방문" count={stats.salaryVisitCount} color="#9b59b6" icon="💵" />
+        <StatCard title="🏖️ 주휴수당 계산기 방문" count={stats.holidayVisitCount} color="#f1c40f" icon="🎁" />
+      </div>
+
+      <div style={{ borderTop: '1px dashed #ddd', margin: '20px 0' }}></div>
+
+      {/* 3. 회원 목록 테이블 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', marginTop: '40px' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#555' }}>👥 회원 목록 상세</h2>
         <button 
           onClick={handleDownloadExcel}
@@ -141,7 +158,7 @@ export default function AdminMembersPage() {
               <th style={thStyle}>전화번호</th>
               <th style={thStyle}>가입일</th>
               <th style={thStyle}>최근 접속</th>
-              <th style={{...thStyle, textAlign: 'center'}}>관리</th> {/* ✅ 관리 컬럼 추가 */}
+              <th style={{...thStyle, textAlign: 'center'}}>관리</th>
             </tr>
           </thead>
           <tbody>
@@ -150,7 +167,6 @@ export default function AdminMembersPage() {
             ) : users.map((user) => (
               <tr key={user.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                 <td style={{ ...tdStyle, fontWeight: 'bold', color: '#333' }}>{user.email}</td>
-                
                 <td style={tdStyle}>
                   {getUserStoreNames(user.id) === '-' ? (
                     <span style={{ color: '#ccc' }}>-</span>
@@ -158,24 +174,15 @@ export default function AdminMembersPage() {
                     <span style={{ color: '#0052cc', fontWeight: 'bold' }}>{getUserStoreNames(user.id)}</span>
                   )}
                 </td>
-
                 <td style={tdStyle}>{user.phone}</td>
                 <td style={tdStyle}>{format(new Date(user.created_at), 'yyyy-MM-dd')}</td>
                 <td style={tdStyle}>{user.last_sign_in ? format(new Date(user.last_sign_in), 'MM-dd HH:mm') : '-'}</td>
-                
-                {/* ✅ 탈퇴 버튼 영역 */}
                 <td style={{ ...tdStyle, textAlign: 'center' }}>
                     <button
                         onClick={() => handleDeleteUser(user.id, user.email)}
                         style={{
-                            padding: '6px 12px',
-                            backgroundColor: '#ff4d4d', // 붉은색
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            fontWeight: 'bold'
+                            padding: '6px 12px', backgroundColor: '#ff4d4d', color: 'white',
+                            border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold'
                         }}
                     >
                         강제 탈퇴
@@ -190,7 +197,6 @@ export default function AdminMembersPage() {
   );
 }
 
-// 스타일 정의
 function StatCard({ title, count, color, icon }: any) {
   return (
     <div style={{ 
